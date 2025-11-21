@@ -6,7 +6,13 @@
 export function getAppIdFromURL() {
   const url = new URL(window.location.href);
   
-  // Option 1: Subdomain (e.g., teg-app.basebase.io)
+  // Option 1: Query param (e.g., ?app=teg-app) - Highest priority for testing
+  const appParam = url.searchParams.get('app');
+  if (appParam) {
+    return appParam;
+  }
+  
+  // Option 2: Subdomain (e.g., teg-app.basebase.io)
   const hostname = url.hostname;
   const parts = hostname.split('.');
   
@@ -15,16 +21,11 @@ export function getAppIdFromURL() {
     return parts[0];
   }
   
-  // Option 2: Path-based (e.g., basebase.io/teg-app or localhost:3000/teg-app)
+  // Option 3: Path-based (e.g., basebase.io/teg-app or localhost:3000/teg-app)
   const pathParts = url.pathname.split('/').filter(Boolean);
-  if (pathParts.length > 0 && pathParts[0] !== 'apps') {
+  // Ignore paths with file extensions (like .html)
+  if (pathParts.length > 0 && !pathParts[0].includes('.') && pathParts[0] !== 'apps') {
     return pathParts[0];
-  }
-  
-  // Option 3: Query param (e.g., ?app=teg-app)
-  const appParam = url.searchParams.get('app');
-  if (appParam) {
-    return appParam;
   }
   
   // Default: For development, try to load from localStorage or return null

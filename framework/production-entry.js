@@ -13,6 +13,20 @@ import { AppLoader } from './loader/app-loader.js';
 import { useAuth } from './hooks/useAuth.js';
 import { useCollection } from './hooks/useCollection.js';
 import { useDocument } from './hooks/useDocument.js';
+import { app as firebaseAppInstance, auth as firebaseAuthInstance, db as firestoreInstance, authState } from './core/firebase-init.js';
+
+// Import all external libraries that apps use
+import * as React from 'react';
+import * as ReactDOM from 'react-dom/client';
+import * as ReactJSXRuntime from 'react/jsx-runtime';
+import * as Mantine from '@mantine/core';
+import * as MantineNotifications from '@mantine/notifications';
+import * as MantineHooks from '@mantine/hooks';
+
+// Firebase
+import * as FirebaseApp from 'firebase/app';
+import * as FirebaseAuth from 'firebase/auth';
+import * as FirebaseFirestore from 'firebase/firestore';
 
 // Show loading screen
 function showLoading(message = 'Loading...') {
@@ -105,8 +119,17 @@ function showError(title, message, details) {
 // Main initialization
 async function init() {
   try {
+    console.log('🚀 Production loader starting...');
+    
+    // Clear cache on development for testing
+    if (window.location.hostname === 'localhost') {
+      console.log('🧹 Clearing cache for development...');
+      localStorage.removeItem('__app_cache');
+    }
+    
     // Get app ID from URL
     const appId = getAppIdFromURL();
+    console.log('📱 App ID from URL:', appId);
     
     if (!appId) {
       showError(
@@ -128,11 +151,36 @@ async function init() {
     
     // Create framework exports that will be available to app code
     const frameworkExports = {
-      useAuth: { useAuth },
-      useCollection: { useCollection },
-      useDocument: { useDocument },
-      // Add more as needed
+      // React and ecosystem
+      'react': React,
+      'react-dom/client': ReactDOM,
+      'react/jsx-runtime': ReactJSXRuntime,
+      
+      // Mantine
+      '@mantine/core': Mantine,
+      '@mantine/notifications': MantineNotifications,
+      '@mantine/hooks': MantineHooks,
+      
+      // Firebase
+      'firebase/app': FirebaseApp,
+      'firebase/auth': FirebaseAuth,
+      'firebase/firestore': FirebaseFirestore,
+      
+      // Framework hooks (with path variants)
+      '../framework/hooks/useAuth.js': { useAuth },
+      '../../framework/hooks/useAuth.js': { useAuth },
+      '../framework/hooks/useCollection.js': { useCollection },
+      '../../framework/hooks/useCollection.js': { useCollection },
+      '../framework/hooks/useDocument.js': { useDocument },
+      '../../framework/hooks/useDocument.js': { useDocument },
+      
+      // Framework core
+      '../framework/core/firebase-init.js': { app: firebaseAppInstance, auth: firebaseAuthInstance, db: firestoreInstance, authState },
+      '../../framework/core/firebase-init.js': { app: firebaseAppInstance, auth: firebaseAuthInstance, db: firestoreInstance, authState },
     };
+    
+    // Restore the app container before loading the app
+    document.body.innerHTML = '<div id="app"></div>';
     
     // Load and execute app
     const { appModule, appData, versionHash } = await loader.loadAndExecute(

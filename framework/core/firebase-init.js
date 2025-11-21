@@ -31,7 +31,7 @@ const firebaseConfig = import.meta.env.VITE_FIREBASE_API_KEY
   : configFileConfig;
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 

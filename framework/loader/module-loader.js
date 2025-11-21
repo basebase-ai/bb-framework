@@ -73,22 +73,27 @@ export class ModuleLoader {
    * Load and execute a module
    */
   require(modulePath, importerPath = '') {
+    // Skip CSS imports (they should be loaded in the HTML)
+    if (modulePath.endsWith('.css')) {
+      return {};
+    }
+    
+    // Check if it's an external module (react, @mantine/core, etc.)
+    if (this.frameworkExports[modulePath]) {
+      return this.frameworkExports[modulePath];
+    }
+    
     const resolvedPath = this.resolvePath(modulePath, importerPath);
     
-    // Check if it's a framework export
-    if (resolvedPath.includes('framework/')) {
-      const exportName = resolvedPath.split('/').pop().replace('.js', '');
-      if (this.frameworkExports[exportName]) {
-        return this.frameworkExports[exportName];
-      }
-      console.warn(`Framework export not found: ${resolvedPath}`);
-      return {};
+    // Check again with resolved path (for framework imports)
+    if (this.frameworkExports[resolvedPath]) {
+      return this.frameworkExports[resolvedPath];
     }
     
     const module = this.modules[resolvedPath];
     
     if (!module) {
-      throw new Error(`Module not found: ${resolvedPath} (imported from ${importerPath})`);
+      throw new Error(`Module not found: ${modulePath} (imported from ${importerPath})`);
     }
     
     // Return cached exports if already loaded

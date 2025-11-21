@@ -91,6 +91,14 @@ export class AppLoader {
       
       console.log(`✅ Loaded ${Object.keys(modules).length} modules`);
       
+      // Debug: Check for import.meta in any module
+      Object.entries(modules).forEach(([path, code]) => {
+        if (code.includes('import.meta')) {
+          console.warn(`⚠️ Module ${path} still contains import.meta`);
+          console.log('First 500 chars:', code.substring(0, 500));
+        }
+      });
+      
       // Save to cache
       this.saveCache(appId, versionHash, modules);
       

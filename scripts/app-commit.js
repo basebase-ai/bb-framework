@@ -135,12 +135,29 @@ function transformCode(code, filePath) {
   }
 
   try {
-    const result = transform(code, {
+    // Remove hot reload code BEFORE transformation
+    let cleanedCode = code;
+    
+    // Remove entire if (import.meta.hot) blocks (with proper brace matching)
+    cleanedCode = cleanedCode.replace(
+      /if\s*\(\s*import\.meta\.hot\s*\)\s*\{[\s\S]*?\n\}/g,
+      ''
+    );
+    
+    // Remove any remaining import.meta references
+    cleanedCode = cleanedCode.replace(/import\.meta\.[a-zA-Z0-9_.]+/g, 'undefined');
+    
+    const result = transform(cleanedCode, {
       transforms: ["jsx", "typescript", "imports"],
-      jsxRuntime: "automatic",
+      jsxRuntime: "classic", // Use classic for compatibility with eval context
       production: true,
     });
-    return result.code;
+    
+    // Final cleanup AFTER transformation (in case Sucrase left anything)
+    let finalCode = result.code;
+    finalCode = finalCode.replace(/import\.meta\.[a-zA-Z0-9_.]+/g, 'undefined');
+    
+    return finalCode;
   } catch (error) {
     console.warn(chalk.yellow(`⚠️  Transform failed for ${filePath}: ${error.message}`));
     return code; // Return original on error
