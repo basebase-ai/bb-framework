@@ -143,11 +143,11 @@ async function buildModules() {
 
       if (entry.isDirectory()) {
         await scanDir(path, modulePath);
-      } else if (/\.(js|jsx|ts|tsx)$/.test(entry.name)) {
-        // Read the original source code (no transformation)
+      } else if (entry.isFile()) {
+        // Read all files (source code, markdown, CSS, JSON, etc.)
         const code = await readFile(path, "utf-8");
 
-        // Keep the original file extension
+        // Keep the original file name and extension
         modules[modulePath] = code;
         totalSize += code.length;
 
