@@ -360,6 +360,16 @@ const { user, loading, authenticated } = useAuth();
 - Make sure you're signed in (check top-right corner for your email)
 - If no apps shown, click "Add Sample App" to create one
 
+**"Module not found" error in production**
+
+If you get an error like "Module not found: some-package", it means you added a new npm package but it's not registered in the production loader:
+
+1. The package must be in `dependencies` (not `devDependencies`) in `package.json`
+2. **Contact platform admin** to register it in `framework/production-entry.js`
+3. Wait for framework rebuild and Railway deployment
+
+**Available packages:** `react`, `react-dom`, `firebase`, `@mantine/*`, `@tabler/icons-react`, `zustand`
+
 **"Permission denied" when committing**
 
 - You need to be the owner or a collaborator on the app

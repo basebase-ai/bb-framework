@@ -3,34 +3,55 @@
  * Dynamically loads app code from Firestore based on URL
  */
 
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { firebaseConfig } from '../config/firebase.config.js';
-import { getAppIdFromURL } from './loader/url-parser.js';
-import { AppLoader } from './loader/app-loader.js';
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { firebaseConfig } from "../config/firebase.config.js";
+import { getAppIdFromURL } from "./loader/url-parser.js";
+import { AppLoader } from "./loader/app-loader.js";
 
 // Import all framework hooks and utilities that apps might need
-import { useAuth } from './hooks/useAuth.js';
-import { useCollection } from './hooks/useCollection.js';
-import { useDocument } from './hooks/useDocument.js';
-import { app as firebaseAppInstance, auth as firebaseAuthInstance, db as firestoreInstance, authState } from './core/firebase-init.js';
+import { useAuth } from "./hooks/useAuth.js";
+import { useCollection } from "./hooks/useCollection.js";
+import { useDocument } from "./hooks/useDocument.js";
+import {
+  app as firebaseAppInstance,
+  auth as firebaseAuthInstance,
+  db as firestoreInstance,
+  authState,
+} from "./core/firebase-init.js";
 
-// Import all external libraries that apps use
-import * as React from 'react';
-import * as ReactDOM from 'react-dom/client';
-import * as ReactJSXRuntime from 'react/jsx-runtime';
-import * as Mantine from '@mantine/core';
-import * as MantineNotifications from '@mantine/notifications';
-import * as MantineHooks from '@mantine/hooks';
-import * as Zustand from 'zustand';
+/**
+ * Import all external libraries that apps can use
+ *
+ * IMPORTANT: When adding a new dependency to package.json that apps will use,
+ * you MUST import it here and register it in frameworkExports below.
+ *
+ * Already registered (from package.json dependencies):
+ * - react, react-dom ✅
+ * - firebase (submodules: app, auth, firestore) ✅
+ * - @mantine/core, @mantine/hooks, @mantine/notifications ✅
+ * - @tabler/icons-react ✅
+ * - zustand ✅
+ *
+ * Server-side only (don't register):
+ * - express, compression, esbuild
+ */
+import * as React from "react";
+import * as ReactDOM from "react-dom/client";
+import * as ReactJSXRuntime from "react/jsx-runtime";
+import * as Mantine from "@mantine/core";
+import * as MantineNotifications from "@mantine/notifications";
+import * as MantineHooks from "@mantine/hooks";
+import * as TablerIcons from "@tabler/icons-react";
+import * as Zustand from "zustand";
 
 // Firebase
-import * as FirebaseApp from 'firebase/app';
-import * as FirebaseAuth from 'firebase/auth';
-import * as FirebaseFirestore from 'firebase/firestore';
+import * as FirebaseApp from "firebase/app";
+import * as FirebaseAuth from "firebase/auth";
+import * as FirebaseFirestore from "firebase/firestore";
 
 // Show loading screen
-function showLoading(message = 'Loading...') {
+function showLoading(message = "Loading...") {
   document.body.innerHTML = `
     <div style="
       display: flex;
@@ -95,7 +116,9 @@ function showError(title, message, details) {
           margin: 0 0 1rem;
           line-height: 1.6;
         ">${message}</p>
-        ${details ? `
+        ${
+          details
+            ? `
           <details style="
             margin-top: 1rem;
             padding: 1rem;
@@ -113,7 +136,9 @@ function showError(title, message, details) {
               font-family: 'Courier New', monospace;
             ">${details}</pre>
           </details>
-        ` : ''}
+        `
+            : ""
+        }
       </div>
     </div>
   `;
@@ -122,90 +147,102 @@ function showError(title, message, details) {
 // Main initialization
 async function init() {
   try {
-    console.log('🚀 Production loader starting...');
-    
+    console.log("🚀 Production loader starting...");
+
     // Clear cache on development for testing
-    if (window.location.hostname === 'localhost') {
-      console.log('🧹 Clearing cache for development...');
-      localStorage.removeItem('__app_cache');
+    if (window.location.hostname === "localhost") {
+      console.log("🧹 Clearing cache for development...");
+      localStorage.removeItem("__app_cache");
     }
-    
+
     // Get app ID from URL
     const appId = getAppIdFromURL();
-    console.log('📱 App ID from URL:', appId);
-    
+    console.log("📱 App ID from URL:", appId);
+
     if (!appId) {
       showError(
-        'App Not Found',
-        'No app ID specified in the URL.',
-        'Please access this site using a valid app URL (e.g., your-app.basebase.io or basebase.io/your-app)'
+        "App Not Found",
+        "No app ID specified in the URL.",
+        "Please access this site using a valid app URL (e.g., your-app.basebase.io or basebase.io/your-app)"
       );
       return;
     }
-    
+
     showLoading(`Loading ${appId}...`);
-    
+
     // Initialize Firebase
     const firebaseApp = initializeApp(firebaseConfig);
     const auth = getAuth(firebaseApp);
-    
+
     // Create app loader
     const loader = new AppLoader(firebaseApp);
-    
+
     // Create framework exports that will be available to app code
     const frameworkExports = {
       // React and ecosystem
-      'react': React,
-      'react-dom/client': ReactDOM,
-      'react/jsx-runtime': ReactJSXRuntime,
-      
+      react: React,
+      "react-dom/client": ReactDOM,
+      "react/jsx-runtime": ReactJSXRuntime,
+
       // State management
-      'zustand': Zustand,
-      
+      zustand: Zustand,
+
       // Mantine
-      '@mantine/core': Mantine,
-      '@mantine/notifications': MantineNotifications,
-      '@mantine/hooks': MantineHooks,
-      
+      "@mantine/core": Mantine,
+      "@mantine/notifications": MantineNotifications,
+      "@mantine/hooks": MantineHooks,
+
+      // Icons
+      "@tabler/icons-react": TablerIcons,
+
       // Firebase
-      'firebase/app': FirebaseApp,
-      'firebase/auth': FirebaseAuth,
-      'firebase/firestore': FirebaseFirestore,
-      
+      "firebase/app": FirebaseApp,
+      "firebase/auth": FirebaseAuth,
+      "firebase/firestore": FirebaseFirestore,
+
       // Framework hooks (with path variants)
-      '../framework/hooks/useAuth.js': { useAuth },
-      '../../framework/hooks/useAuth.js': { useAuth },
-      '../framework/hooks/useCollection.js': { useCollection },
-      '../../framework/hooks/useCollection.js': { useCollection },
-      '../framework/hooks/useDocument.js': { useDocument },
-      '../../framework/hooks/useDocument.js': { useDocument },
-      
+      "../framework/hooks/useAuth.js": { useAuth },
+      "../../framework/hooks/useAuth.js": { useAuth },
+      "../framework/hooks/useCollection.js": { useCollection },
+      "../../framework/hooks/useCollection.js": { useCollection },
+      "../framework/hooks/useDocument.js": { useDocument },
+      "../../framework/hooks/useDocument.js": { useDocument },
+
       // Framework core
-      '../framework/core/firebase-init.js': { app: firebaseAppInstance, auth: firebaseAuthInstance, db: firestoreInstance, authState },
-      '../../framework/core/firebase-init.js': { app: firebaseAppInstance, auth: firebaseAuthInstance, db: firestoreInstance, authState },
+      "../framework/core/firebase-init.js": {
+        app: firebaseAppInstance,
+        auth: firebaseAuthInstance,
+        db: firestoreInstance,
+        authState,
+      },
+      "../../framework/core/firebase-init.js": {
+        app: firebaseAppInstance,
+        auth: firebaseAuthInstance,
+        db: firestoreInstance,
+        authState,
+      },
     };
-    
+
     // Restore the app container before loading the app
     document.body.innerHTML = '<div id="app"></div>';
-    
+
     // Load and execute app
     const { appModule, appData, versionHash } = await loader.loadAndExecute(
       appId,
       frameworkExports
     );
-    
+
     console.log(`✅ App loaded successfully`);
     console.log(`   Name: ${appData.name || appId}`);
     console.log(`   Version: ${versionHash}`);
-    
+
     // The app module should have already mounted itself to the DOM
     // (via ReactDOM.render in its entry point)
-    
   } catch (error) {
-    console.error('Failed to initialize app:', error);
+    console.error("Failed to initialize app:", error);
     showError(
-      'Failed to Load App',
-      'An error occurred while loading the application.',
+      "Failed to Load App",
+      "An error occurred while loading the application.",
       error.stack || error.message
     );
   }
@@ -213,4 +250,3 @@ async function init() {
 
 // Start the app
 init();
-
