@@ -22,6 +22,7 @@ import * as ReactJSXRuntime from 'react/jsx-runtime';
 import * as Mantine from '@mantine/core';
 import * as MantineNotifications from '@mantine/notifications';
 import * as MantineHooks from '@mantine/hooks';
+import * as Zustand from 'zustand';
 
 // Firebase
 import * as FirebaseApp from 'firebase/app';
@@ -157,6 +158,9 @@ async function init() {
       'react': React,
       'react-dom/client': ReactDOM,
       'react/jsx-runtime': ReactJSXRuntime,
+      
+      // State management
+      'zustand': Zustand,
       
       // Mantine
       '@mantine/core': Mantine,

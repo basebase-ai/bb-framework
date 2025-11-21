@@ -162,8 +162,9 @@ async function signIn() {
 
 // Transform JSX/TS to JS for production
 function transformCode(code, filePath) {
-  if (!/\.(jsx|tsx)$/.test(filePath)) {
-    return code; // No transformation needed
+  // Transform all JS/JSX/TS/TSX files, skip other file types (CSS, JSON, etc.)
+  if (!/\.(js|jsx|ts|tsx)$/.test(filePath)) {
+    return code; // No transformation needed for non-JS files
   }
 
   try {
