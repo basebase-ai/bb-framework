@@ -17,5 +17,13 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow delete: if false;
     }
+
+    // apps/{appId}/versions collection
+    match /apps/{appId}/versions/{doc} {
+      allow read: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || request.auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []));
+      allow update: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || request.auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []));
+      allow create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || request.auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []));
+      allow delete: if request.auth != null && request.auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner;
+    }
   }
 }

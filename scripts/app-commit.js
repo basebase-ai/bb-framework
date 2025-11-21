@@ -17,9 +17,7 @@ import { readFile, readdir } from "fs/promises";
 import { join, relative } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { transform } from "sucrase";
 import chalk from "chalk";
-import dotenv from "dotenv";
 import { createHash } from "crypto";
 import readline from "readline";
 import {
@@ -30,23 +28,13 @@ import {
   orderBy as firestoreOrderBy,
   limit as firestoreLimit,
 } from "firebase/firestore";
-
-dotenv.config();
+import { firebaseConfig } from "../config/firebase.config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const appDir = join(root, "app");
 
-// Initialize Firebase (client SDK)
-const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY,
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_FIREBASE_APP_ID,
-};
-
+// Initialize Firebase with public config
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -66,12 +54,64 @@ function prompt(question) {
   });
 }
 
+// Helper to prompt for password (hidden input)
+function promptPassword(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    process.stdout.write(question);
+
+    // Hide input
+    const stdin = process.stdin;
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding("utf8");
+
+    let password = "";
+
+    stdin.on("data", (char) => {
+      char = char.toString("utf8");
+
+      switch (char) {
+        case "\n":
+        case "\r":
+        case "\u0004": // Ctrl-D
+          stdin.setRawMode(false);
+          stdin.pause();
+          process.stdout.write("\n");
+          rl.close();
+          resolve(password);
+          break;
+        case "\u0003": // Ctrl-C
+          process.exit();
+          break;
+        case "\u007f": // Backspace
+        case "\b":
+          if (password.length > 0) {
+            password = password.slice(0, -1);
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+            process.stdout.write(question + "*".repeat(password.length));
+          }
+          break;
+        default:
+          password += char;
+          process.stdout.write("*");
+          break;
+      }
+    });
+  });
+}
+
 // Sign in user
 async function signIn() {
   console.log(chalk.cyan("\n🔐 Authentication required\n"));
 
   const email = await prompt("Email: ");
-  const password = await prompt("Password: ");
+  const password = await promptPassword("Password: ");
 
   try {
     const userCredential = await signInWithEmailAndPassword(
@@ -87,27 +127,9 @@ async function signIn() {
   }
 }
 
-// Transform code (JSX -> JS)
-async function processFile(filePath) {
-  const code = await readFile(filePath, "utf-8");
-
-  // Transform JSX/TypeScript
-  try {
-    const transformed = transform(code, {
-      transforms: ["jsx", "typescript", "imports"],
-      jsxRuntime: "classic",
-      production: true,
-    });
-    return transformed.code;
-  } catch (error) {
-    console.warn(
-      chalk.yellow(`⚠️  Could not transform ${filePath}, using original`)
-    );
-    return code;
-  }
-}
-
 // Build modules from /app directory
+// NOTE: We store the ORIGINAL source code (not transformed)
+// Transformation happens at build/production time, not commit time
 async function buildModules() {
   const modules = {};
   let totalSize = 0;
@@ -122,16 +144,15 @@ async function buildModules() {
       if (entry.isDirectory()) {
         await scanDir(path, modulePath);
       } else if (/\.(js|jsx|ts|tsx)$/.test(entry.name)) {
-        const code = await processFile(path);
-        const normalizedPath = modulePath.replace(/\.(jsx|tsx|ts)$/, ".js");
+        // Read the original source code (no transformation)
+        const code = await readFile(path, "utf-8");
 
-        modules[normalizedPath] = code;
+        // Keep the original file extension
+        modules[modulePath] = code;
         totalSize += code.length;
 
         console.log(
-          chalk.gray(
-            `  • ${normalizedPath} (${(code.length / 1024).toFixed(1)}kb)`
-          )
+          chalk.gray(`  • ${modulePath} (${(code.length / 1024).toFixed(1)}kb)`)
         );
       }
     }
