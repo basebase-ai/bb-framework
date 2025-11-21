@@ -19,8 +19,15 @@ Basebase is a web application development and deployment framework providing alw
 
 ### 1. Clone and Install
 
+Run
+
 ```bash
 git clone https://github.com/basebase-ai/bb-framework.git
+```
+
+Then
+
+```bash
 cd bb-framework
 npm install
 ```
@@ -36,9 +43,7 @@ Opens http://localhost:3000 with a sample app that provides user authentication 
 **What you'll see:**
 
 - Sign up/sign in screen (use Google or email)
-- A table displaying your apps from Firestore
-- "Add Sample App" button to create your first app
-- Real-time updates (open two tabs to see sync in action)
+- A table displaying your apps from Firestore (once you've signed in)
 
 ### 3. How It Works
 
@@ -130,7 +135,23 @@ export const schema = {
 
 **Important:** Always use `collections.todos` (not `"todos"`) when accessing Firestore. This ensures your data is namespaced to your app and won't conflict with other apps.
 
-### Step 5: Create Your Component
+### Naming Conventions
+
+Follow these Firebase/Firestore standards:
+
+**Collection names:** `kebab-case`
+
+- ✅ `todo-app_projects`, `todo-app_todo-items`, `news-base_articles`
+- ❌ `todoApp_projects`, `todo_app_TodoItems`
+
+**Field names:** `camelCase`
+
+- ✅ `displayName`, `createdAt`, `memberIds`, `logoURL`
+- ❌ `display_name`, `created_at`, `member_ids`, `logo_url`
+
+**Why?** This matches Firebase conventions and keeps your data consistent with the framework's built-in collections (`apps`, `users`).
+
+### Step 5: Create Your First Component
 
 Create `app/components/TodoList.jsx`:
 
@@ -175,7 +196,7 @@ export function TodoList() {
 
 ### Step 6: Add to Main App
 
-Edit `app/app.jsx` to use your new component:
+Edit `app/app.jsx` to use your new component(s):
 
 ```javascript
 import { TodoList } from "./components/TodoList.jsx";
