@@ -17,6 +17,7 @@ import { readFile, readdir } from "fs/promises";
 import { join, relative } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { transform } from "sucrase";
 import chalk from "chalk";
 import { createHash } from "crypto";
 import readline from "readline";
@@ -127,11 +128,30 @@ async function signIn() {
   }
 }
 
+// Transform JSX/TS to JS for production
+function transformCode(code, filePath) {
+  if (!/\.(jsx|tsx)$/.test(filePath)) {
+    return code; // No transformation needed
+  }
+
+  try {
+    const result = transform(code, {
+      transforms: ["jsx", "typescript", "imports"],
+      jsxRuntime: "automatic",
+      production: true,
+    });
+    return result.code;
+  } catch (error) {
+    console.warn(chalk.yellow(`⚠️  Transform failed for ${filePath}: ${error.message}`));
+    return code; // Return original on error
+  }
+}
+
 // Build modules from /app directory
-// NOTE: We store the ORIGINAL source code (not transformed)
-// Transformation happens at build/production time, not commit time
+// Returns both source (for checkout) and compiled (for production)
 async function buildModules() {
-  const modules = {};
+  const source = {};
+  const compiled = {};
   let totalSize = 0;
 
   async function scanDir(dir, base = "") {
@@ -144,12 +164,14 @@ async function buildModules() {
       if (entry.isDirectory()) {
         await scanDir(path, modulePath);
       } else if (entry.isFile()) {
-        // Read all files (source code, markdown, CSS, JSON, etc.)
+        // Read original source
         const code = await readFile(path, "utf-8");
-
-        // Keep the original file name and extension
-        modules[modulePath] = code;
+        source[modulePath] = code;
         totalSize += code.length;
+
+        // Transform for production (JSX/TS → JS)
+        const compiledPath = modulePath.replace(/\.(jsx|tsx)$/, ".js");
+        compiled[compiledPath] = transformCode(code, modulePath);
 
         console.log(
           chalk.gray(`  • ${modulePath} (${(code.length / 1024).toFixed(1)}kb)`)
@@ -160,14 +182,14 @@ async function buildModules() {
 
   await scanDir(appDir);
 
-  return { modules, totalSize };
+  return { source, compiled, totalSize };
 }
 
-// Generate version hash
-function generateVersionHash(modules) {
+// Generate version hash (based on source only)
+function generateVersionHash(source) {
   const hash = createHash("sha256");
 
-  Object.entries(modules)
+  Object.entries(source)
     .sort(([a], [b]) => a.localeCompare(b))
     .forEach(([path, code]) => {
       hash.update(path);
@@ -266,9 +288,9 @@ async function commit(appId, message = "Updated via app:commit") {
 
     // Build modules from /app directory
     console.log(chalk.cyan("\n📦 Building app modules...\n"));
-    const { modules, totalSize } = await buildModules();
+    const { source, compiled, totalSize } = await buildModules();
 
-    const versionHash = generateVersionHash(modules);
+    const versionHash = generateVersionHash(source);
 
     console.log(
       chalk.cyan(`\n📊 Total size: ${(totalSize / 1024).toFixed(1)}kb`)
@@ -288,17 +310,19 @@ async function commit(appId, message = "Updated via app:commit") {
     } else {
       console.log(chalk.cyan("📤 Uploading to Firestore..."));
 
-      // Create new version
+      // Create new version with both source and compiled code
       await setDoc(versionRef, {
-        modules,
+        source,     // Original .jsx files for development
+        compiled,   // Transformed .js files for production
         metadata: {
           version: versionHash,
-          entry: "./app.jsx",
+          entry: "app.js",  // Production entry point
+          sourceEntry: "app.jsx",  // Development entry point
           publishedAt: serverTimestamp(),
           publishedBy: user.uid,
           publishedByEmail: user.email,
           message,
-          moduleCount: Object.keys(modules).length,
+          moduleCount: Object.keys(source).length,
           totalSize,
         },
       });

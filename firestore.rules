@@ -4,7 +4,7 @@ service cloud.firestore {
 
     // apps collection
     match /apps/{doc} {
-      allow read: if request.auth != null && (request.auth.uid == resource.data.owner || request.auth.uid in resource.data.get('collaborators', []));
+      allow read: if true;
       allow update: if request.auth != null && (request.auth.uid == resource.data.owner || request.auth.uid in resource.data.get('collaborators', []));
       allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
       allow delete: if request.auth != null && request.auth.uid == resource.data.owner;
@@ -20,7 +20,7 @@ service cloud.firestore {
 
     // apps/{appId}/versions collection
     match /apps/{appId}/versions/{doc} {
-      allow read: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || request.auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []));
+      allow read: if true;
       allow update: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || request.auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []));
       allow create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || request.auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []));
       allow delete: if request.auth != null && request.auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner;

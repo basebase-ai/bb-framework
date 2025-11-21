@@ -1,0 +1,151 @@
+/**
+ * Virtual Module System
+ * Loads and executes app code from Firestore dynamically
+ */
+
+export class ModuleLoader {
+  constructor(modules, frameworkExports) {
+    this.modules = {}; // Registry of all modules
+    this.frameworkExports = frameworkExports || {}; // Framework exports available to app
+    
+    // Register all modules
+    Object.entries(modules).forEach(([path, code]) => {
+      this.registerModule(path, code);
+    });
+  }
+
+  registerModule(path, code) {
+    this.modules[path] = {
+      path,
+      code,
+      exports: {},
+      loaded: false,
+      error: null,
+    };
+  }
+
+  /**
+   * Resolve import path relative to importer
+   * e.g., "./components/Button.jsx" from "app.jsx" → "components/Button.jsx"
+   */
+  resolvePath(importPath, importerPath) {
+    // Handle relative imports
+    if (importPath.startsWith('./') || importPath.startsWith('../')) {
+      const importerDir = importerPath.split('/').slice(0, -1).join('/');
+      const resolved = this.normalizePath(`${importerDir}/${importPath}`);
+      
+      // Try exact match first
+      if (this.modules[resolved]) return resolved;
+      
+      // Try with .js extension (for .jsx imports)
+      const withJs = resolved.replace(/\.jsx$/, '.js');
+      if (this.modules[withJs]) return withJs;
+      
+      return resolved;
+    }
+    
+    // Handle framework imports (e.g., "../../framework/hooks/useAuth.js")
+    if (importPath.includes('framework/')) {
+      // These will be provided by frameworkExports
+      return importPath;
+    }
+    
+    // Absolute app imports
+    return importPath;
+  }
+
+  normalizePath(path) {
+    const parts = path.split('/');
+    const result = [];
+    
+    for (const part of parts) {
+      if (part === '..') {
+        result.pop();
+      } else if (part !== '.' && part !== '') {
+        result.push(part);
+      }
+    }
+    
+    return result.join('/');
+  }
+
+  /**
+   * Load and execute a module
+   */
+  require(modulePath, importerPath = '') {
+    const resolvedPath = this.resolvePath(modulePath, importerPath);
+    
+    // Check if it's a framework export
+    if (resolvedPath.includes('framework/')) {
+      const exportName = resolvedPath.split('/').pop().replace('.js', '');
+      if (this.frameworkExports[exportName]) {
+        return this.frameworkExports[exportName];
+      }
+      console.warn(`Framework export not found: ${resolvedPath}`);
+      return {};
+    }
+    
+    const module = this.modules[resolvedPath];
+    
+    if (!module) {
+      throw new Error(`Module not found: ${resolvedPath} (imported from ${importerPath})`);
+    }
+    
+    // Return cached exports if already loaded
+    if (module.loaded) {
+      return module.exports;
+    }
+    
+    // Check for circular dependencies
+    if (module.loading) {
+      console.warn(`Circular dependency detected: ${resolvedPath}`);
+      return module.exports;
+    }
+    
+    module.loading = true;
+    
+    try {
+      // Create module context
+      const moduleContext = {
+        exports: module.exports,
+        require: (path) => this.require(path, resolvedPath),
+      };
+      
+      // Transform CommonJS-style code to be executable
+      // The compiled code from sucrase will use require() and module.exports
+      const wrappedCode = `
+        (function(module, exports, require) {
+          ${module.code}
+          return module.exports;
+        })
+      `;
+      
+      // Execute the module
+      const moduleFunction = eval(wrappedCode);
+      const result = moduleFunction(
+        moduleContext,
+        moduleContext.exports,
+        moduleContext.require
+      );
+      
+      module.exports = result || moduleContext.exports;
+      module.loaded = true;
+      module.loading = false;
+      
+      return module.exports;
+    } catch (error) {
+      module.error = error;
+      module.loading = false;
+      console.error(`Error loading module ${resolvedPath}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load the entry module (typically app.js)
+   */
+  loadEntry(entryPath = 'app.js') {
+    return this.require(entryPath);
+  }
+}
+

@@ -183,7 +183,8 @@ async function checkout(appId, versionId = "latest") {
     }
     
     const versionData = versionSnap.data();
-    const modules = versionData.modules || {};
+    // Use source for development (original .jsx files)
+    const modules = versionData.source || versionData.modules || {};
     
     console.log(chalk.cyan(`\n📦 Writing ${Object.keys(modules).length} files to /app...\n`));
     

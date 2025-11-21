@@ -30,8 +30,8 @@ export const schema = {
     ],
 
     rules: {
-      // Users can only read apps they own or are collaborators on
-      read: "auth != null && (auth.uid == resource.data.owner || auth.uid in resource.data.get('collaborators', []))",
+      // Apps are publicly readable (code runs in browser anyway)
+      read: "true",
       // Users can only update apps they own or are collaborators on
       write:
         "auth != null && (auth.uid == resource.data.owner || auth.uid in resource.data.get('collaborators', []))",
@@ -61,6 +61,24 @@ export const schema = {
       delete: "false",
     },
   },
+
+  "apps/{appId}/versions": {
+    subcollection: true,
+    fields: {
+      source: { type: "map", required: true }, // Original source files for checkout
+      compiled: { type: "map", required: true }, // Compiled files for production
+      metadata: { type: "map" },
+    },
+
+    rules: {
+      // Versions are publicly readable (code runs in browser anyway)
+      read: "true",
+      // Users can create/update versions if they own the parent app
+      write: "auth != null && (auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []))",
+      create: "auth != null && (auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []))",
+      delete: "auth != null && auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner",
+    },
+  },
 };
 
 // Generate Firestore rules from schema
@@ -68,8 +86,14 @@ export function generateRules(schema) {
   let rules =
     'rules_version = "2";\nservice cloud.firestore {\n  match /databases/{database}/documents {\n';
 
-  Object.entries(schema).forEach(([collectionName, config]) => {
-    rules += `\n    match /${collectionName}/{doc} {\n`;
+  Object.entries(schema).forEach(([collectionPath, config]) => {
+    // Check if it's a subcollection (contains path variables like {appId})
+    if (config.subcollection) {
+      rules += `\n    match /${collectionPath}/{versionDoc} {\n`;
+    } else {
+      rules += `\n    match /${collectionPath}/{doc} {\n`;
+    }
+    
     rules += `      allow read: if ${config.rules.read};\n`;
     rules += `      allow write: if ${config.rules.write};\n`;
     rules += `      allow create: if ${config.rules.create};\n`;
