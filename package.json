@@ -5,9 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev-server.js",
-    "init": "node scripts/init.js",
-    "publish": "node scripts/publish.js",
-    "publish:preview": "node scripts/publish.js --preview",
+    "app:checkout": "node scripts/app-checkout.js",
+    "app:commit": "node scripts/app-commit.js",
     "generate:types": "node scripts/generate-types.js",
     "generate:rules": "node scripts/generate-rules.js",
     "test": "echo \"Tests coming soon\" && exit 0",

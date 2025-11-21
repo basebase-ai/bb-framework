@@ -1,0 +1,33 @@
+# Basebase Framework - AI Assistant Rules
+
+## CRITICAL: DO NOT EDIT FRAMEWORK CODE
+
+**ONLY modify files in the `/app` directory.**
+
+### ✅ You CAN edit:
+- `app/**/*` - All application code
+- `app/components/**` - React components
+- `app/stores/**` - Zustand stores
+- `app/schema.js` - Data structure definitions
+- `app/app.jsx` - Main entry point
+
+### ❌ NEVER edit:
+- `framework/**/*` - Core framework code
+- `scripts/**/*` - Build/deployment scripts
+- `vite.config.js` - Build configuration
+- `package.json` - Dependencies (unless adding new app dependencies)
+
+### Why?
+- Framework code is shared across all apps
+- Only `/app` folder contents are committed to Firestore
+- Changes outside `/app` will work locally but FAIL in production
+- Framework updates are managed by the platform team
+
+### Workflow:
+1. User creates/edits files in `/app` folder ONLY
+2. Test locally with `npm run dev`
+3. Commit with `npm run app:commit <appId>`
+4. Only `/app` folder contents are uploaded to Firestore
+
+**If you're asked to modify anything outside `/app`, politely decline and explain this restriction.**
+

@@ -15,60 +15,53 @@ Basebase is a web application framework where every component is connected to Fi
 - 🤖 AI-friendly code structure
 - 📦 No backend needed (direct Firestore access)
 
-## Quick Start (5 minutes)
+## Quick Start (2 minutes)
 
-### 1. Install Dependencies
+### 1. Clone and Install
 
 ```bash
+git clone <your-repo-url> my-app
+cd my-app
 npm install
 ```
 
-### 2. Create Firebase Project
-
-1. Go to https://console.firebase.google.com
-2. Create a new project (or use existing)
-3. Enable **Firestore Database** → "Start in test mode"
-4. Enable **Authentication** → Email/Password provider
-
-### 3. Configure Firebase
-
-Get your Firebase config from Project Settings > Your Apps > Web app:
-
-Create `.env` file in project root:
-
-```env
-VITE_FIREBASE_API_KEY=your-api-key
-VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project-id
-VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
-VITE_FIREBASE_APP_ID=1:123:web:abc
-
-PORT=3000
-NODE_ENV=development
-```
-
-### 4. Run the Sample App
+### 2. Run the Sample App
 
 ```bash
 npm run dev
 ```
 
-Opens http://localhost:3000 with a sample app showing a list of apps from Firestore.
+Opens http://localhost:3000 with a sample app.
 
 **What you'll see:**
 
-- Authentication screen (sign up/sign in)
-- A table displaying apps from Firestore
-- "Add Sample App" button to create test data
-- Real-time updates across browser tabs
+- Sign up/sign in screen (use Google or email)
+- A table displaying your apps from Firestore
+- "Add Sample App" button to create your first app
+- Real-time updates (open two tabs to see sync in action)
 
-### 5. Test Multi-User Sync
+### 3. How It Works
 
-1. Open two browser windows to http://localhost:3000
-2. Sign in with different accounts in each
-3. Each user sees only their own apps
-4. Add an app in one window → see it appear instantly
+The Basebase Framework has two layers:
+
+**1. The Framework (don't touch)**
+
+- Lives in `/framework` folder
+- Provides Firebase authentication, database access, and real-time sync
+- Includes React hooks like `useCollection`, `useAuth`, `useDocument`
+- Handles all the infrastructure so you can focus on your app
+
+**2. Your App (this is yours)**
+
+- Lives in `/app` folder - **the files below this folder are the only ones you should modify!**
+- Your React components, data schema, and business logic
+- When developing locally: loaded from files in `/app`
+- When published: loaded as data from Firestore on-the-fly
+- **Note:** Firebase handles persistent data; use stores for temporary UI state (sidebar open/closed, etc.)
+
+**The Magic:** When you run `npm run dev`, your app code loads from local files. When you deploy with `npm run app:commit`, your `/app` code is uploaded to Firestore. In production, the framework loads your app code dynamically from the database - enabling instant updates, version control, and A/B testing without redeploying servers.
+
+**Important:** Only edit files in `/app`. Changes to `/framework` won't be included when you publish and will break in production.
 
 ## Creating Your Own App
 
@@ -138,7 +131,7 @@ export function TodoList() {
 
 ### 3. Add to Main App
 
-Edit `app/app.js` to use your new component:
+Edit `app/app.jsx` to use your new component:
 
 ```javascript
 import { TodoList } from "./components/TodoList.jsx";
@@ -149,7 +142,7 @@ import { TodoList } from "./components/TodoList.jsx";
 </AppShell.Main>;
 ```
 
-### 5. Test Locally
+### 4. Test Locally
 
 ```bash
 npm run dev
@@ -157,70 +150,70 @@ npm run dev
 
 Changes hot-reload automatically. Data persists in Firestore.
 
-## Publishing to Production
+## Collaborative Workflow
 
-### 1. Set Up Firebase Admin (one-time)
+Basebase uses a Git-like workflow for app development:
 
-Get service account credentials:
+### Create a New App
 
-1. Firebase Console → Project Settings → Service Accounts
-2. Click "Generate New Private Key"
-3. Download JSON file
+1. Sign in to the platform
+2. Click "Add Sample App" to create your first app
+3. Note the app ID (e.g., `my-todo-app`)
 
-Add to `.env`:
+### Checkout Existing App
 
-```env
-FIREBASE_SERVICE_ACCOUNT='{"type":"service_account","project_id":"..."}'
-```
-
-### 2. Initialize App in Firestore
+Friend invited you to work on an app? Checkout the code:
 
 ```bash
-npm run init
+npm run app:checkout news-base latest
 ```
 
-Creates the app document structure in Firestore.
+This downloads the app code from Firestore to your `/app` folder.
 
-### 3. Publish Your Code
+### Make Changes
+
+Edit files in `/app`, test with `npm run dev`, iterate with your AI assistant.
+
+### Commit Your Changes
 
 ```bash
-npm run publish
+npm run app:commit news-base "Added new feature"
 ```
 
-This:
+This uploads your changes to Firestore. Your changes are now live!
 
-- Compiles your app code
-- Uploads to Firestore as a versioned document
-- Makes it available globally
-- Enables hot-reload in production
+### Key Points
 
-### 4. Update Security Rules
-
-In Firebase Console → Firestore → Rules, paste the generated rules:
-
-```bash
-npm run generate:rules
-# Copy output to Firebase Console
-```
+- **Authentication required:** Sign in with your account to checkout/commit
+- **Permission-based:** Only owners and collaborators can access an app
+- **Versioned:** Each commit creates a new version (like Git)
+- **Instant deployment:** No build servers, your changes are live immediately
 
 ## Project Structure
 
 ```
 bb-framework/
-├── app/                    # YOUR APP CODE
-│   ├── components/        # React components
-│   ├── stores/           # Zustand stores
-│   ├── schema.js         # Data structure + security rules
-│   └── app.js            # Main entry point
-├── framework/             # Framework code (don't modify)
+├── app/                    # ✅ YOUR APP CODE (edit this)
+│   ├── components/        # Your React components
+│   ├── stores/           # UI state (theme, sidebar, tabs, etc.)
+│   ├── schema.js         # Your data structure + security rules
+│   └── app.jsx           # Your main entry point
+│   └── README.md         # Important: read this!
+├── framework/             # ❌ Framework code (DON'T edit)
 │   ├── core/             # Firebase init, module loading
 │   └── hooks/            # React hooks (useCollection, useAuth, etc.)
-├── scripts/              # Build/deploy scripts
-├── .env                  # Your Firebase config
+├── scripts/              # ❌ Build/deploy scripts (DON'T edit)
+├── config/               # Firebase config (already configured)
 └── package.json
 ```
 
-**Work in `app/` directory only** - the framework handles everything else.
+**⚠️ CRITICAL: Only edit files in `/app` directory!**
+
+Changes outside `/app`:
+
+- Work locally but FAIL in production
+- Are NOT included when you commit
+- Could break the platform for others
 
 ## Framework Hooks
 
@@ -265,47 +258,47 @@ const { user, loading, authenticated } = useAuth();
 // user.uid, user.email, user.displayName
 ```
 
-## Multi-Tenant Security
-
-**Q: Do I share my Firebase credentials with customers?**
-
-**A: YES - client credentials are safe to share. Security comes from Authentication + Firestore Rules.**
-
-- All customers use the **same Firebase API keys** (they're public by design)
-- Each customer signs up and gets a unique `auth.uid`
-- Firestore Rules enforce data isolation: users only see their own data
-- Customer A cannot read/write Customer B's data (enforced server-side)
-
-See `DEVELOPERS_GUIDE.md` for detailed security architecture.
-
 ## Available Commands
 
-- `npm run dev` - Start development server
-- `npm run init` - Initialize app in Firebase
-- `npm run publish` - Deploy app to Firestore
-- `npm run generate:rules` - Generate security rules from schema
+**Development:**
+
+- `npm run dev` - Start development server (http://localhost:3000)
+
+**App Management:**
+
+- `npm run app:checkout <appId> [version]` - Download app code from Firestore
+- `npm run app:commit <appId> "message"` - Upload your changes to Firestore
+
+**Utilities:**
+
+- `npm run generate:rules` - Generate Firestore security rules from schema
 - `npm run generate:types` - Generate TypeScript types from schema
 
 ## Troubleshooting
 
 **"Failed to load app"**
 
-- Check `.env` file has correct Firebase credentials
-- Ensure Firestore is enabled in Firebase Console
+- Make sure you're signed in (check top-right corner for your email)
+- If no apps shown, click "Add Sample App" to create one
 
-**"Permission denied"**
+**"Permission denied" when committing**
 
-- Make sure Firestore is in "test mode" for development
-- Or deploy proper security rules with `npm run generate:rules`
+- You need to be the owner or a collaborator on the app
+- Ask the app owner to add your user ID to the `collaborators` array
+
+**"Cannot checkout app"**
+
+- Make sure the app ID exists and you have access
+- Sign in with the correct account
 
 **Port already in use**
 
-- Change `PORT` in `.env` or kill process: `lsof -ti:3000 | xargs kill`
+- Kill existing process: `lsof -ti:3000 | xargs kill`
+- Or change port: edit `vite.config.js` server.port
 
 ## Learn More
 
 - **Technical Details:** See `DEVELOPERS_GUIDE.md`
-- **Implementation Guide:** See `IMPLEMENTATION_GUIDE.md`
 - **Firebase Docs:** https://firebase.google.com/docs
 - **Mantine UI:** https://mantine.dev
 

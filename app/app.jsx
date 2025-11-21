@@ -48,9 +48,6 @@ function App() {
           </AppShell.Header>
 
           <AppShell.Navbar p="md">
-            <Text size="sm" fw={500} mb="md">
-              Navigation
-            </Text>
             <Text size="sm" c="dimmed">
               Apps
             </Text>

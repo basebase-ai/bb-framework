@@ -1,0 +1,12 @@
+# Aider: DO NOT EDIT these files
+# Only modify files in /app directory
+
+framework/**
+scripts/**
+vite.config.js
+package.json
+README.md
+DEVELOPERS_GUIDE.md
+IMPLEMENTATION_GUIDE.md
+.gitignore
+
