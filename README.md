@@ -4,7 +4,7 @@
 
 ## What Is This?
 
-Basebase is a web application framework where every component is connected to Firebase from the start. When you build a component, it's already wired to real authentication, real data, and real-time synchronization. No "connect it later" phase.
+Basebase is a web application development and deployment framework providing always-on database access, local state management, user authentication, third-party API access and more. When you build an app on Basebase, you can use any IDE and AI coding assistant, and you are guaranteed that your app is already connected to real data and APIs, and sharable to other users, from the very start.
 
 **Key Features:**
 
@@ -20,18 +20,18 @@ Basebase is a web application framework where every component is connected to Fi
 ### 1. Clone and Install
 
 ```bash
-git clone <your-repo-url> my-app
-cd my-app
+git clone https://github.com/basebase-ai/bb-framework.git
+cd bb-framework
 npm install
 ```
 
-### 2. Run the Sample App
+### 2. Run the Starter App
 
 ```bash
 npm run dev
 ```
 
-Opens http://localhost:3000 with a sample app.
+Opens http://localhost:3000 with a sample app that provides user authentication (sign up and sign in) and showcases some of the components displaying live data from the database.
 
 **What you'll see:**
 
@@ -63,7 +63,7 @@ The Basebase Framework has two layers:
 
 **Important:** Only edit files in `/app`. Changes to `/framework` won't be included when you publish and will break in production.
 
-## Creating Your Own App
+## Scenario A: Creating Your Own App
 
 ### 0. Initialize Your App (First Time)
 
@@ -75,26 +75,39 @@ This sets your app ID and prepares the project for development.
 
 ### 1. Define Your Data Schema
 
-Edit `app/schema.js` to define your collections:
+Edit `app/schema.js` to add your app-specific collections:
 
 ```javascript
+// Your app's unique identifier (set by npm run app:init)
+export const APP_ID = "my-app-name";
+
+// Namespaced collection names
+export const collections = {
+  // Global collections (no namespace)
+  apps: "apps",
+  users: "users",
+
+  // Your app-specific collections (automatically namespaced)
+  todos: `${APP_ID}_todos`, // e.g., "my-app-name_todos"
+  notes: `${APP_ID}_notes`, // e.g., "my-app-name_notes"
+  // Add more as needed...
+};
+
+// Schema for documentation (optional, used for type generation)
 export const schema = {
+  // Define your data structure here
   todos: {
     fields: {
       title: { type: "string", required: true },
       completed: { type: "boolean", default: false },
-      owner: { type: "string", required: true }, // Firebase Auth UID
+      owner: { type: "string", required: true },
       dueDate: { type: "timestamp" },
-    },
-    rules: {
-      read: "auth != null && auth.uid == resource.data.owner",
-      write: "auth != null && auth.uid == resource.data.owner",
-      create: "auth != null && request.resource.data.owner == auth.uid",
-      delete: "auth != null && auth.uid == resource.data.owner",
     },
   },
 };
 ```
+
+**Important:** Always use `collections.todos` (not `"todos"`) when accessing Firestore. This ensures your data is namespaced to your app and won't conflict with other apps.
 
 ### 2. Create Your Component
 
@@ -112,7 +125,8 @@ export function TodoList() {
     data: todos,
     add,
     update,
-  } = useCollection(collections.todos, { // Use namespaced collection
+  } = useCollection(collections.todos, {
+    // Use namespaced collection
     where: [["owner", "==", user?.uid]],
   });
 
@@ -159,33 +173,7 @@ npm run dev
 
 Changes hot-reload automatically. Data persists in Firestore.
 
-## Developer Workflows
-
-Basebase supports two development scenarios:
-
-### Scenario A: Starting a New App
-
-Building something from scratch? Initialize a new app:
-
-```bash
-npm run app:init my-new-app
-```
-
-This sets up your app ID in the schema. You can optionally create the app document in Firestore when prompted.
-
-**What happens:**
-- Sets `APP_ID` to `my-new-app` in `app/schema.js`
-- Keeps the starter app components as a template
-- Ready for development!
-
-Then develop and commit:
-
-```bash
-npm run dev                           # Build your app locally
-npm run app:commit "Initial version"  # Publish to Firestore
-```
-
-### Scenario B: Working on Existing App
+## Scenario B: Collaborating on Existing App
 
 Joining a team? Checkout an existing app from Firestore:
 
@@ -194,6 +182,7 @@ npm run app:checkout news-base latest
 ```
 
 **What happens:**
+
 - Downloads app code from Firestore to `/app` folder
 - Overwrites local files with the app's code
 - Sets `APP_ID` to `news-base` automatically
@@ -246,11 +235,16 @@ Changes outside `/app`:
 Real-time collection with automatic CRUD:
 
 ```javascript
-const { data, loading, error, add, update, remove } = useCollection("todos", {
-  where: [["owner", "==", user.uid]],
-  orderBy: ["createdAt", "desc"],
-  limit: 50,
-});
+import { collections } from "../schema.js";
+
+const { data, loading, error, add, update, remove } = useCollection(
+  collections.todos,
+  {
+    where: [["owner", "==", user.uid]],
+    orderBy: ["createdAt", "desc"],
+    limit: 50,
+  }
+);
 
 // Add document
 await add({ title: "New Todo" });
@@ -261,6 +255,8 @@ await update(docId, { completed: true });
 // Delete document
 await remove(docId);
 ```
+
+**Note:** Always use `collections.todos` instead of hardcoded strings to ensure proper namespacing.
 
 ### useDocument(collectionName, documentId)
 

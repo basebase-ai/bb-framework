@@ -1,35 +1,35 @@
 /**
  * Define your Firestore collections and their structure
- * 
+ *
  * IMPORTANT: Collection Namespacing
  * ---------------------------------
  * All app-specific collections MUST be namespaced with your app ID
  * to prevent conflicts with other apps in the multi-tenant environment.
- * 
+ *
  * Use the `collections` helper below instead of hardcoding collection names.
  */
 
 // Your app's unique identifier
 // This is set automatically during app:checkout or app:init
-export const APP_ID = 'starter-app';
+export const APP_ID = "starter-app";
 
 /**
  * Namespaced collection names
  * Use these throughout your app instead of hardcoding collection names
- * 
+ *
  * Example:
  *   ❌ DON'T: useCollection('ideas')
  *   ✅ DO:    useCollection(collections.ideas)
  */
 export const collections = {
   // Global collections (no namespace needed - platform-managed)
-  apps: 'apps',
-  users: 'users',
-  
+  apps: "apps",
+  users: "users",
+
   // Your app-specific collections (automatically namespaced)
   // Add your own collections here following the pattern:
   // collectionName: `${APP_ID}_collectionName`,
-  
+
   // Example app collections (uncomment and customize as needed):
   // ideas: `${APP_ID}_ideas`,
   // tasks: `${APP_ID}_tasks`,
@@ -118,9 +118,12 @@ export const schema = {
       // Versions are publicly readable (code runs in browser anyway)
       read: "true",
       // Users can create/update versions if they own the parent app
-      write: "auth != null && (auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []))",
-      create: "auth != null && (auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []))",
-      delete: "auth != null && auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner",
+      write:
+        "auth != null && (auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []))",
+      create:
+        "auth != null && (auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []))",
+      delete:
+        "auth != null && auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner",
     },
   },
 };
@@ -137,7 +140,7 @@ export function generateRules(schema) {
     } else {
       rules += `\n    match /${collectionPath}/{doc} {\n`;
     }
-    
+
     rules += `      allow read: if ${config.rules.read};\n`;
     rules += `      allow write: if ${config.rules.write};\n`;
     rules += `      allow create: if ${config.rules.create};\n`;
