@@ -19,7 +19,7 @@ import { AuthProvider, SignOutButton } from "./components/AuthProvider.jsx";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
-function App() {
+function AppContent() {
   const { user } = useAuth();
   const { sidebarOpen, toggleSidebar } = useAppStore();
   const [currentPage, setCurrentPage] = useState("table");
@@ -42,70 +42,76 @@ function App() {
   };
 
   return (
+    <AppShell
+      header={{ height: 60 }}
+      navbar={{
+        width: 300,
+        breakpoint: "sm",
+        collapsed: { mobile: !sidebarOpen },
+      }}
+      padding="md"
+    >
+      <AppShell.Header>
+        <Group h="100%" px="md">
+          <Burger opened={sidebarOpen} onClick={toggleSidebar} hiddenFrom="sm" size="sm" />
+          <Title order={3}>Basebase Framework</Title>
+          {user && (
+            <Group ml="auto" gap="md">
+              <Text size="sm" c="dimmed">
+                {user.email}
+              </Text>
+              <SignOutButton size="xs" />
+            </Group>
+          )}
+        </Group>
+      </AppShell.Header>
+
+      <AppShell.Navbar p="md">
+        <Text size="sm" fw={500} mb="md">
+          Apps Views
+        </Text>
+        <Stack gap={4}>
+          <NavLink
+            label="Table"
+            active={currentPage === "table"}
+            onClick={() => setCurrentPage("table")}
+          />
+          <NavLink
+            label="Grid"
+            active={currentPage === "grid"}
+            onClick={() => setCurrentPage("grid")}
+          />
+          <NavLink
+            label="List"
+            active={currentPage === "list"}
+            onClick={() => setCurrentPage("list")}
+          />
+          <NavLink
+            label="Canvas"
+            active={currentPage === "canvas"}
+            onClick={() => setCurrentPage("canvas")}
+          />
+          <NavLink
+            label="Reorderable"
+            active={currentPage === "reorderable"}
+            onClick={() => setCurrentPage("reorderable")}
+          />
+        </Stack>
+      </AppShell.Navbar>
+
+      <AppShell.Main>
+        {renderPage()}
+      </AppShell.Main>
+    </AppShell>
+  );
+}
+
+function App() {
+  return (
     <MantineProvider defaultColorScheme="light">
       <Notifications position="top-right" />
       <AuthProvider>
-        <AppShell
-          header={{ height: 60 }}
-          navbar={{
-            width: 300,
-            breakpoint: "sm",
-            collapsed: { mobile: !sidebarOpen },
-          }}
-          padding="md"
-        >
-          <AppShell.Header>
-            <Group h="100%" px="md">
-              <Burger opened={sidebarOpen} onClick={toggleSidebar} hiddenFrom="sm" size="sm" />
-              <Title order={3}>Basebase Framework</Title>
-              {user && (
-                <Group ml="auto" gap="md">
-                  <Text size="sm" c="dimmed">
-                    {user.email}
-                  </Text>
-                  <SignOutButton size="xs" />
-                </Group>
-              )}
-            </Group>
-          </AppShell.Header>
-
-          <AppShell.Navbar p="md">
-            <Text size="sm" fw={500} mb="md">
-              Apps Views
-            </Text>
-            <Stack gap={4}>
-              <NavLink
-                label="Table"
-                active={currentPage === "table"}
-                onClick={() => setCurrentPage("table")}
-              />
-              <NavLink
-                label="Grid"
-                active={currentPage === "grid"}
-                onClick={() => setCurrentPage("grid")}
-              />
-              <NavLink
-                label="List"
-                active={currentPage === "list"}
-                onClick={() => setCurrentPage("list")}
-              />
-              <NavLink
-                label="Canvas"
-                active={currentPage === "canvas"}
-                onClick={() => setCurrentPage("canvas")}
-              />
-              <NavLink
-                label="Reorderable"
-                active={currentPage === "reorderable"}
-                onClick={() => setCurrentPage("reorderable")}
-              />
-            </Stack>
-          </AppShell.Navbar>
-
-          <AppShell.Main>
-            {renderPage()}
-          </AppShell.Main>
-        </AppShell>
+        <AppContent />
       </AuthProvider>
     </MantineProvider>
   );
