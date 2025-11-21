@@ -58,22 +58,20 @@ function prompt(question) {
 // Helper to prompt for password (hidden input)
 function promptPassword(question) {
   return new Promise((resolve) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
+    const stdin = process.stdin;
+    let password = "";
 
     process.stdout.write(question);
 
+    // Remove any existing listeners to prevent duplicates
+    stdin.removeAllListeners("data");
+
     // Hide input
-    const stdin = process.stdin;
     stdin.setRawMode(true);
     stdin.resume();
     stdin.setEncoding("utf8");
 
-    let password = "";
-
-    stdin.on("data", (char) => {
+    const onData = (char) => {
       char = char.toString("utf8");
 
       switch (char) {
@@ -82,11 +80,14 @@ function promptPassword(question) {
         case "\u0004": // Ctrl-D
           stdin.setRawMode(false);
           stdin.pause();
+          stdin.removeListener("data", onData);
           process.stdout.write("\n");
-          rl.close();
           resolve(password);
           break;
         case "\u0003": // Ctrl-C
+          stdin.setRawMode(false);
+          stdin.pause();
+          stdin.removeListener("data", onData);
           process.exit();
           break;
         case "\u007f": // Backspace
@@ -103,12 +104,43 @@ function promptPassword(question) {
           process.stdout.write("*");
           break;
       }
-    });
+    };
+
+    stdin.on("data", onData);
   });
 }
 
 // Sign in user
 async function signIn() {
+  // Check if running in an interactive terminal
+  if (!process.stdin.isTTY) {
+    console.error(
+      chalk.red("\n❌ ERROR: This command requires an interactive terminal\n")
+    );
+    console.log(
+      chalk.yellow("This script needs to prompt for your email and password.")
+    );
+    console.log(
+      chalk.yellow(
+        "AI coding assistants cannot handle interactive password prompts.\n"
+      )
+    );
+    console.log(
+      chalk.cyan("Please run this command yourself in your terminal:")
+    );
+    console.log(
+      chalk.white(
+        `  npm run app:commit "${process.argv[2] || "Your commit message"}"\n`
+      )
+    );
+    console.log(
+      chalk.gray(
+        "Then you'll be prompted for your Firebase email and password."
+      )
+    );
+    process.exit(1);
+  }
+
   console.log(chalk.cyan("\n🔐 Authentication required\n"));
 
   const email = await prompt("Email: ");
@@ -137,29 +169,34 @@ function transformCode(code, filePath) {
   try {
     // Remove hot reload code BEFORE transformation
     let cleanedCode = code;
-    
+
     // Remove entire if (import.meta.hot) blocks (with proper brace matching)
     cleanedCode = cleanedCode.replace(
       /if\s*\(\s*import\.meta\.hot\s*\)\s*\{[\s\S]*?\n\}/g,
-      ''
+      ""
     );
-    
+
     // Remove any remaining import.meta references
-    cleanedCode = cleanedCode.replace(/import\.meta\.[a-zA-Z0-9_.]+/g, 'undefined');
-    
+    cleanedCode = cleanedCode.replace(
+      /import\.meta\.[a-zA-Z0-9_.]+/g,
+      "undefined"
+    );
+
     const result = transform(cleanedCode, {
       transforms: ["jsx", "typescript", "imports"],
       jsxRuntime: "classic", // Use classic for compatibility with eval context
       production: true,
     });
-    
+
     // Final cleanup AFTER transformation (in case Sucrase left anything)
     let finalCode = result.code;
-    finalCode = finalCode.replace(/import\.meta\.[a-zA-Z0-9_.]+/g, 'undefined');
-    
+    finalCode = finalCode.replace(/import\.meta\.[a-zA-Z0-9_.]+/g, "undefined");
+
     return finalCode;
   } catch (error) {
-    console.warn(chalk.yellow(`⚠️  Transform failed for ${filePath}: ${error.message}`));
+    console.warn(
+      chalk.yellow(`⚠️  Transform failed for ${filePath}: ${error.message}`)
+    );
     return code; // Return original on error
   }
 }
@@ -329,12 +366,12 @@ async function commit(appId, message = "Updated via app:commit") {
 
       // Create new version with both source and compiled code
       await setDoc(versionRef, {
-        source,     // Original .jsx files for development
-        compiled,   // Transformed .js files for production
+        source, // Original .jsx files for development
+        compiled, // Transformed .js files for production
         metadata: {
           version: versionHash,
-          entry: "app.js",  // Production entry point
-          sourceEntry: "app.jsx",  // Development entry point
+          entry: "app.js", // Production entry point
+          sourceEntry: "app.jsx", // Development entry point
           publishedAt: serverTimestamp(),
           publishedBy: user.uid,
           publishedByEmail: user.email,

@@ -65,15 +65,36 @@ The Basebase Framework has two layers:
 
 ## Scenario A: Creating Your Own App
 
-### 0. Initialize Your App (First Time)
+### Step 1: Initialize Your App (Local only - no auth needed)
 
 ```bash
 npm run app:init my-app-name
 ```
 
-This sets your app ID and prepares the project for development.
+This sets `APP_ID` in `app/schema.js`. No Firebase account needed yet!
 
-### 1. Define Your Data Schema
+### Step 2: Start Development
+
+```bash
+npm run dev
+```
+
+Visit http://localhost:3000 to see your app running locally.
+
+### Step 3: Create Firebase Account (Required before first commit)
+
+When you're ready to save your work to the cloud:
+
+1. At http://localhost:3000, click **"Sign up"** (Google or email/password)
+2. Click **"Add Sample App"**
+3. Enter: `my-app-name` (must match your app ID from Step 1)
+
+**This creates:**
+
+- Your Firebase user account
+- An app document in Firestore (required for `npm run app:commit`)
+
+### Step 4: Define Your Data Schema
 
 Edit `app/schema.js` to add your app-specific collections:
 
@@ -109,7 +130,7 @@ export const schema = {
 
 **Important:** Always use `collections.todos` (not `"todos"`) when accessing Firestore. This ensures your data is namespaced to your app and won't conflict with other apps.
 
-### 2. Create Your Component
+### Step 5: Create Your Component
 
 Create `app/components/TodoList.jsx`:
 
@@ -152,7 +173,7 @@ export function TodoList() {
 }
 ```
 
-### 3. Add to Main App
+### Step 6: Add to Main App
 
 Edit `app/app.jsx` to use your new component:
 
@@ -165,34 +186,46 @@ import { TodoList } from "./components/TodoList.jsx";
 </AppShell.Main>;
 ```
 
-### 4. Test Locally
+### Step 7: Deploy Your Changes (Requires Firebase account from Step 3)
+
+When ready to publish:
 
 ```bash
-npm run dev
+npm run app:commit "Describe your changes"
 ```
 
-Changes hot-reload automatically. Data persists in Firestore.
+**You'll be prompted for:** Email and password (the account you created in Step 3)
+
+**What this does:** Uploads your `/app` code to Firestore, making it instantly live in production!
 
 ## Scenario B: Collaborating on Existing App
 
-Joining a team? Checkout an existing app from Firestore:
+Joining a team to work on an existing app?
+
+### Step 1: Checkout the App (Requires Firebase account)
 
 ```bash
 npm run app:checkout news-base latest
 ```
 
+**You'll be prompted for:** Email and password
+
+**Requirements:**
+
+- You need a Firebase account (create one at http://localhost:3000 if you don't have one)
+- The app owner must add you as a collaborator
+
 **What happens:**
 
 - Downloads app code from Firestore to `/app` folder
-- Overwrites local files with the app's code
-- Sets `APP_ID` to `news-base` automatically
-- Ready for development!
+- Overwrites local files with the team's code
+- `APP_ID` is automatically set to `news-base`
 
-Then make changes and commit:
+### Step 2: Develop and Deploy
 
 ```bash
 npm run dev                                # Test your changes
-npm run app:commit "Added new feature"     # Publish updates
+npm run app:commit "Added new feature"     # Publish (requires auth)
 ```
 
 ### Key Points
@@ -286,14 +319,18 @@ const { user, loading, authenticated } = useAuth();
 
 **App Management:**
 
-- `npm run app:init <appId>` - Initialize a new app (sets APP_ID in schema)
-- `npm run app:checkout <appId> [version]` - Download app code from Firestore
-- `npm run app:commit "message"` - Upload your changes to Firestore
+- `npm run app:init <appId>` - Initialize a new app (local only, no auth required)
+- `npm run app:checkout <appId> [version]` - Download app code from Firestore (**requires Firebase auth**)
+- `npm run app:commit "message"` - Upload your changes to Firestore (**requires Firebase auth**)
 
 **Utilities:**
 
 - `npm run generate:rules` - Generate Firestore security rules from schema
 - `npm run generate:types` - Generate TypeScript types from schema
+
+**Note:** To create a Firebase account, run `npm run dev` and sign up at http://localhost:3000
+
+**For AI Coding Assistants:** Commands requiring authentication (`app:commit`, `app:checkout`) need interactive terminal access for password prompts. If your AI assistant can't run these, copy the command and run it yourself in your terminal.
 
 ## Troubleshooting
 
