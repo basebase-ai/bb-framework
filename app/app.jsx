@@ -2,13 +2,17 @@
  * Main app entry point
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MantineProvider, AppShell, Burger, Group, Title, Text } from "@mantine/core";
+import { MantineProvider, AppShell, Burger, Group, Title, Text, NavLink, Stack } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { useAppStore } from "./stores/appStore.js";
 import { useAuth } from "../framework/hooks/useAuth.js";
-import { AppsList } from "./components/AppsList.jsx";
+import { TableView } from "./components/TableView.jsx";
+import { GridView } from "./components/GridView.jsx";
+import { ListView } from "./components/ListView.jsx";
+import { CanvasView } from "./components/CanvasView.jsx";
+import { ReorderableView } from "./components/ReorderableView.jsx";
 import { AuthProvider, SignOutButton } from "./components/AuthProvider.jsx";
 
 // Mantine CSS imports
@@ -18,6 +22,24 @@ import "@mantine/notifications/styles.css";
 function App() {
   const { user } = useAuth();
   const { sidebarOpen, toggleSidebar } = useAppStore();
+  const [currentPage, setCurrentPage] = useState("table");
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case "table":
+        return <TableView />;
+      case "grid":
+        return <GridView />;
+      case "list":
+        return <ListView />;
+      case "canvas":
+        return <CanvasView />;
+      case "reorderable":
+        return <ReorderableView />;
+      default:
+        return <TableView />;
+    }
+  };
 
   return (
     <MantineProvider defaultColorScheme="light">
@@ -48,13 +70,40 @@ function App() {
           </AppShell.Header>
 
           <AppShell.Navbar p="md">
-            <Text size="sm" c="dimmed">
-              Apps
+            <Text size="sm" fw={500} mb="md">
+              Apps Views
             </Text>
+            <Stack gap={4}>
+              <NavLink
+                label="Table"
+                active={currentPage === "table"}
+                onClick={() => setCurrentPage("table")}
+              />
+              <NavLink
+                label="Grid"
+                active={currentPage === "grid"}
+                onClick={() => setCurrentPage("grid")}
+              />
+              <NavLink
+                label="List"
+                active={currentPage === "list"}
+                onClick={() => setCurrentPage("list")}
+              />
+              <NavLink
+                label="Canvas"
+                active={currentPage === "canvas"}
+                onClick={() => setCurrentPage("canvas")}
+              />
+              <NavLink
+                label="Reorderable"
+                active={currentPage === "reorderable"}
+                onClick={() => setCurrentPage("reorderable")}
+              />
+            </Stack>
           </AppShell.Navbar>
 
           <AppShell.Main>
-            <AppsList />
+            {renderPage()}
           </AppShell.Main>
         </AppShell>
       </AuthProvider>

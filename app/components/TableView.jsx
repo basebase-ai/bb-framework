@@ -1,5 +1,5 @@
 /**
- * Apps list component - displays all apps in a table
+ * Table View - Traditional table layout
  */
 
 import React, { useMemo, useState } from "react";
@@ -9,31 +9,32 @@ import { useAuth } from "../../framework/hooks/useAuth.js";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../framework/core/firebase-init.js";
 
-export function AppsList() {
-  const { user, loading: authLoading } = useAuth();
+export function TableView() {
+  const { user } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [appName, setAppName] = useState("");
   const [appId, setAppId] = useState("");
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
-  
-  // Memoize the where conditions to prevent re-renders
+
   const whereConditions = useMemo(() => {
     if (!user?.uid) return [["owner", "==", "___no_user___"]];
     return [["owner", "==", user.uid]];
   }, [user?.uid]);
-  
+
   const { data: apps, loading, error } = useCollection("apps", {
     where: whereConditions,
     realtime: true,
-    // Note: orderBy with where on different fields requires a composite index
-    // For now, we'll sort client-side
   });
 
-  // Auto-generate app ID from name
+  const sortedApps = [...apps].sort((a, b) => {
+    const aTime = a.createdAt?.toDate?.() || new Date(0);
+    const bTime = b.createdAt?.toDate?.() || new Date(0);
+    return bTime - aTime;
+  });
+
   const handleNameChange = (value) => {
     setAppName(value);
-    // Generate kebab-case ID from name
     const generatedId = value
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -49,21 +50,22 @@ export function AppsList() {
 
     setCreating(true);
     try {
-      // Use setDoc with custom ID instead of auto-generated
       const appRef = doc(db, "apps", appId);
       await setDoc(appRef, {
         name: appName,
         description: description || "",
+        logoURL: `https://api.dicebear.com/7.x/shapes/svg?seed=${appId}`,
         status: "draft",
         version: "0.1.0",
+        position: { x: Math.random() * 500, y: Math.random() * 500 },
+        order: Date.now(),
         owner: user.uid,
         createdBy: user.uid,
         createdAt: serverTimestamp(),
         updatedBy: user.uid,
         updatedAt: serverTimestamp(),
       });
-      
-      // Close modal and reset form
+
       setModalOpen(false);
       setAppName("");
       setAppId("");
@@ -76,58 +78,31 @@ export function AppsList() {
     }
   };
 
-  if (authLoading || loading) {
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "active": return "green";
+      case "draft": return "blue";
+      case "archived": return "gray";
+      default: return "gray";
+    }
+  };
+
+  if (loading) {
     return (
       <Container size="xl" py="xl">
         <Text>Loading apps...</Text>
       </Container>
     );
   }
-  
-  if (!user) {
-    return (
-      <Container size="xl" py="xl">
-        <Text>Please sign in to view apps.</Text>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container size="xl" py="xl">
-        <Text c="red">Error loading apps: {error.message}</Text>
-      </Container>
-    );
-  }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "active":
-        return "green";
-      case "draft":
-        return "blue";
-      case "archived":
-        return "gray";
-      default:
-        return "gray";
-    }
-  };
-
-  // Sort apps client-side by createdAt (newest first)
-  const sortedApps = [...apps].sort((a, b) => {
-    const aTime = a.createdAt?.toDate?.() || new Date(0);
-    const bTime = b.createdAt?.toDate?.() || new Date(0);
-    return bTime - aTime;
-  });
 
   return (
     <Container size="xl" py="xl">
       <Stack gap="md">
         <Group justify="space-between" align="center">
           <div>
-            <Title order={1}>Apps</Title>
+            <Title order={1}>Apps - Table</Title>
             <Text c="dimmed" size="sm">
-              Manage your Basebase applications
+              Traditional table layout
             </Text>
           </div>
           <Button onClick={() => setModalOpen(true)}>Create New App</Button>
@@ -147,7 +122,6 @@ export function AppsList() {
               onChange={(e) => handleNameChange(e.target.value)}
               required
             />
-            
             <TextInput
               label="App ID"
               placeholder="my-awesome-app"
@@ -156,14 +130,12 @@ export function AppsList() {
               onChange={(e) => setAppId(e.target.value)}
               required
             />
-            
             <TextInput
               label="Description (optional)"
               placeholder="A brief description of your app"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-
             <Group justify="flex-end" mt="md">
               <Button variant="subtle" onClick={() => setModalOpen(false)}>
                 Cancel
@@ -176,9 +148,9 @@ export function AppsList() {
         </Modal>
 
         <Paper withBorder shadow="sm" radius="md" p="md">
-          {apps.length === 0 ? (
+          {sortedApps.length === 0 ? (
             <Text c="dimmed" ta="center" py="xl">
-              No apps yet. Click "Add Sample App" to create one!
+              No apps yet. Click "Create New App" to create one!
             </Text>
           ) : (
             <Table striped highlightOnHover>

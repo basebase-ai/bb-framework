@@ -7,6 +7,7 @@ export const schema = {
     fields: {
       name: { type: "string", required: true },
       description: { type: "string" },
+      logoURL: { type: "string" }, // App logo/icon URL
       owner: { type: "string", required: true }, // Firebase Auth UID
       collaborators: { type: "array", items: { type: "string" } }, // Array of UIDs
       status: {
@@ -15,6 +16,8 @@ export const schema = {
         default: "draft",
       },
       version: { type: "string" },
+      position: { type: "map" }, // { x: number, y: number } for Canvas view
+      order: { type: "number" }, // Order index for Reorderable view
       createdAt: { type: "timestamp", auto: true },
       updatedAt: { type: "timestamp", auto: true },
       createdBy: { type: "string", auto: true }, // Firebase Auth UID

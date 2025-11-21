@@ -5,14 +5,13 @@
  */
 
 export const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abc123",
+  apiKey: "AIzaSyAGIrN5Lb_8SV502vLlMQ29fHMmsM7okfM",
+  authDomain: "vibe-together-d2159.firebaseapp.com",
+  projectId: "vibe-together-d2159",
+  storageBucket: "vibe-together-d2159.firebasestorage.app",
+  messagingSenderId: "973212929492",
+  appId: "1:973212929492:web:5e807ca559347c7e645a41",
 };
 
 // Note: Replace the values above with your actual Firebase project credentials
 // Find these in: Firebase Console > Project Settings > Your Apps > Web App
-
