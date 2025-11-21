@@ -9,6 +9,9 @@
     "app:commit": "node scripts/app-commit.js",
     "generate:types": "node scripts/generate-types.js",
     "generate:rules": "node scripts/generate-rules.js",
+    "build": "vite build -c vite.config.production.js",
+    "preview": "vite preview -c vite.config.production.js",
+    "start": "NODE_ENV=production node server.js",
     "test": "echo \"Tests coming soon\" && exit 0",
     "analyze": "vite build --mode analyze"
   },
@@ -20,7 +23,9 @@
     "@mantine/core": "^7.3.0",
     "@mantine/hooks": "^7.3.0",
     "@mantine/notifications": "^7.3.0",
-    "esbuild": "^0.19.0"
+    "esbuild": "^0.19.0",
+    "express": "^4.18.0",
+    "compression": "^1.7.4"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
@@ -28,8 +33,6 @@
     "firebase-admin": "^12.0.0",
     "dotenv": "^16.3.0",
     "chokidar": "^3.5.0",
-    "express": "^4.18.0",
-    "cors": "^2.8.0",
     "sucrase": "^3.34.0",
     "chalk": "^5.3.0",
     "terser": "^5.24.0"

@@ -12,11 +12,16 @@ export function getAppIdFromURL() {
     return appParam;
   }
   
-  // Option 2: Subdomain (e.g., teg-app.basebase.io)
+  // Option 2: Subdomain (e.g., teg-app.basebase.io or teg-app.localhost)
   const hostname = url.hostname;
   const parts = hostname.split('.');
   
-  // If subdomain exists and isn't 'www', use it
+  // Check for localhost subdomains (e.g., teg-app.localhost)
+  if (parts.length === 2 && parts[1] === 'localhost' && parts[0] !== 'www') {
+    return parts[0];
+  }
+  
+  // Check for production subdomains (e.g., teg-app.basebase.io)
   if (parts.length > 2 && parts[0] !== 'www' && parts[0] !== 'localhost') {
     return parts[0];
   }

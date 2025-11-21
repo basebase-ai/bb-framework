@@ -108,6 +108,8 @@ function showError(title, message, details) {
               font-size: 0.875rem;
               white-space: pre-wrap;
               word-wrap: break-word;
+              color: #212529;
+              font-family: 'Courier New', monospace;
             ">${details}</pre>
           </details>
         ` : ''}
