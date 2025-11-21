@@ -8,6 +8,7 @@ import { useCollection } from "../../framework/hooks/useCollection.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../framework/core/firebase-init.js";
+import { collections } from "../schema.js";
 
 export function TableView() {
   const { user } = useAuth();
@@ -22,7 +23,7 @@ export function TableView() {
     return [["owner", "==", user.uid]];
   }, [user?.uid]);
 
-  const { data: apps, loading, error } = useCollection("apps", {
+  const { data: apps, loading, error } = useCollection(collections.apps, {
     where: whereConditions,
     realtime: true,
   });

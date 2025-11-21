@@ -1,7 +1,51 @@
 /**
  * Define your Firestore collections and their structure
+ * 
+ * IMPORTANT: Collection Namespacing
+ * ---------------------------------
+ * All app-specific collections MUST be namespaced with your app ID
+ * to prevent conflicts with other apps in the multi-tenant environment.
+ * 
+ * Use the `collections` helper below instead of hardcoding collection names.
  */
 
+// Your app's unique identifier
+// This is set automatically during app:checkout or app:init
+export const APP_ID = 'starter-app';
+
+/**
+ * Namespaced collection names
+ * Use these throughout your app instead of hardcoding collection names
+ * 
+ * Example:
+ *   ❌ DON'T: useCollection('ideas')
+ *   ✅ DO:    useCollection(collections.ideas)
+ */
+export const collections = {
+  // Global collections (no namespace needed - platform-managed)
+  apps: 'apps',
+  users: 'users',
+  
+  // Your app-specific collections (automatically namespaced)
+  // Add your own collections here following the pattern:
+  // collectionName: `${APP_ID}_collectionName`,
+  
+  // Example app collections (uncomment and customize as needed):
+  // ideas: `${APP_ID}_ideas`,
+  // tasks: `${APP_ID}_tasks`,
+  // posts: `${APP_ID}_posts`,
+  // comments: `${APP_ID}_comments`,
+};
+
+/**
+ * Helper function to create a namespaced collection name
+ * Use this if you need to create collection names dynamically
+ */
+export function getCollection(name) {
+  return `${APP_ID}_${name}`;
+}
+
+// Schema definitions for type generation and documentation
 export const schema = {
   apps: {
     fields: {

@@ -6,6 +6,7 @@ import React, { useMemo } from "react";
 import { Container, Title, Text, Card, Avatar, Stack, Group, Badge } from "@mantine/core";
 import { useCollection } from "../../framework/hooks/useCollection.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
+import { collections } from "../schema.js";
 
 export function ListView() {
   const { user } = useAuth();
@@ -15,7 +16,7 @@ export function ListView() {
     return [["owner", "==", user.uid]];
   }, [user?.uid]);
 
-  const { data: apps, loading } = useCollection("apps", {
+  const { data: apps, loading } = useCollection(collections.apps, {
     where: whereConditions,
     realtime: true,
   });

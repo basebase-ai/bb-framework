@@ -65,6 +65,14 @@ The Basebase Framework has two layers:
 
 ## Creating Your Own App
 
+### 0. Initialize Your App (First Time)
+
+```bash
+npm run app:init my-app-name
+```
+
+This sets your app ID and prepares the project for development.
+
 ### 1. Define Your Data Schema
 
 Edit `app/schema.js` to define your collections:
@@ -96,6 +104,7 @@ Create `app/components/TodoList.jsx`:
 import React from "react";
 import { useCollection } from "../../framework/hooks/useCollection.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
+import { collections } from "../schema.js"; // Import namespaced collections
 
 export function TodoList() {
   const { user } = useAuth();
@@ -103,7 +112,7 @@ export function TodoList() {
     data: todos,
     add,
     update,
-  } = useCollection("todos", {
+  } = useCollection(collections.todos, { // Use namespaced collection
     where: [["owner", "==", user?.uid]],
   });
 
@@ -150,37 +159,52 @@ npm run dev
 
 Changes hot-reload automatically. Data persists in Firestore.
 
-## Collaborative Workflow
+## Developer Workflows
 
-Basebase uses a Git-like workflow for app development:
+Basebase supports two development scenarios:
 
-### Create a New App
+### Scenario A: Starting a New App
 
-1. Sign in to the platform
-2. Click "Add Sample App" to create your first app
-3. Note the app ID (e.g., `my-todo-app`)
+Building something from scratch? Initialize a new app:
 
-### Checkout Existing App
+```bash
+npm run app:init my-new-app
+```
 
-Friend invited you to work on an app? Checkout the code:
+This sets up your app ID in the schema. You can optionally create the app document in Firestore when prompted.
+
+**What happens:**
+- Sets `APP_ID` to `my-new-app` in `app/schema.js`
+- Keeps the starter app components as a template
+- Ready for development!
+
+Then develop and commit:
+
+```bash
+npm run dev                           # Build your app locally
+npm run app:commit "Initial version"  # Publish to Firestore
+```
+
+### Scenario B: Working on Existing App
+
+Joining a team? Checkout an existing app from Firestore:
 
 ```bash
 npm run app:checkout news-base latest
 ```
 
-This downloads the app code from Firestore to your `/app` folder.
+**What happens:**
+- Downloads app code from Firestore to `/app` folder
+- Overwrites local files with the app's code
+- Sets `APP_ID` to `news-base` automatically
+- Ready for development!
 
-### Make Changes
-
-Edit files in `/app`, test with `npm run dev`, iterate with your AI assistant.
-
-### Commit Your Changes
+Then make changes and commit:
 
 ```bash
-npm run app:commit news-base "Added new feature"
+npm run dev                                # Test your changes
+npm run app:commit "Added new feature"     # Publish updates
 ```
-
-This uploads your changes to Firestore. Your changes are now live!
 
 ### Key Points
 
@@ -266,8 +290,9 @@ const { user, loading, authenticated } = useAuth();
 
 **App Management:**
 
+- `npm run app:init <appId>` - Initialize a new app (sets APP_ID in schema)
 - `npm run app:checkout <appId> [version]` - Download app code from Firestore
-- `npm run app:commit <appId> "message"` - Upload your changes to Firestore
+- `npm run app:commit "message"` - Upload your changes to Firestore
 
 **Utilities:**
 
