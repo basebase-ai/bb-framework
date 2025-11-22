@@ -332,6 +332,35 @@ const { user, loading, authenticated } = useAuth();
 // user.uid, user.email, user.displayName
 ```
 
+### useAppMembership(appId)
+
+Manages user access to your app:
+
+```javascript
+import { useAppMembership } from "../../framework/hooks/useAppMembership.js";
+import { APP_ID } from "../schema.js";
+
+const {
+  membership, // Full membership object
+  loading, // Loading state
+  hasAccess, // Boolean: can user access this app?
+  isOwner, // Boolean: is user the app owner?
+  isAdmin, // Boolean: is user owner or admin?
+  tier, // Subscription tier: "free", "basic", "premium", etc.
+  status, // Status: "active", "pending", "suspended", "cancelled"
+} = useAppMembership(APP_ID);
+
+// Auto-creates membership for first-time visitors (open apps)
+// Updates lastVisitedAt on each session
+// Returns membership info for paywalls and feature gating
+```
+
+**Access Control:**
+
+- **Open apps** (default): Any authenticated user can access, membership auto-created
+- **Invite-only apps**: Set `accessMode: "invite-only"` in app doc, require explicit membership
+- **Paid apps**: Check `tier` in your components to gate premium features
+
 ## Available Commands
 
 **Development:**
