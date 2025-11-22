@@ -167,10 +167,16 @@ export function NotesBoard() {
             background: "#fafafa",
           }}
         >
-          {notes.map((note) => {
-            // Calculate z-index based on updatedAt (most recent on top)
-            const timestamp = note.updatedAt?.seconds || note.createdAt?.seconds || 0;
-            const zIndex = timestamp > 0 ? Math.floor(timestamp / 1000) : 1;
+          {notes
+            .slice()
+            .sort((a, b) => {
+              const aTime = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
+              const bTime = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
+              return aTime - bTime; // Oldest first
+            })
+            .map((note, index) => {
+            // Use index as z-index (1-100) so modals can appear on top
+            const zIndex = index + 1;
             
             return (
               <div
