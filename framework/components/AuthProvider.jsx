@@ -67,18 +67,20 @@ async function ensureUserProfile(user) {
 
 export function AuthProvider({ children, appId }) {
   const { user, loading: authLoading } = useAuth();
+  const [profileEnsured, setProfileEnsured] = React.useState(false);
   
   // Get appId from URL if not provided
   const effectiveAppId = appId || getAppIdFromURL();
   
-  // Ensure user profile exists whenever user is authenticated
+  // Ensure user profile exists once when user is authenticated
   React.useEffect(() => {
-    if (user && !authLoading) {
+    if (user && !authLoading && !profileEnsured) {
+      setProfileEnsured(true);
       ensureUserProfile(user).catch(err => {
         console.error('Failed to ensure user profile:', err);
       });
     }
-  }, [user, authLoading]);
+  }, [user?.uid, authLoading, profileEnsured]);
   
   // Use membership hook to manage app access
   const { membership, loading: membershipLoading, error: membershipError, hasAccess } = useAppMembership(effectiveAppId);

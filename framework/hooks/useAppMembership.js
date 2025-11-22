@@ -19,6 +19,7 @@ export function useAppMembership(appId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasAccess, setHasAccess] = useState(false);
+  const [lastVisitUpdated, setLastVisitUpdated] = useState(false);
 
   useEffect(() => {
     if (authLoading || !user || !appId) {
@@ -41,10 +42,13 @@ export function useAppMembership(appId) {
           
           if (unsubscribed) return;
           
-          // Update lastVisitedAt (fire and forget)
-          updateDoc(membershipRef, {
-            lastVisitedAt: serverTimestamp(),
-          }).catch(err => console.warn('Failed to update lastVisitedAt:', err));
+          // Update lastVisitedAt only once per session (fire and forget)
+          if (!lastVisitUpdated) {
+            setLastVisitUpdated(true);
+            updateDoc(membershipRef, {
+              lastVisitedAt: serverTimestamp(),
+            }).catch(err => console.warn('Failed to update lastVisitedAt:', err));
+          }
           
           // Check if membership is active
           const isActive = membershipData.status === 'active';

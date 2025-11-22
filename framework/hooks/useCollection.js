@@ -2,7 +2,7 @@
  * Real-time collection hook with optimistic updates
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   collection,
   query,
@@ -20,9 +20,12 @@ import {
 import { db } from "../core/firebase-init.js";
 import { useAuth } from "./useAuth.js";
 
+// Stable empty array to avoid re-renders
+const EMPTY_ARRAY = [];
+
 export function useCollection(collectionName, options = {}) {
   const {
-    where: whereConditions = [],
+    where: whereConditions = EMPTY_ARRAY,
     orderBy: orderByField = null,
     limit: limitCount = null,
     realtime = true,
@@ -64,7 +67,7 @@ export function useCollection(collectionName, options = {}) {
     }
 
     return q;
-  }, [collectionName, whereConditions, orderByField, limitCount, user]);
+  }, [collectionName, whereConditions, orderByField, limitCount, user?.uid]);
 
   // Subscribe to collection
   useEffect(() => {

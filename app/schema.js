@@ -27,14 +27,7 @@ export const collections = {
   users: "users",
 
   // Your app-specific collections (automatically namespaced)
-  // Add your own collections here following the pattern:
-  // collectionName: `${APP_ID}_collectionName`,
-
-  // Example app collections (uncomment and customize as needed):
-  // ideas: `${APP_ID}_ideas`,
-  // tasks: `${APP_ID}_tasks`,
-  // posts: `${APP_ID}_posts`,
-  // comments: `${APP_ID}_comments`,
+  notes: `${APP_ID}_notes`,
 };
 
 /**
