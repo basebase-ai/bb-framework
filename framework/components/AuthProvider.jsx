@@ -32,16 +32,53 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import { auth } from "../core/firebase-init.js";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "../core/firebase-init.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useAppMembership } from "../hooks/useAppMembership.js";
 import { getAppIdFromURL } from "../loader/url-parser.js";
+
+/**
+ * Helper: Ensure user profile exists in Firestore
+ * Auto-creates profile if it doesn't exist
+ */
+async function ensureUserProfile(user) {
+  if (!user) return;
+
+  const userRef = doc(db, 'users', user.uid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    // Create new user profile
+    const profile = {
+      email: user.email,
+      displayName: user.displayName || user.email?.split('@')[0] || 'User',
+      photoURL: user.photoURL || null,
+      bio: null,
+      role: 'user',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    await setDoc(userRef, profile);
+    console.log('✅ Created user profile for', user.email);
+  }
+}
 
 export function AuthProvider({ children, appId }) {
   const { user, loading: authLoading } = useAuth();
   
   // Get appId from URL if not provided
   const effectiveAppId = appId || getAppIdFromURL();
+  
+  // Ensure user profile exists whenever user is authenticated
+  React.useEffect(() => {
+    if (user && !authLoading) {
+      ensureUserProfile(user).catch(err => {
+        console.error('Failed to ensure user profile:', err);
+      });
+    }
+  }, [user, authLoading]);
   
   // Use membership hook to manage app access
   const { membership, loading: membershipLoading, error: membershipError, hasAccess } = useAppMembership(effectiveAppId);
@@ -188,11 +225,15 @@ function AuthScreen() {
     setLoading(true);
 
     try {
+      let userCredential;
       if (mode === "signup") {
-        await createUserWithEmailAndPassword(auth, email, password);
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
       }
+      
+      // Ensure user profile exists in Firestore
+      await ensureUserProfile(userCredential.user);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -209,6 +250,9 @@ function AuthScreen() {
       console.log("Starting Google sign-in...");
       const result = await signInWithPopup(auth, provider);
       console.log("Google sign-in successful:", result.user);
+      
+      // Ensure user profile exists in Firestore
+      await ensureUserProfile(result.user);
     } catch (err) {
       console.error("Google sign-in error:", err);
       
