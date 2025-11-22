@@ -13,6 +13,8 @@ import { AppLoader } from "./loader/app-loader.js";
 import { useAuth } from "./hooks/useAuth.js";
 import { useCollection } from "./hooks/useCollection.js";
 import { useDocument } from "./hooks/useDocument.js";
+import { useAppMembership } from "./hooks/useAppMembership.js";
+import { AuthProvider, SignOutButton } from "./components/AuthProvider.jsx";
 import {
   app as firebaseAppInstance,
   auth as firebaseAuthInstance,
@@ -207,6 +209,18 @@ async function init() {
       "../../framework/hooks/useCollection.js": { useCollection },
       "../framework/hooks/useDocument.js": { useDocument },
       "../../framework/hooks/useDocument.js": { useDocument },
+      "../framework/hooks/useAppMembership.js": { useAppMembership },
+      "../../framework/hooks/useAppMembership.js": { useAppMembership },
+
+      // Framework components (with path variants)
+      "../framework/components/AuthProvider.jsx": {
+        AuthProvider,
+        SignOutButton,
+      },
+      "../../framework/components/AuthProvider.jsx": {
+        AuthProvider,
+        SignOutButton,
+      },
 
       // Framework core
       "../framework/core/firebase-init.js": {
@@ -221,6 +235,10 @@ async function init() {
         db: firestoreInstance,
         authState,
       },
+
+      // Framework loader utilities
+      "../framework/loader/url-parser.js": { getAppIdFromURL },
+      "../../framework/loader/url-parser.js": { getAppIdFromURL },
     };
 
     // Restore the app container before loading the app
