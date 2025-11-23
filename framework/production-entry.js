@@ -49,6 +49,7 @@ import * as MantineNotifications from "@mantine/notifications";
 import * as MantineHooks from "@mantine/hooks";
 import * as TablerIcons from "@tabler/icons-react";
 import * as Zustand from "zustand";
+import { marked } from "marked";
 
 // Firebase
 import * as FirebaseApp from "firebase/app";
@@ -199,6 +200,9 @@ async function init() {
 
       // Icons
       "@tabler/icons-react": TablerIcons,
+
+      // Markdown
+      marked: { marked },
 
       // Firebase
       "firebase/app": FirebaseApp,
