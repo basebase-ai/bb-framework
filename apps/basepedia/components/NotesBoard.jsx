@@ -14,8 +14,8 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
-import { useCollection } from "../../framework/hooks/useCollection.js";
-import { useAuth } from "../../framework/hooks/useAuth.js";
+import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 import { NoteCard } from "./NoteCard.jsx";
 

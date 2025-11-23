@@ -33,7 +33,7 @@ import { firebaseConfig } from "../config/firebase.config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const appDir = join(root, "app");
+const appsDir = join(root, "apps");
 
 // Initialize Firebase with public config
 const app = initializeApp(firebaseConfig);
@@ -183,6 +183,26 @@ function transformCode(code, filePath) {
       "undefined"
     );
 
+    // Normalize framework import paths for production
+    // Convert relative paths like "../../framework/" or "../../../framework/" to "framework/"
+    // Also convert .jsx extensions to .js for production compatibility
+    cleanedCode = cleanedCode.replace(
+      /from\s+["'](\.\.\/)+(framework\/[^"']+)\.jsx["']/g,
+      'from "$2.js"'
+    );
+    cleanedCode = cleanedCode.replace(
+      /from\s+["'](\.\.\/)+(framework\/[^"']+)\.js["']/g,
+      'from "$2.js"'
+    );
+    cleanedCode = cleanedCode.replace(
+      /import\s*\(\s*["'](\.\.\/)+(framework\/[^"']+)\.jsx["']\s*\)/g,
+      'import("$2.js")'
+    );
+    cleanedCode = cleanedCode.replace(
+      /import\s*\(\s*["'](\.\.\/)+(framework\/[^"']+)\.js["']\s*\)/g,
+      'import("$2.js")'
+    );
+
     const result = transform(cleanedCode, {
       transforms: ["jsx", "typescript", "imports"],
       jsxRuntime: "classic", // Use classic for compatibility with eval context
@@ -202,9 +222,10 @@ function transformCode(code, filePath) {
   }
 }
 
-// Build modules from /app directory
+// Build modules from /apps/{appId} directory
 // Returns both source (for checkout) and compiled (for production)
-async function buildModules() {
+async function buildModules(appId) {
+  const appDir = join(appsDir, appId);
   const source = {};
   const compiled = {};
   let totalSize = 0;
@@ -341,9 +362,9 @@ async function commit(appId, message = "Updated via app:commit") {
       process.exit(1);
     }
 
-    // Build modules from /app directory
-    console.log(chalk.cyan("\n📦 Building app modules...\n"));
-    const { source, compiled, totalSize } = await buildModules();
+    // Build modules from /apps/{appId} directory
+    console.log(chalk.cyan(`\n📦 Building app modules from /apps/${appId}...\n`));
+    const { source, compiled, totalSize } = await buildModules(appId);
 
     const versionHash = generateVersionHash(source);
 
@@ -359,29 +380,30 @@ async function commit(appId, message = "Updated via app:commit") {
     if (versionSnap.exists()) {
       console.log(
         chalk.yellow(
-          "⚠️  This version already exists. Updating current pointer..."
+          "⚠️  Version exists. Re-uploading with updated transformation..."
         )
       );
     } else {
       console.log(chalk.cyan("📤 Uploading to Firestore..."));
-
-      // Create new version with both source and compiled code
-      await setDoc(versionRef, {
-        source, // Original .jsx files for development
-        compiled, // Transformed .js files for production
-        metadata: {
-          version: versionHash,
-          entry: "app.js", // Production entry point
-          sourceEntry: "app.jsx", // Development entry point
-          publishedAt: serverTimestamp(),
-          publishedBy: user.uid,
-          publishedByEmail: user.email,
-          message,
-          moduleCount: Object.keys(source).length,
-          totalSize,
-        },
-      });
     }
+
+    // Always upload/update version with both source and compiled code
+    // (Important: compiled code may change even if source hasn't)
+    await setDoc(versionRef, {
+      source, // Original .jsx files for development
+      compiled, // Transformed .js files for production
+      metadata: {
+        version: versionHash,
+        entry: "app.js", // Production entry point
+        sourceEntry: "app.jsx", // Development entry point
+        publishedAt: serverTimestamp(),
+        publishedBy: user.uid,
+        publishedByEmail: user.email,
+        message,
+        moduleCount: Object.keys(source).length,
+        totalSize,
+      },
+    });
 
     // Update current pointer
     await setDoc(

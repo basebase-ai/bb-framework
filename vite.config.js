@@ -17,6 +17,10 @@ export default defineConfig({
     port: 3000,
     open: true,
     host: true,
+    fs: {
+      // Allow serving files from the parent directory (for /apps)
+      allow: ['..'],
+    },
   },
   esbuild: {
     include: /\.(jsx?|tsx?)$/,
@@ -24,7 +28,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "/app": resolve(__dirname, "app"),
+      "/apps": resolve(__dirname, "apps"),
       "/framework": resolve(__dirname, "framework"),
     },
   },

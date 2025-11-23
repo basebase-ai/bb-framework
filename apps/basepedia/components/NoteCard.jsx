@@ -13,8 +13,8 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconTrash, IconHeart, IconHeartFilled } from "@tabler/icons-react";
-import { useAuth } from "../../framework/hooks/useAuth.js";
-import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
 
 const NOTE_COLORS = {
   yellow: "#fef9c3",

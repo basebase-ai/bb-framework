@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * Generate Firestore security rules from schema
+ * Usage: npm run generate:rules [appId]
+ * Default appId: starter-app
  */
 
 import { readFile, writeFile } from "fs/promises";
@@ -10,8 +12,11 @@ import chalk from "chalk";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const schemaPath = join(root, "app/schema.js");
 const outputPath = join(root, "firestore.rules");
+
+// Get appId from command line args, default to starter-app
+const appId = process.argv[2] || "starter-app";
+const schemaPath = join(root, `apps/${appId}/schema.js`);
 
 async function generateRules() {
   console.log(chalk.cyan("\n🔒 Generating Firestore security rules from schema...\n"));

@@ -6,7 +6,7 @@
  * This script:
  * 1. Prompts for Firebase email/password
  * 2. Creates the app document in Firestore
- * 3. Updates APP_ID in app/schema.js
+ * 3. Updates APP_ID in apps/{appId}/schema.js
  */
 
 import { readFile, writeFile } from "fs/promises";
@@ -28,7 +28,6 @@ import { firebaseConfig } from "../config/firebase.config.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = resolve(__dirname, "..");
-const schemaPath = resolve(rootDir, "app/schema.js");
 
 // Detect non-interactive terminal
 function isInteractive() {
@@ -126,6 +125,7 @@ function validateAppId(appId) {
 async function updateSchemaFile(appId) {
   console.log(chalk.blue("📝 Updating schema.js..."));
 
+  const schemaPath = resolve(rootDir, `apps/${appId}/schema.js`);
   let schemaContent = await readFile(schemaPath, "utf-8");
 
   // Replace the APP_ID value
@@ -136,7 +136,7 @@ async function updateSchemaFile(appId) {
 
   await writeFile(schemaPath, schemaContent, "utf-8");
 
-  console.log(chalk.green(`✓ Updated APP_ID to '${appId}' in app/schema.js\n`));
+  console.log(chalk.green(`✓ Updated APP_ID to '${appId}' in apps/${appId}/schema.js\n`));
 }
 
 // Main function

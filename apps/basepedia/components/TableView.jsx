@@ -4,10 +4,10 @@
 
 import React, { useMemo, useState } from "react";
 import { Table, Container, Title, Text, Badge, Button, Group, Paper, Stack, Modal, TextInput } from "@mantine/core";
-import { useCollection } from "../../framework/hooks/useCollection.js";
-import { useAuth } from "../../framework/hooks/useAuth.js";
+import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../framework/core/firebase-init.js";
+import { db } from "../../../framework/core/firebase-init.js";
 import { collections } from "../schema.js";
 
 export function TableView() {

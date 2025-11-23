@@ -209,23 +209,34 @@ async function init() {
       "firebase/auth": FirebaseAuth,
       "firebase/firestore": FirebaseFirestore,
 
-      // Framework hooks (with path variants)
+      // Framework hooks (with path variants - normalized, relative old styles)
+      "framework/hooks/useAuth.js": { useAuth },
       "../framework/hooks/useAuth.js": { useAuth },
       "../../framework/hooks/useAuth.js": { useAuth },
+      "framework/hooks/useCollection.js": { useCollection },
       "../framework/hooks/useCollection.js": { useCollection },
       "../../framework/hooks/useCollection.js": { useCollection },
+      "framework/hooks/useDocument.js": { useDocument },
       "../framework/hooks/useDocument.js": { useDocument },
       "../../framework/hooks/useDocument.js": { useDocument },
+      "framework/hooks/useAppMembership.js": { useAppMembership },
       "../framework/hooks/useAppMembership.js": { useAppMembership },
       "../../framework/hooks/useAppMembership.js": { useAppMembership },
+      "framework/hooks/useUserProfile.js": { useUserProfile },
       "../framework/hooks/useUserProfile.js": { useUserProfile },
       "../../framework/hooks/useUserProfile.js": { useUserProfile },
+      "framework/hooks/useUserProfiles.js": { useUserProfiles },
       "../framework/hooks/useUserProfiles.js": { useUserProfiles },
       "../../framework/hooks/useUserProfiles.js": { useUserProfiles },
+      "framework/hooks/useRouter.js": { useRouter },
       "../framework/hooks/useRouter.js": { useRouter },
       "../../framework/hooks/useRouter.js": { useRouter },
 
       // Framework components (with path variants)
+      "framework/components/AuthProvider.js": {
+        AuthProvider,
+        SignOutButton,
+      },
       "../framework/components/AuthProvider.jsx": {
         AuthProvider,
         SignOutButton,
@@ -236,6 +247,12 @@ async function init() {
       },
 
       // Framework core
+      "framework/core/firebase-init.js": {
+        app: firebaseAppInstance,
+        auth: firebaseAuthInstance,
+        db: firestoreInstance,
+        authState,
+      },
       "../framework/core/firebase-init.js": {
         app: firebaseAppInstance,
         auth: firebaseAuthInstance,
@@ -250,6 +267,7 @@ async function init() {
       },
 
       // Framework loader utilities
+      "framework/loader/url-parser.js": { getAppIdFromURL },
       "../framework/loader/url-parser.js": { getAppIdFromURL },
       "../../framework/loader/url-parser.js": { getAppIdFromURL },
     };

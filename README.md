@@ -32,18 +32,21 @@ cd bb-framework
 npm install
 ```
 
-### 2. Run the Starter App
+### 2. Run an Example App
 
 ```bash
 npm run dev
 ```
 
-Opens http://localhost:3000 with a sample app that provides user authentication (sign up and sign in) and showcases some of the components displaying live data from the database.
+This starts the dev server. Then open:
+- http://localhost:3000?app=starter-app - Simple sticky notes board
+- http://localhost:3000?app=playground - Browse all Basebase apps
 
 **What you'll see:**
 
 - Sign up/sign in screen (use Google or email)
-- A table displaying your apps from Firestore (once you've signed in)
+- Real-time data sync with Firestore
+- Example components and patterns
 
 ### 3. How It Works
 
@@ -56,17 +59,20 @@ The Basebase Framework has two layers:
 - Includes React hooks like `useCollection`, `useAuth`, `useDocument`
 - Handles all the infrastructure so you can focus on your app
 
-**2. Your App (this is yours)**
+**2. Your Apps (this is yours)**
 
-- Lives in `/app` folder - **the files below this folder are the only ones you should modify!**
+- Live in `/apps` folder - **create your app in `/apps/{app-id}/`**
+- The framework comes with multiple example apps:
+  - `starter-app` - Simple sticky notes board
+  - `playground` - App marketplace browser
 - Your React components, data schema, and business logic
-- When developing locally: loaded from files in `/app`
+- When developing locally: loaded from `/apps/{app-id}/` based on `?app=` URL param
 - When published: loaded as data from Firestore on-the-fly
 - **Note:** Firebase handles persistent data; use stores for temporary UI state (sidebar open/closed, etc.)
 
-**The Magic:** When you run `npm run dev`, your app code loads from local files. When you deploy with `npm run app:commit`, your `/app` code is uploaded to Firestore. In production, the framework loads your app code dynamically from the database - enabling instant updates, version control, and A/B testing without redeploying servers.
+**The Magic:** When you run `npm run dev`, your app code loads from local `/apps/{app-id}/` files. When you deploy with `npm run app:commit {app-id}`, your app code is uploaded to Firestore. In production, the framework loads your app code dynamically from the database - enabling instant updates, version control, and A/B testing without redeploying servers.
 
-**Important:** Only edit files in `/app`. Changes to `/framework` won't be included when you publish and will break in production.
+**Important:** Only edit files in `/apps/{your-app-id}/`. Changes to `/framework` won't be included when you publish and will break in production.
 
 ## Scenario A: Creating Your Own App
 
@@ -76,7 +82,7 @@ The Basebase Framework has two layers:
 npm run app:init my-app-name
 ```
 
-This sets `APP_ID` in `app/schema.js`. No Firebase account needed yet!
+This creates `/apps/my-app-name/` and sets `APP_ID` in its `schema.js`. No Firebase account needed yet!
 
 ### Step 2: Start Development
 

@@ -18,8 +18,8 @@ import {
   Box,
 } from "@mantine/core";
 import { IconGripVertical, IconPlus, IconTrash, IconDots, IconSettings } from "@tabler/icons-react";
-import { useCollection } from "../../framework/hooks/useCollection.js";
-import { useAuth } from "../../framework/hooks/useAuth.js";
+import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 import { ProjectSettings } from "./ProjectSettings.jsx";
 

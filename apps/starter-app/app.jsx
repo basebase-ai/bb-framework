@@ -6,11 +6,11 @@ import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MantineProvider, AppShell, Group, Title, Text, Avatar } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { useAuth } from "../framework/hooks/useAuth.js";
-import { useUserProfile } from "../framework/hooks/useUserProfile.js";
+import { useAuth } from "../../framework/hooks/useAuth.js";
+import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
 import { NotesBoard } from "./components/NotesBoard.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
-import { AuthProvider } from "../framework/components/AuthProvider.jsx";
+import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import { APP_ID } from "./schema.js";
 
 // Mantine CSS imports

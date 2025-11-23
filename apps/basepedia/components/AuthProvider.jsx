@@ -23,8 +23,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import { auth } from "../../framework/core/firebase-init.js";
-import { useAuth } from "../../framework/hooks/useAuth.js";
+import { auth } from "../../../framework/core/firebase-init.js";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
 
 export function AuthProvider({ children }) {
   const { user, loading } = useAuth();

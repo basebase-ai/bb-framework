@@ -4,8 +4,8 @@
 
 import React, { useMemo } from "react";
 import { Container, Title, Text, SimpleGrid, Card, Avatar, Stack, Group } from "@mantine/core";
-import { useCollection } from "../../framework/hooks/useCollection.js";
-import { useAuth } from "../../framework/hooks/useAuth.js";
+import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 
 export function GridView() {

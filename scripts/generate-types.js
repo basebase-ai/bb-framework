@@ -10,8 +10,11 @@ import chalk from "chalk";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const schemaPath = join(root, "app/schema.js");
-const outputPath = join(root, "app/types.d.ts");
+
+// Get appId from command line args, default to starter-app
+const appId = process.argv[2] || "starter-app";
+const schemaPath = join(root, `apps/${appId}/schema.js`);
+const outputPath = join(root, `apps/${appId}/types.d.ts`);
 
 async function generateTypes() {
   console.log(chalk.cyan("\n📝 Generating TypeScript types from schema...\n"));

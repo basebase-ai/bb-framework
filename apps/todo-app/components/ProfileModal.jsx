@@ -1,5 +1,7 @@
 /**
  * ProfileModal - User profile editor
+ * 
+ * Allows users to edit their display name, photo URL, and bio.
  */
 
 import React, { useState, useEffect } from "react";
@@ -13,12 +15,10 @@ import {
   Avatar,
   Text,
   Alert,
-  Divider,
 } from "@mantine/core";
 import { IconUser, IconPhoto, IconAlignLeft } from "@tabler/icons-react";
-import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
-import { useAuth } from "../../framework/hooks/useAuth.js";
-import { SignOutButton } from "../../framework/components/AuthProvider.jsx";
+import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
 
 export function ProfileModal({ opened, onClose }) {
   const { user } = useAuth();
@@ -91,7 +91,6 @@ export function ProfileModal({ opened, onClose }) {
       onClose={handleCancel} 
       title="Edit Profile" 
       size="md"
-      zIndex={10000}
     >
       <Stack gap="lg">
         {/* Avatar Preview */}
@@ -158,19 +157,14 @@ export function ProfileModal({ opened, onClose }) {
           </Alert>
         )}
 
-        <Divider />
-
         {/* Actions */}
-        <Group justify="space-between">
-          <SignOutButton variant="subtle" color="red" />
-          <Group>
-            <Button variant="default" onClick={handleCancel} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} loading={saving}>
-              Save Changes
-            </Button>
-          </Group>
+        <Group justify="flex-end" mt="md">
+          <Button variant="default" onClick={handleCancel} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} loading={saving}>
+            Save Changes
+          </Button>
         </Group>
       </Stack>
     </Modal>

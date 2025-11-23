@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Checkout app code from Firestore to local /app directory
+ * Checkout app code from Firestore to local /apps/{appId} directory
  * Usage: npm run app:checkout <appId> [version]
  */
 
@@ -16,7 +16,7 @@ import { firebaseConfig } from "../config/firebase.config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const appDir = join(root, "app");
+const appsDir = join(root, "apps");
 
 // Initialize Firebase with public config
 const app = initializeApp(firebaseConfig);
@@ -122,13 +122,14 @@ async function signIn() {
 }
 
 // Write modules to disk
-async function writeModulesToDisk(modules) {
-  // Clear existing app directory (except node_modules)
-  console.log(chalk.yellow("🗑️  Clearing /app directory..."));
+async function writeModulesToDisk(appId, modules) {
+  const appDir = join(appsDir, appId);
   
-  // We'll selectively delete, not the entire directory
+  // Create app directory if it doesn't exist
+  console.log(chalk.yellow(`🗑️  Preparing /apps/${appId} directory...`));
+  await mkdir(appDir, { recursive: true });
+  
   // Just overwrite files as we go
-  
   let fileCount = 0;
   
   for (const [filePath, code] of Object.entries(modules)) {
@@ -200,10 +201,10 @@ async function checkout(appId, versionId = "latest") {
     // Use source for development (original .jsx files)
     const modules = versionData.source || versionData.modules || {};
     
-    console.log(chalk.cyan(`\n📦 Writing ${Object.keys(modules).length} files to /app...\n`));
+    console.log(chalk.cyan(`\n📦 Writing ${Object.keys(modules).length} files to /apps/${appId}...\n`));
     
     // Write modules to disk
-    const fileCount = await writeModulesToDisk(modules);
+    const fileCount = await writeModulesToDisk(appId, modules);
     
     console.log(chalk.green(`\n✅ Checkout complete!`));
     console.log(chalk.gray(`   App: ${appId}`));
