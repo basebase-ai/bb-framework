@@ -297,9 +297,14 @@ bb-framework/
 │       ├── components/
 │       ├── schema.js
 │       └── app.jsx
+├── functions/                 # ✅ SERVER FUNCTIONS (optional)
+│   ├── askLLM.js             # Example: Call OpenAI/Claude
+│   ├── enrichData.js         # Example: AI data enrichment
+│   ├── sendEmail.js          # Example: Send emails
+│   └── README.md             # Function documentation
 ├── framework/                 # ❌ Framework code (DON'T edit)
 │   ├── core/                 # Firebase init, module loading
-│   ├── hooks/                # useCollection, useAuth, etc.
+│   ├── hooks/                # useCollection, useAuth, useFunction, etc.
 │   └── components/           # AuthProvider, etc.
 ├── scripts/                  # ❌ Build/deploy scripts (DON'T edit)
 ├── config/                   # Firebase config (already configured)
@@ -366,6 +371,36 @@ const { user, loading, authenticated } = useAuth();
 // user.uid, user.email, user.displayName
 ```
 
+### useFunction(functionName)
+
+Call server-side functions with full Firebase Admin access:
+
+```javascript
+import { useFunction } from "../../../framework/hooks/useFunction.js";
+
+const { call, loading, result, error } = useFunction("askLLM");
+
+const handleClick = async () => {
+  const response = await call({
+    provider: "openai",
+    model: "gpt-4",
+    systemPrompt: "You are helpful",
+    message: "What is React?",
+  });
+
+  console.log(response.response);
+};
+```
+
+**Server functions can:**
+
+- Access Firebase Admin SDK (full database access)
+- Call external APIs (OpenAI, SendGrid, etc.)
+- Process data securely server-side
+- Use environment variables and secrets
+
+**See `/functions` folder for examples:** `askLLM`, `enrichData`, `sendEmail`
+
 ### useAppMembership(appId)
 
 Manages user access to your app:
@@ -395,6 +430,92 @@ const {
 - **Invite-only apps**: Set `accessMode: "invite-only"` in app doc, require explicit membership
 - **Paid apps**: Check `tier` in your components to gate premium features
 
+## Server Functions
+
+Need to run code on the server? Use server functions for AI, emails, PDFs, and more!
+
+### What are Server Functions?
+
+Server functions run in a secure Node.js environment with:
+
+- **Full Firebase Admin access** - Read/write any data
+- **External APIs** - OpenAI, Anthropic, SendGrid, etc.
+- **Environment variables** - API keys, secrets
+- **npm packages** - All dependencies available
+
+### Using Functions in Your App
+
+```javascript
+import { useFunction } from "../../../framework/hooks/useFunction.js";
+
+function MyComponent() {
+  const { call, loading, result, error } = useFunction("askLLM");
+
+  const handleAskAI = async () => {
+    const response = await call({
+      provider: "openai",
+      model: "gpt-4",
+      systemPrompt: "You are a helpful assistant",
+      message: "Explain React hooks",
+    });
+
+    alert(response.response);
+  };
+
+  return (
+    <Button onClick={handleAskAI} loading={loading}>
+      Ask AI
+    </Button>
+  );
+}
+```
+
+### Available Example Functions
+
+Check `/functions` folder for working examples:
+
+**`askLLM`** - Call any LLM (OpenAI, Anthropic)
+
+```javascript
+await call({
+  provider: "openai",
+  model: "gpt-4",
+  systemPrompt: "You are helpful",
+  message: "What is React?",
+});
+```
+
+**`enrichData`** - Enrich Firestore docs with AI
+
+```javascript
+await call({
+  collection: "crm_leads",
+  inputFields: ["name", "company", "notes"],
+  outputFields: ["aiSummary", "aiScore"],
+  systemPrompt: "Analyze and return JSON with aiSummary and aiScore (0-100)",
+});
+```
+
+**`sendEmail`** - Send transactional emails
+
+```javascript
+await call({
+  to: "user@example.com",
+  subject: "Welcome!",
+  template: "welcome",
+  data: { userName: "John" },
+});
+```
+
+### Creating Your Own Functions
+
+1. Create `/functions/myFunction.js`
+2. Follow the function template (see `/functions/README.md`)
+3. Upload: `npm run function:commit myFunction --app=my-app`
+4. Call from your app: `useFunction("myFunction")`
+
+**See `/functions/README.md` and `/functions/example-usage.jsx` for complete examples!**
+
 ## Available Commands
 
 **Development:**
@@ -408,6 +529,13 @@ const {
 - `npm run app:init <appId>` - Initialize a new app in `/apps/{appId}/` (local only, no auth required)
 - `npm run app:checkout <appId>` - Download app code from Firestore to `/apps/{appId}/` (**requires Firebase auth**)
 - `npm run app:commit <appId> "message"` - Upload `/apps/{appId}/` to Firestore (**requires Firebase auth**)
+
+**Function Management:**
+
+- `npm run function:list` - List all available server functions (**requires Firebase auth**)
+- `npm run function:checkout <functionId>` - Download function code to `/functions/{functionId}.js` (**requires Firebase auth**)
+- `npm run function:commit <functionId>` - Upload function to Firestore (**requires Firebase auth**)
+  - Options: `--app=<appId>` for app-specific functions
 
 **Utilities:**
 

@@ -28,6 +28,7 @@ export const collections = {
 
   // Your app-specific collections (automatically namespaced)
   events: `${APP_ID}_events`,
+  calendars: `${APP_ID}_calendars`,
 };
 
 /**
@@ -128,6 +129,7 @@ export const schema = {
       end: { type: "timestamp", required: true },
       location: { type: "string" },
       coordinates: { type: "geopoint" }, // { latitude: number, longitude: number }
+      geohash: { type: "string" }, // Geohash for efficient geospatial queries
       imageUrl: { type: "string" },
       eventUrl: { type: "string" },
       calendarId: { type: "string" },
@@ -144,11 +146,48 @@ export const schema = {
       ["start", "end"],
       ["calendarId", "start"],
       ["status", "start"],
+      ["geohash", "start", "__name__"], // For geospatial queries
     ],
 
     rules: {
       read: "true", // Events are publicly readable
       write: "auth != null", // Authenticated users can write events
+      create: "auth != null",
+      delete: "auth != null",
+    },
+  },
+
+  [`${APP_ID}_calendars`]: {
+    fields: {
+      name: { type: "string", required: true },
+      url: { type: "string", required: true },
+      timezone: { type: "string" },
+      cssSelector: { type: "string" },
+      attribute: { type: "string" },
+      wait: { type: "number" },
+      timeout: { type: "number" },
+      scrapeInterval: { type: "number" },
+      enabled: { type: "boolean", default: true },
+      useProxy: { type: "boolean", default: false },
+      stealthProxy: { type: "boolean", default: false },
+      premiumProxy: { type: "boolean", default: false },
+      scrapedAt: { type: "timestamp" },
+      lastScrapeStatus: { type: "string" },
+      lastScrapeCount: { type: "number" },
+      lastScrapeNew: { type: "number" },
+      lastScrapeDuplicate: { type: "number" },
+      lastError: { type: "string" },
+      createdAt: { type: "timestamp", auto: true },
+    },
+
+    indexes: [
+      ["enabled", "scrapedAt"],
+      ["lastScrapeStatus", "scrapedAt"],
+    ],
+
+    rules: {
+      read: "true", // Calendars are publicly readable
+      write: "auth != null", // Authenticated users can write calendars
       create: "auth != null",
       delete: "auth != null",
     },
