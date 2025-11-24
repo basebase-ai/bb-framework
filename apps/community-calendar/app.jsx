@@ -62,23 +62,23 @@ function AppContent() {
                 {showAdmin ? <IconHome size={20} /> : <IconSettings size={20} />}
               </ActionIcon>
             )}
-            {user && (
-              <Group 
-                gap="xs"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setProfileModalOpened(true)}
-              >
-                <Avatar
-                  src={profile?.photoURL}
-                  alt={profile?.displayName || user.email}
-                  size="sm"
-                  radius="xl"
-                />
-                <Text size="sm" c="dimmed">
-                  {profile?.displayName || user.email}
-                </Text>
-              </Group>
-            )}
+          {user && (
+            <Group 
+              gap="xs"
+              style={{ cursor: 'pointer' }}
+              onClick={() => setProfileModalOpened(true)}
+            >
+              <Avatar
+                src={profile?.photoURL}
+                alt={profile?.displayName || user.email}
+                size="sm"
+                radius="xl"
+              />
+              <Text size="sm" c="dimmed">
+                {profile?.displayName || user.email}
+              </Text>
+            </Group>
+          )}
           </Group>
         </Group>
       </AppShell.Header>

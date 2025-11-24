@@ -1,20 +1,20 @@
 /**
  * Hook for calling server functions
- * 
+ *
  * Server functions run in a secure Node.js environment with:
  * - Full Firebase Admin access
  * - Access to external APIs and npm packages
  * - Environment variables and secrets
- * 
+ *
  * @param {string} functionName - Name of the function to call
  * @returns {Object} Function utilities
- * 
+ *
  * @example
  * import { useFunction } from "../../../framework/hooks/useFunction.js";
- * 
+ *
  * function MyComponent() {
  *   const { call, loading, result, error } = useFunction("askLLM");
- *   
+ *
  *   const handleClick = async () => {
  *     const response = await call({
  *       provider: "openai",
@@ -22,10 +22,10 @@
  *       systemPrompt: "You are helpful",
  *       message: "What is React?"
  *     });
- *     
+ *
  *     console.log(response.response);
  *   };
- *   
+ *
  *   return <Button onClick={handleClick} loading={loading}>Ask AI</Button>;
  * }
  */
@@ -65,7 +65,7 @@ export function useFunction(functionName) {
       try {
         // Create task document in Firestore
         const task = {
-          functionName,
+          functionId: functionName, // Backend expects functionId, not functionName
           params,
           userId: user.uid,
           appId: options.appId || null,
@@ -117,7 +117,10 @@ export function useFunction(functionName) {
                   unsubscribeRef.current();
                 }
 
-                console.log(`✅ Function completed: ${functionName}`, data.result);
+                console.log(
+                  `✅ Function completed: ${functionName}`,
+                  data.result
+                );
 
                 setResult(data.result);
                 setLoading(false);
@@ -128,7 +131,17 @@ export function useFunction(functionName) {
                   unsubscribeRef.current();
                 }
 
-                const err = new Error(data.error || "Function execution failed");
+                // Extract error message from various formats
+                let errorMessage = "Function execution failed";
+                if (typeof data.error === 'string') {
+                  errorMessage = data.error;
+                } else if (data.error?.message) {
+                  errorMessage = data.error.message;
+                } else if (data.error) {
+                  errorMessage = JSON.stringify(data.error);
+                }
+
+                const err = new Error(errorMessage);
                 console.error(`❌ Function failed: ${functionName}`, err);
 
                 setError(err);
@@ -172,4 +185,3 @@ export function useFunction(functionName) {
     error,
   };
 }
-

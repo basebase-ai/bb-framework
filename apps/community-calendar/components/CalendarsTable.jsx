@@ -9,19 +9,27 @@ import {
   Stack,
   Title,
   Paper,
+  ActionIcon,
+  Tooltip,
 } from "@mantine/core";
+import { IconRefresh } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
-import { collections } from "../schema.js";
+import { useFunction } from "../../../framework/hooks/useFunction.js";
+import { collections, APP_ID } from "../schema.js";
 import { CalendarModal } from "./CalendarModal.jsx";
 
 export function CalendarsTable() {
   const [selectedCalendar, setSelectedCalendar] = useState(null);
   const [modalOpened, setModalOpened] = useState(false);
+  const [scrapingCalendarId, setScrapingCalendarId] = useState(null);
 
   const { data: calendars, loading, error } = useCollection(collections.calendars, {
     orderBy: ["name", "asc"],
     realtime: true,
   });
+
+  const { call: scrapeCalendar, loading: scraping } = useFunction("scrapeWebCalendars");
 
   const handleRowClick = (calendar) => {
     setSelectedCalendar(calendar);
@@ -31,6 +39,45 @@ export function CalendarsTable() {
   const handleCloseModal = () => {
     setModalOpened(false);
     setSelectedCalendar(null);
+  };
+
+  const handleScrape = async (e, calendar) => {
+    e.stopPropagation(); // Prevent row click
+    
+    setScrapingCalendarId(calendar.id);
+    
+    try {
+      const result = await scrapeCalendar(
+        {
+          calendarsCollection: "calendars", // Server context will namespace this
+          eventsCollection: "events",        // Server context will namespace this
+          calendarIds: [calendar.id],
+          forceRescrape: true,
+        },
+        { appId: APP_ID } // Pass appId for automatic namespacing
+      );
+
+      if (result.success) {
+        notifications.show({
+          title: "Scraping Complete",
+          message: `Found ${result.totalEventsFound} events (${result.totalEventsNew} new, ${result.totalEventsDuplicate} duplicates)`,
+          color: "green",
+        });
+      } else {
+        throw new Error("Scraping failed");
+      }
+    } catch (err) {
+      console.error("Scraping error:", err);
+      
+      notifications.show({
+        title: "Scraping Failed",
+        message: err?.message || "An error occurred while scraping",
+        color: "red",
+        autoClose: false, // Keep it open so user can read the error
+      });
+    } finally {
+      setScrapingCalendarId(null);
+    }
   };
 
   // Only show loading spinner on initial load (when we have no data yet)
@@ -94,6 +141,7 @@ export function CalendarsTable() {
                   <Table.Th>Last Scraped</Table.Th>
                   <Table.Th>Status</Table.Th>
                   <Table.Th>Count</Table.Th>
+                  <Table.Th>Actions</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -136,11 +184,23 @@ export function CalendarsTable() {
                           )}
                         </Text>
                       </Table.Td>
+                      <Table.Td onClick={(e) => e.stopPropagation()}>
+                        <Tooltip label="Scrape now">
+                          <ActionIcon
+                            variant="subtle"
+                            color="blue"
+                            loading={scrapingCalendarId === calendar.id}
+                            onClick={(e) => handleScrape(e, calendar)}
+                          >
+                            <IconRefresh size={18} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Table.Td>
                     </Table.Tr>
                   ))
                 ) : (
                   <Table.Tr>
-                    <Table.Td colSpan={5}>
+                    <Table.Td colSpan={6}>
                       <Center py="xl">
                         <Text c="dimmed">No calendars found</Text>
                       </Center>
