@@ -31,8 +31,16 @@ service cloud.firestore {
       allow read: if true;  // Anyone can read app metadata
       allow create: if request.auth != null 
                     && request.resource.data.owner == request.auth.uid;
+      
+      // Owners can update anything
       allow update: if request.auth != null 
                     && request.auth.uid == resource.data.owner;
+      
+      // Collaborators can update version pointer when committing code
+      allow update: if request.auth != null 
+                    && request.auth.uid in resource.data.get('collaborators', [])
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentVersion', 'updatedAt', 'updatedBy']);
+      
       allow delete: if request.auth != null 
                     && request.auth.uid == resource.data.owner;
       
@@ -40,7 +48,8 @@ service cloud.firestore {
       match /versions/{versionId} {
         allow read: if true;  // Public read for app code
         allow write: if request.auth != null 
-                     && request.auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner;
+                     && (request.auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner
+                         || request.auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []));
       }
     }
     

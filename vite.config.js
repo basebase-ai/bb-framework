@@ -38,7 +38,7 @@ export default defineConfig({
         ".js": "jsx",
       },
     },
-    include: ["react", "react-dom", "firebase/app", "firebase/firestore", "firebase/auth", "zustand", "@mantine/core", "@mantine/hooks", "@mantine/notifications"],
+    include: ["react", "react-dom", "firebase/app", "firebase/firestore", "firebase/auth", "zustand", "@mantine/core", "@mantine/hooks", "@mantine/notifications", "@mantine/dates", "dayjs"],
   },
   build: {
     outDir: resolve(__dirname, "dist"),

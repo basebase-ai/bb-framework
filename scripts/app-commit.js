@@ -348,6 +348,11 @@ async function commit(appId, message = "Updated via app:commit") {
 
     const appData = appSnap.data();
 
+    // Debug: Show user ID and collaborators
+    console.log(chalk.gray(`   Your UID: ${user.uid}`));
+    console.log(chalk.gray(`   Owner: ${appData.owner}`));
+    console.log(chalk.gray(`   Collaborators: ${JSON.stringify(appData.collaborators || [])}`));
+
     // Check if user has write access
     const hasAccess =
       appData.owner === user.uid ||

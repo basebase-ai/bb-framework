@@ -47,9 +47,11 @@ import * as ReactJSXRuntime from "react/jsx-runtime";
 import * as Mantine from "@mantine/core";
 import * as MantineNotifications from "@mantine/notifications";
 import * as MantineHooks from "@mantine/hooks";
+import * as MantineDates from "@mantine/dates";
 import * as TablerIcons from "@tabler/icons-react";
 import * as Zustand from "zustand";
 import { marked } from "marked";
+import dayjs from "dayjs";
 
 // Firebase
 import * as FirebaseApp from "firebase/app";
@@ -197,12 +199,16 @@ async function init() {
       "@mantine/core": Mantine,
       "@mantine/notifications": MantineNotifications,
       "@mantine/hooks": MantineHooks,
+      "@mantine/dates": MantineDates,
 
       // Icons
       "@tabler/icons-react": TablerIcons,
 
       // Markdown
       marked: { marked },
+
+      // Date library
+      dayjs: { default: dayjs },
 
       // Firebase
       "firebase/app": FirebaseApp,
