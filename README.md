@@ -38,15 +38,28 @@ npm install
 npm run dev
 ```
 
-This starts the dev server. Then open:
-- http://localhost:3000?app=starter-app - Simple sticky notes board
-- http://localhost:3000?app=playground - Browse all Basebase apps
+This starts the dev server. Then visit any of these example apps:
+
+- **http://localhost:3000?app=starter-app** - Simple sticky notes board
+- **http://localhost:3000?app=playground** - App marketplace browser
+- **http://localhost:3000?app=basepedia** - Wiki with pages and rich content
+- **http://localhost:3000?app=crm** - Customer relationship manager
+- **http://localhost:3000?app=basetable** - Spreadsheet-style data manager
+
+**Switch between apps** by changing the `?app=` parameter in the URL!
 
 **What you'll see:**
 
 - Sign up/sign in screen (use Google or email)
 - Real-time data sync with Firestore
-- Example components and patterns
+- Working examples of different app patterns
+
+**💡 Pro Tip:** Look at the example apps in `/apps/{app-id}/` for inspiration! They show you how to:
+
+- Structure components and data schemas
+- Use framework hooks (`useCollection`, `useAuth`, etc.)
+- Implement common UI patterns (tables, forms, modals)
+- Handle user permissions and access control
 
 ### 3. How It Works
 
@@ -90,7 +103,9 @@ This creates `/apps/my-app-name/` and sets `APP_ID` in its `schema.js`. No Fireb
 npm run dev
 ```
 
-Visit http://localhost:3000 to see your app running locally.
+Visit **http://localhost:3000?app=my-app-name** to see your app running locally.
+
+**Note:** The `?app=` parameter tells the framework which app to load from `/apps/{app-id}/`
 
 ### Step 3: Create Firebase Account (Required before first commit)
 
@@ -107,7 +122,7 @@ When you're ready to save your work to the cloud:
 
 ### Step 4: Define Your Data Schema
 
-Edit `app/schema.js` to add your app-specific collections:
+Edit `apps/my-app-name/schema.js` to add your app-specific collections:
 
 ```javascript
 // Your app's unique identifier (set by npm run app:init)
@@ -159,12 +174,14 @@ Follow these Firebase/Firestore standards:
 
 ### Step 5: Create Your First Component
 
-Create `app/components/TodoList.jsx`:
+Create `apps/my-app-name/components/TodoList.jsx`:
+
+**💡 Tip:** Check out similar components in `/apps/starter-app/components/` or other example apps to see working patterns!
 
 ```jsx
 import React from "react";
-import { useCollection } from "../../framework/hooks/useCollection.js";
-import { useAuth } from "../../framework/hooks/useAuth.js";
+import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js"; // Import namespaced collections
 
 export function TodoList() {
@@ -202,7 +219,7 @@ export function TodoList() {
 
 ### Step 6: Add to Main App
 
-Edit `app/app.jsx` to use your new component(s):
+Edit `apps/my-app-name/app.jsx` to use your new component(s):
 
 ```javascript
 import { TodoList } from "./components/TodoList.jsx";
@@ -218,12 +235,12 @@ import { TodoList } from "./components/TodoList.jsx";
 When ready to publish:
 
 ```bash
-npm run app:commit "Describe your changes"
+npm run app:commit my-app-name "Describe your changes"
 ```
 
 **You'll be prompted for:** Email and password (the account you created in Step 3)
 
-**What this does:** Uploads your `/app` code to Firestore, making it instantly live in production!
+**What this does:** Uploads your `/apps/my-app-name/` code to Firestore, making it instantly live in production!
 
 ## Scenario B: Collaborating on Existing App
 
@@ -232,7 +249,7 @@ Joining a team to work on an existing app?
 ### Step 1: Checkout the App (Requires Firebase account)
 
 ```bash
-npm run app:checkout news-base latest
+npm run app:checkout news-base
 ```
 
 **You'll be prompted for:** Email and password
@@ -244,15 +261,16 @@ npm run app:checkout news-base latest
 
 **What happens:**
 
-- Downloads app code from Firestore to `/app` folder
-- Overwrites local files with the team's code
+- Downloads app code from Firestore to `/apps/news-base/` folder
+- Creates a new directory for the app with all its files
 - `APP_ID` is automatically set to `news-base`
 
 ### Step 2: Develop and Deploy
 
 ```bash
-npm run dev                                # Test your changes
-npm run app:commit "Added new feature"     # Publish (requires auth)
+npm run dev                                     # Start dev server
+# Visit http://localhost:3000?app=news-base    # Test your changes
+npm run app:commit news-base "Added feature"   # Publish (requires auth)
 ```
 
 ### Key Points
@@ -266,27 +284,37 @@ npm run app:commit "Added new feature"     # Publish (requires auth)
 
 ```
 bb-framework/
-├── app/                    # ✅ YOUR APP CODE (edit this)
-│   ├── components/        # Your React components
-│   ├── stores/           # UI state (theme, sidebar, tabs, etc.)
-│   ├── schema.js         # Your data structure + security rules
-│   └── app.jsx           # Your main entry point
-│   └── README.md         # Important: read this!
-├── framework/             # ❌ Framework code (DON'T edit)
-│   ├── core/             # Firebase init, module loading
-│   └── hooks/            # React hooks (useCollection, useAuth, etc.)
-├── scripts/              # ❌ Build/deploy scripts (DON'T edit)
-├── config/               # Firebase config (already configured)
+├── apps/                       # ✅ YOUR APP CODE (edit this)
+│   ├── starter-app/           # Example: Simple notes board
+│   │   ├── components/       # React components
+│   │   ├── stores/          # UI state
+│   │   ├── schema.js        # Data structure
+│   │   └── app.jsx          # Entry point
+│   ├── playground/           # Example: App marketplace
+│   ├── basepedia/            # Example: Wiki
+│   ├── crm/                  # Example: CRM
+│   └── your-app/             # Your app goes here!
+│       ├── components/
+│       ├── schema.js
+│       └── app.jsx
+├── framework/                 # ❌ Framework code (DON'T edit)
+│   ├── core/                 # Firebase init, module loading
+│   ├── hooks/                # useCollection, useAuth, etc.
+│   └── components/           # AuthProvider, etc.
+├── scripts/                  # ❌ Build/deploy scripts (DON'T edit)
+├── config/                   # Firebase config (already configured)
 └── package.json
 ```
 
-**⚠️ CRITICAL: Only edit files in `/app` directory!**
+**⚠️ CRITICAL: Only edit files in `/apps/{your-app-id}/` directory!**
 
-Changes outside `/app`:
+Changes outside `/apps/{your-app-id}/`:
 
 - Work locally but FAIL in production
 - Are NOT included when you commit
 - Could break the platform for others
+
+**💡 Learn from Examples:** Browse `/apps/starter-app/`, `/apps/playground/`, and other sample apps to see working code patterns!
 
 ## Framework Hooks
 
@@ -343,7 +371,7 @@ const { user, loading, authenticated } = useAuth();
 Manages user access to your app:
 
 ```javascript
-import { useAppMembership } from "../../framework/hooks/useAppMembership.js";
+import { useAppMembership } from "../../../framework/hooks/useAppMembership.js";
 import { APP_ID } from "../schema.js";
 
 const {
@@ -371,18 +399,20 @@ const {
 
 **Development:**
 
-- `npm run dev` - Start development server (http://localhost:3000)
+- `npm run dev` - Start development server
+  - Access apps via `http://localhost:3000?app={app-id}`
+  - Switch apps by changing the `?app=` parameter
 
 **App Management:**
 
-- `npm run app:init <appId>` - Initialize a new app (local only, no auth required)
-- `npm run app:checkout <appId> [version]` - Download app code from Firestore (**requires Firebase auth**)
-- `npm run app:commit "message"` - Upload your changes to Firestore (**requires Firebase auth**)
+- `npm run app:init <appId>` - Initialize a new app in `/apps/{appId}/` (local only, no auth required)
+- `npm run app:checkout <appId>` - Download app code from Firestore to `/apps/{appId}/` (**requires Firebase auth**)
+- `npm run app:commit <appId> "message"` - Upload `/apps/{appId}/` to Firestore (**requires Firebase auth**)
 
 **Utilities:**
 
-- `npm run generate:rules` - Generate Firestore security rules from schema
-- `npm run generate:types` - Generate TypeScript types from schema
+- `npm run generate:rules [appId]` - Generate Firestore security rules from schema (defaults to starter-app)
+- `npm run generate:types [appId]` - Generate TypeScript types from schema (defaults to starter-app)
 
 **Note:** To create a Firebase account, run `npm run dev` and sign up at http://localhost:3000
 
