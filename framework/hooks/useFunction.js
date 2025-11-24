@@ -133,7 +133,7 @@ export function useFunction(functionName) {
 
                 // Extract error message from various formats
                 let errorMessage = "Function execution failed";
-                if (typeof data.error === 'string') {
+                if (typeof data.error === "string") {
                   errorMessage = data.error;
                 } else if (data.error?.message) {
                   errorMessage = data.error.message;
