@@ -8,6 +8,7 @@
     "app:init": "node scripts/app-init.js",
     "app:checkout": "node scripts/app-checkout.js",
     "app:commit": "node scripts/app-commit.js",
+    "doc:fetch": "node scripts/fetch-doc.js",
     "generate:types": "node scripts/generate-types.js",
     "generate:rules": "node scripts/generate-rules.js",
     "build": "vite build -c vite.config.production.js",
