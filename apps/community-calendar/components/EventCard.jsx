@@ -2,9 +2,9 @@ import React from "react";
 import { Card, Image, Text, Badge, Group, Stack } from "@mantine/core";
 import { IconMapPin, IconCalendar, IconExternalLink } from "@tabler/icons-react";
 
-export function EventCard({ event }) {
-  const startDate = event.start?.toDate ? event.start.toDate() : new Date(event.start);
-  const endDate = event.end?.toDate ? event.end.toDate() : new Date(event.end);
+export function EventCard({ event, onClick }) {
+  const startDate = event.start?.toDate ? event.start.toDate() : new Date(event.start?.seconds * 1000);
+  const endDate = event.end?.toDate ? event.end.toDate() : new Date(event.end?.seconds * 1000);
 
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', {
@@ -22,20 +22,14 @@ export function EventCard({ event }) {
     });
   };
 
-  const handleClick = () => {
-    if (event.eventUrl) {
-      window.open(event.eventUrl, '_blank');
-    }
-  };
-
   return (
     <Card 
       shadow="sm" 
       padding="lg" 
       radius="md" 
       withBorder
-      style={{ cursor: event.eventUrl ? 'pointer' : 'default', height: '100%' }}
-      onClick={handleClick}
+      style={{ cursor: 'pointer', height: '100%' }}
+      onClick={() => onClick?.(event)}
     >
       <Card.Section>
         <Image

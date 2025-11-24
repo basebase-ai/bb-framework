@@ -50,7 +50,7 @@ function AppContent() {
     <AppShell header={{ height: 60 }}>
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <Title order={3}>SF Community Calendar</Title>
+          <Title order={3}>Eventbase</Title>
           <Group gap="md">
             {canAdmin && (
               <ActionIcon
@@ -63,21 +63,14 @@ function AppContent() {
               </ActionIcon>
             )}
           {user && (
-            <Group 
-              gap="xs"
+            <Avatar
+              src={profile?.photoURL}
+              alt={profile?.displayName || user.email}
+              size="sm"
+              radius="xl"
               style={{ cursor: 'pointer' }}
               onClick={() => setProfileModalOpened(true)}
-            >
-              <Avatar
-                src={profile?.photoURL}
-                alt={profile?.displayName || user.email}
-                size="sm"
-                radius="xl"
-              />
-              <Text size="sm" c="dimmed">
-                {profile?.displayName || user.email}
-              </Text>
-            </Group>
+            />
           )}
           </Group>
         </Group>
@@ -118,18 +111,19 @@ function AppContent() {
               {/* Title */}
               <Container size="xl" style={{ position: 'relative', zIndex: 1 }}>
                 <Stack align="center" gap="md">
-                  <Title
-                    order={1}
-                    size={56}
-                    fw={700}
-                    style={{
-                      color: 'white',
-                      textAlign: 'center',
-                      textShadow: '2px 2px 8px rgba(0, 0, 0, 0.7)',
-                    }}
-                  >
-                    San Francisco Community Calendar
-                  </Title>
+              <Title
+                order={1}
+                size={56}
+                fw={700}
+                style={{
+                  color: 'white',
+                  textAlign: 'center',
+                  textShadow: '2px 2px 8px rgba(0, 0, 0, 0.7)',
+                  lineHeight: 1.1,
+                }}
+              >
+                San Francisco Community Calendar
+              </Title>
                   <Text
                     size="xl"
                     style={{

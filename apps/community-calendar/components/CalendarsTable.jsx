@@ -11,17 +11,21 @@ import {
   Paper,
   ActionIcon,
   Tooltip,
+  Button,
+  Group,
 } from "@mantine/core";
-import { IconRefresh } from "@tabler/icons-react";
+import { IconRefresh, IconPlus, IconFileText } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useFunction } from "../../../framework/hooks/useFunction.js";
 import { collections, APP_ID } from "../schema.js";
 import { CalendarModal } from "./CalendarModal.jsx";
+import { AddCalendarModal } from "./AddCalendarModal.jsx";
 
 export function CalendarsTable() {
   const [selectedCalendar, setSelectedCalendar] = useState(null);
   const [modalOpened, setModalOpened] = useState(false);
+  const [addModalOpened, setAddModalOpened] = useState(false);
   const [scrapingCalendarId, setScrapingCalendarId] = useState(null);
 
   const { data: calendars, loading, error } = useCollection(collections.calendars, {
@@ -29,7 +33,8 @@ export function CalendarsTable() {
     realtime: true,
   });
 
-  const { call: scrapeCalendar, loading: scraping } = useFunction("scrapeWebCalendars");
+  const { call: scrapeCalendar } = useFunction("scrapeWebCalendars");
+  const { call: scrapeEvents, loading: scrapingEvents } = useFunction("scrapeEventPages");
 
   const handleRowClick = (calendar) => {
     setSelectedCalendar(calendar);
@@ -80,6 +85,37 @@ export function CalendarsTable() {
     }
   };
 
+  const handleScrapeEvents = async () => {
+    try {
+      const result = await scrapeEvents(
+        {
+          eventsCollection: "events", // Server context will namespace this
+          maxEvents: 50, // Limit to 50 events per run to avoid timeouts
+        },
+        { appId: APP_ID }
+      );
+
+      if (result.success) {
+        notifications.show({
+          title: "Event Scraping Complete",
+          message: `Processed ${result.eventsProcessed} events (${result.eventsScraped} scraped, ${result.eventsFailed} failed)`,
+          color: "green",
+        });
+      } else {
+        throw new Error("Event scraping failed");
+      }
+    } catch (err) {
+      console.error("Event scraping error:", err);
+      
+      notifications.show({
+        title: "Event Scraping Failed",
+        message: err?.message || "An error occurred while scraping events",
+        color: "red",
+        autoClose: false,
+      });
+    }
+  };
+
   // Only show loading spinner on initial load (when we have no data yet)
   if (loading && !calendars) {
     return (
@@ -122,14 +158,32 @@ export function CalendarsTable() {
   return (
     <Container size="xl" py="xl">
       <Stack gap="xl">
-        <div>
-          <Title order={2} mb="xs">
-            Calendar Management
-          </Title>
-          <Text c="dimmed">
-            Manage scraping calendars. Click on a row to edit.
-          </Text>
-        </div>
+        <Group justify="space-between" align="flex-start">
+          <div>
+            <Title order={2} mb="xs">
+              Calendar Management
+            </Title>
+            <Text c="dimmed">
+              Manage scraping calendars. Click on a row to edit.
+            </Text>
+          </div>
+          <Group>
+            <Button
+              leftSection={<IconFileText size={16} />}
+              onClick={handleScrapeEvents}
+              loading={scrapingEvents}
+              variant="light"
+            >
+              Scrape Events
+            </Button>
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={() => setAddModalOpened(true)}
+            >
+              Add Calendar
+            </Button>
+          </Group>
+        </Group>
 
         <Paper withBorder>
           <Table.ScrollContainer minWidth={800}>
@@ -217,6 +271,11 @@ export function CalendarsTable() {
         calendar={selectedCalendar}
         opened={modalOpened}
         onClose={handleCloseModal}
+      />
+
+      <AddCalendarModal
+        opened={addModalOpened}
+        onClose={() => setAddModalOpened(false)}
       />
     </Container>
   );

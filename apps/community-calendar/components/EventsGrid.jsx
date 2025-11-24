@@ -20,6 +20,7 @@ import { geohashQueryBounds, distanceBetween } from "geofire-common";
 import { db } from "../../../framework/core/firebase-init.js";
 import { collections } from "../schema.js";
 import { EventCard } from "./EventCard.jsx";
+import { EventDetailsModal } from "./EventDetailsModal.jsx";
 
 import "@mantine/dates/styles.css";
 
@@ -38,6 +39,19 @@ export function EventsGrid() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [modalOpened, setModalOpened] = useState(false);
+
+  const handleEventClick = (event) => {
+    setSelectedEvent(event);
+    setModalOpened(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpened(false);
+    setSelectedEvent(null);
+  };
 
   // Fetch location suggestions from Nominatim API
   useEffect(() => {
@@ -235,6 +249,13 @@ export function EventsGrid() {
       });
     }
 
+    // Always sort by start time ascending
+    filtered.sort((a, b) => {
+      const aStart = a.start?.toDate ? a.start.toDate() : new Date(a.start?.seconds * 1000);
+      const bStart = b.start?.toDate ? b.start.toDate() : new Date(b.start?.seconds * 1000);
+      return aStart - bStart;
+    });
+
     return filtered;
   }, [events, searchQuery]);
 
@@ -259,50 +280,51 @@ export function EventsGrid() {
       <Stack gap="xl">
         {/* Search and Filter Controls */}
         <Box>
-          <Group gap="md" align="flex-end" wrap="wrap">
+          <Stack gap="md">
+            {/* Search - Full Width */}
             <TextInput
               placeholder="Search events..."
               leftSection={<IconSearch size={16} />}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.currentTarget.value)}
-              style={{ flex: 1, minWidth: 250 }}
               size="md"
             />
 
-            <DatePickerInput
-              placeholder="Select date"
-              leftSection={<IconCalendar size={16} />}
-              value={selectedDate}
-              onChange={setSelectedDate}
-              clearable
-              minDate={new Date()}
-              size="md"
-              style={{ minWidth: 200 }}
-            />
+            {/* Date and Location - Side by Side */}
+            <Group gap="md" grow>
+              <DatePickerInput
+                placeholder="Select date"
+                leftSection={<IconCalendar size={16} />}
+                value={selectedDate}
+                onChange={setSelectedDate}
+                clearable
+                minDate={new Date()}
+                size="md"
+              />
 
-            <Autocomplete
-              placeholder="Enter location..."
-              leftSection={<IconMapPin size={16} />}
-              rightSection={
-                selectedLocation ? (
-                  <ActionIcon
-                    size="sm"
-                    variant="subtle"
-                    onClick={handleClearLocation}
-                  >
-                    <IconX size={14} />
-                  </ActionIcon>
-                ) : null
-              }
-              value={locationQuery}
-              onChange={setLocationQuery}
-              onOptionSubmit={handleLocationSelect}
-              data={locationSuggestions.map((s) => s.value)}
-              style={{ minWidth: 300 }}
-              size="md"
-              limit={5}
-            />
-          </Group>
+              <Autocomplete
+                placeholder="Enter location..."
+                leftSection={<IconMapPin size={16} />}
+                rightSection={
+                  selectedLocation ? (
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      onClick={handleClearLocation}
+                    >
+                      <IconX size={14} />
+                    </ActionIcon>
+                  ) : null
+                }
+                value={locationQuery}
+                onChange={setLocationQuery}
+                onOptionSubmit={handleLocationSelect}
+                data={locationSuggestions.map((s) => s.value)}
+                size="md"
+                limit={5}
+              />
+            </Group>
+          </Stack>
 
           <Text size="sm" c="dimmed" mt="md">
             Showing {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
@@ -323,11 +345,17 @@ export function EventsGrid() {
             spacing="lg"
           >
             {filteredEvents.map((event) => (
-              <EventCard key={event.id} event={event} />
+              <EventCard key={event.id} event={event} onClick={handleEventClick} />
             ))}
           </SimpleGrid>
         )}
       </Stack>
+
+      <EventDetailsModal
+        event={selectedEvent}
+        opened={modalOpened}
+        onClose={handleCloseModal}
+      />
     </Container>
   );
 }
