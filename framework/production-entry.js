@@ -17,6 +17,8 @@ import { useAppMembership } from "./hooks/useAppMembership.js";
 import { useUserProfile } from "./hooks/useUserProfile.js";
 import { useUserProfiles } from "./hooks/useUserProfiles.js";
 import { useRouter } from "./hooks/useRouter.js";
+import { useFunction } from "./hooks/useFunction.js";
+import { useOAuth } from "./hooks/useOAuth.js";
 import { AuthProvider, SignOutButton } from "./components/AuthProvider.jsx";
 import {
   app as firebaseAppInstance,
@@ -237,6 +239,12 @@ async function init() {
       "framework/hooks/useRouter.js": { useRouter },
       "../framework/hooks/useRouter.js": { useRouter },
       "../../framework/hooks/useRouter.js": { useRouter },
+      "framework/hooks/useFunction.js": { useFunction },
+      "../framework/hooks/useFunction.js": { useFunction },
+      "../../framework/hooks/useFunction.js": { useFunction },
+      "framework/hooks/useOAuth.js": { useOAuth },
+      "../framework/hooks/useOAuth.js": { useOAuth },
+      "../../framework/hooks/useOAuth.js": { useOAuth },
 
       // Framework components (with path variants)
       "framework/components/AuthProvider.js": {

@@ -97,7 +97,9 @@ export function useOAuth(provider) {
       const { scopes = [] } = options;
 
       // Build OAuth Manager URL
-      const oauthUrl = new URL(window.location.origin);
+      // Use dedicated oauth-manager subdomain in production, or current origin in dev
+      const oauthManagerOrigin = import.meta.env.VITE_OAUTH_MANAGER_URL || window.location.origin;
+      const oauthUrl = new URL(oauthManagerOrigin);
       oauthUrl.searchParams.set('app', 'oauth-manager');
       oauthUrl.searchParams.set('provider', provider);
       oauthUrl.searchParams.set('scopes', scopes.join(','));
@@ -115,7 +117,12 @@ export function useOAuth(provider) {
 
       // Listen for messages from popup
       const handleMessage = (event) => {
-        if (event.origin !== window.location.origin) return;
+        // Accept messages from oauth-manager subdomain or same origin
+        const allowedOrigins = [window.location.origin];
+        if (import.meta.env.VITE_OAUTH_MANAGER_URL) {
+          allowedOrigins.push(new URL(import.meta.env.VITE_OAUTH_MANAGER_URL).origin);
+        }
+        if (!allowedOrigins.includes(event.origin)) return;
         
         if (event.data.type === 'oauth-success') {
           console.log('OAuth success:', event.data.provider);

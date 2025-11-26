@@ -81,7 +81,7 @@ function AppContent() {
         window.opener.postMessage({ 
           type: 'oauth-error', 
           error: errorParam 
-        }, window.location.origin);
+        }, '*'); // Allow any origin for error messages
       }
       return;
     }
@@ -120,6 +120,7 @@ function AppContent() {
       provider: providerName,
       userId: user.uid,
       redirectUri: window.location.origin,
+      openerOrigin: window.opener ? window.opener.location.origin : window.location.origin,
       timestamp: Date.now(),
     }));
 
@@ -169,10 +170,11 @@ function AppContent() {
         
         // Notify parent window
         if (window.opener) {
+          const targetOrigin = stateData.openerOrigin || '*';
           window.opener.postMessage({ 
             type: 'oauth-success', 
             provider: stateData.provider 
-          }, window.location.origin);
+          }, targetOrigin);
         }
       } else {
         throw new Error(result.error || 'Token exchange failed');
@@ -184,10 +186,11 @@ function AppContent() {
       
       // Notify parent window
       if (window.opener) {
+        const targetOrigin = stateData?.openerOrigin || '*';
         window.opener.postMessage({ 
           type: 'oauth-error', 
           error: err.message 
-        }, window.location.origin);
+        }, targetOrigin);
       }
     }
   };
