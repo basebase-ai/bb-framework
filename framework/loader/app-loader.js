@@ -112,11 +112,11 @@ export class AppLoader {
   /**
    * Load and execute app
    */
-  async loadAndExecute(appId, frameworkExports) {
+  async loadAndExecute(appId, frameworkExports, importMeta) {
     const { appData, modules, versionHash } = await this.loadApp(appId);
     
     // Create module loader
-    const loader = new ModuleLoader(modules, frameworkExports);
+    const loader = new ModuleLoader(modules, frameworkExports, importMeta);
     
     // Load entry point (app.js)
     const entryPoint = appData.metadata?.entry || 'app.js';

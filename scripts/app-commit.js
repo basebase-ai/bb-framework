@@ -86,11 +86,8 @@ function transformCode(code, filePath) {
       ""
     );
 
-    // Remove any remaining import.meta references
-    cleanedCode = cleanedCode.replace(
-      /import\.meta\.[a-zA-Z0-9_.]+/g,
-      "undefined"
-    );
+    // NOTE: We no longer replace import.meta with undefined here
+    // Instead, it's handled at runtime by the ModuleLoader injecting __importMeta
 
     // Normalize framework import paths for production
     // Convert relative paths like "../../framework/" or "../../../framework/" to "framework/"
@@ -120,7 +117,8 @@ function transformCode(code, filePath) {
 
     // Final cleanup AFTER transformation (in case Sucrase left anything)
     let finalCode = result.code;
-    finalCode = finalCode.replace(/import\.meta\.[a-zA-Z0-9_.]+/g, "undefined");
+    // NOTE: We no longer replace import.meta with undefined here
+    // Instead, it's handled at runtime by the ModuleLoader injecting __importMeta
 
     return finalCode;
   } catch (error) {

@@ -98,7 +98,11 @@ export function useOAuth(provider) {
 
       // Build OAuth Manager URL
       // Use dedicated oauth-manager subdomain in production, or current origin in dev
+      console.log('DEBUG import.meta.env:', import.meta.env);
+      console.log('DEBUG VITE_OAUTH_MANAGER_URL:', import.meta.env.VITE_OAUTH_MANAGER_URL);
+      console.log('DEBUG window.location.origin:', window.location.origin);
       const oauthManagerOrigin = import.meta.env.VITE_OAUTH_MANAGER_URL || window.location.origin;
+      console.log('DEBUG oauthManagerOrigin:', oauthManagerOrigin);
       const oauthUrl = new URL(oauthManagerOrigin);
       oauthUrl.searchParams.set('app', 'oauth-manager');
       oauthUrl.searchParams.set('provider', provider);

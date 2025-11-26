@@ -18,7 +18,7 @@ import { useUserProfile } from "./hooks/useUserProfile.js";
 import { useUserProfiles } from "./hooks/useUserProfiles.js";
 import { useRouter } from "./hooks/useRouter.js";
 import { useFunction } from "./hooks/useFunction.js";
-import { useOAuth } from "./hooks/useOAuth.js";
+import { useOAuth, OAuthScopes } from "./hooks/useOAuth.js";
 import { AuthProvider, SignOutButton } from "./components/AuthProvider.jsx";
 import {
   app as firebaseAppInstance,
@@ -189,6 +189,7 @@ async function init() {
 
     // Create framework exports that will be available to app code
     const frameworkExports = {
+      
       // React and ecosystem
       react: React,
       "react-dom/client": ReactDOM,
@@ -242,9 +243,9 @@ async function init() {
       "framework/hooks/useFunction.js": { useFunction },
       "../framework/hooks/useFunction.js": { useFunction },
       "../../framework/hooks/useFunction.js": { useFunction },
-      "framework/hooks/useOAuth.js": { useOAuth },
-      "../framework/hooks/useOAuth.js": { useOAuth },
-      "../../framework/hooks/useOAuth.js": { useOAuth },
+      "framework/hooks/useOAuth.js": { useOAuth, OAuthScopes },
+      "../framework/hooks/useOAuth.js": { useOAuth, OAuthScopes },
+      "../../framework/hooks/useOAuth.js": { useOAuth, OAuthScopes },
 
       // Framework components (with path variants)
       "framework/components/AuthProvider.js": {
@@ -289,10 +290,26 @@ async function init() {
     // Restore the app container before loading the app
     document.body.innerHTML = '<div id="app"></div>';
 
+    // Prepare import.meta for environment variables
+    const importMeta = {
+      env: {
+        // Pass through all VITE_ prefixed env vars from build time
+        VITE_GMAIL_CLIENT_ID: import.meta.env.VITE_GMAIL_CLIENT_ID,
+        VITE_GMAIL_CLIENT_SECRET: import.meta.env.VITE_GMAIL_CLIENT_SECRET,
+        VITE_OAUTH_MANAGER_URL: import.meta.env.VITE_OAUTH_MANAGER_URL,
+        MODE: import.meta.env.MODE,
+        DEV: import.meta.env.DEV,
+        PROD: import.meta.env.PROD,
+      },
+    };
+    
+    console.log('DEBUG importMeta being passed to loader:', importMeta);
+
     // Load and execute app
     const { appModule, appData, versionHash } = await loader.loadAndExecute(
       appId,
-      frameworkExports
+      frameworkExports,
+      importMeta
     );
 
     console.log(`✅ App loaded successfully`);

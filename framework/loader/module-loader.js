@@ -4,9 +4,12 @@
  */
 
 export class ModuleLoader {
-  constructor(modules, frameworkExports) {
+  constructor(modules, frameworkExports, importMeta) {
     this.modules = {}; // Registry of all modules
     this.frameworkExports = frameworkExports || {}; // Framework exports available to app
+    this.importMeta = importMeta || { env: {} }; // Environment variables (import.meta)
+    
+    console.log('DEBUG ModuleLoader constructor - importMeta received:', this.importMeta);
 
     // Register all modules
     Object.entries(modules).forEach(([path, code]) => {
@@ -138,19 +141,36 @@ export class ModuleLoader {
 
       // Transform CommonJS-style code to be executable
       // The compiled code from sucrase will use require() and module.exports
+      // Replace import.meta with a variable since 'import' is a reserved keyword
+      if (resolvedPath === 'app.js') {
+        console.log('DEBUG BEFORE replacement (first 500 chars):', module.code.substring(0, 500));
+      }
+      const transformedCode = module.code.replace(/import\.meta/g, '__importMeta');
+      if (resolvedPath === 'app.js') {
+        console.log('DEBUG AFTER replacement (first 500 chars):', transformedCode.substring(0, 500));
+        // Check if the replacement worked
+        console.log('DEBUG has import.meta after replacement?', transformedCode.includes('import.meta'));
+      }
+      
       const wrappedCode = `
-        (function(module, exports, require) {
-          ${module.code}
+        (function(module, exports, require, __importMeta) {
+          console.log('DEBUG module executing:', '${resolvedPath}');
+          console.log('DEBUG __importMeta:', __importMeta);
+          console.log('DEBUG __importMeta.env:', __importMeta?.env);
+          console.log('DEBUG __importMeta.env.VITE_GMAIL_CLIENT_ID:', __importMeta?.env?.VITE_GMAIL_CLIENT_ID);
+          ${transformedCode}
           return module.exports;
         })
       `;
 
       // Execute the module
+      console.log('DEBUG executing module with importMeta:', this.importMeta);
       const moduleFunction = eval(wrappedCode);
       const result = moduleFunction(
         moduleContext,
         moduleContext.exports,
-        moduleContext.require
+        moduleContext.require,
+        this.importMeta
       );
 
       module.exports = result || moduleContext.exports;
