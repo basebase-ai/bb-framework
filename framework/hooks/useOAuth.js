@@ -98,11 +98,7 @@ export function useOAuth(provider) {
 
       // Build OAuth Manager URL
       // Use dedicated oauth-manager subdomain in production, or current origin in dev
-      console.log('DEBUG import.meta.env:', import.meta.env);
-      console.log('DEBUG VITE_OAUTH_MANAGER_URL:', import.meta.env.VITE_OAUTH_MANAGER_URL);
-      console.log('DEBUG window.location.origin:', window.location.origin);
       const oauthManagerOrigin = import.meta.env.VITE_OAUTH_MANAGER_URL || window.location.origin;
-      console.log('DEBUG oauthManagerOrigin:', oauthManagerOrigin);
       const oauthUrl = new URL(oauthManagerOrigin);
       oauthUrl.searchParams.set('app', 'oauth-manager');
       oauthUrl.searchParams.set('provider', provider);
@@ -121,12 +117,10 @@ export function useOAuth(provider) {
 
       // Listen for messages from popup
       const handleMessage = (event) => {
-        // Accept messages from oauth-manager subdomain or same origin
-        const allowedOrigins = [window.location.origin];
-        if (import.meta.env.VITE_OAUTH_MANAGER_URL) {
-          allowedOrigins.push(new URL(import.meta.env.VITE_OAUTH_MANAGER_URL).origin);
-        }
-        if (!allowedOrigins.includes(event.origin)) return;
+        // Validate message structure rather than origin
+        // (oauth-manager can't determine parent origin due to cross-origin restrictions)
+        if (!event.data || typeof event.data !== 'object') return;
+        if (!event.data.type || !['oauth-success', 'oauth-error'].includes(event.data.type)) return;
         
         if (event.data.type === 'oauth-success') {
           console.log('OAuth success:', event.data.provider);

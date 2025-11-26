@@ -120,7 +120,8 @@ function AppContent() {
       provider: providerName,
       userId: user.uid,
       redirectUri: window.location.origin,
-      openerOrigin: window.opener ? window.opener.location.origin : window.location.origin,
+      // Don't try to read opener.location.origin - causes cross-origin error
+      // We'll use wildcard '*' for postMessage since we can't determine it
       timestamp: Date.now(),
     }));
 
@@ -170,11 +171,11 @@ function AppContent() {
         
         // Notify parent window
         if (window.opener) {
-          const targetOrigin = stateData.openerOrigin || '*';
+          // Use wildcard since we can't access opener.location.origin cross-origin
           window.opener.postMessage({ 
             type: 'oauth-success', 
             provider: stateData.provider 
-          }, targetOrigin);
+          }, '*');
         }
       } else {
         throw new Error(result.error || 'Token exchange failed');
@@ -186,11 +187,11 @@ function AppContent() {
       
       // Notify parent window
       if (window.opener) {
-        const targetOrigin = stateData?.openerOrigin || '*';
+        // Use wildcard since we can't access opener.location.origin cross-origin
         window.opener.postMessage({ 
           type: 'oauth-error', 
           error: err.message 
-        }, targetOrigin);
+        }, '*');
       }
     }
   };

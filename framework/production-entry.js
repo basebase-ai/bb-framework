@@ -302,8 +302,6 @@ async function init() {
         PROD: import.meta.env.PROD,
       },
     };
-    
-    console.log('DEBUG importMeta being passed to loader:', importMeta);
 
     // Load and execute app
     const { appModule, appData, versionHash } = await loader.loadAndExecute(
