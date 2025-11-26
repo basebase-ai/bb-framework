@@ -18,89 +18,18 @@ import {
   query,
   limit as firestoreLimit,
 } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 import chalk from "chalk";
-import readline from "readline";
 import { firebaseConfig } from "../config/firebase.config.js";
+import { authenticateUser } from "./lib/auth-utils.js";
 
 // Initialize Firebase with public config
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Helper to prompt for input
-function prompt(question) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer);
-    });
-  });
-}
-
-// Helper to prompt for password (hidden input)
-function promptPassword(question) {
-  return new Promise((resolve) => {
-    const stdin = process.stdin;
-    let password = "";
-
-    process.stdout.write(question);
-
-    // Remove any existing listeners to prevent duplicates
-    stdin.removeAllListeners("data");
-
-    // Hide input
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding("utf8");
-
-    const onData = (char) => {
-      char = char.toString("utf8");
-
-      switch (char) {
-        case "\n":
-        case "\r":
-        case "\u0004": // Ctrl-D
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.removeListener("data", onData);
-          process.stdout.write("\n");
-          resolve(password);
-          break;
-        case "\u0003": // Ctrl-C
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.removeListener("data", onData);
-          process.exit();
-          break;
-        case "\u007f": // Backspace
-        case "\b":
-          if (password.length > 0) {
-            password = password.slice(0, -1);
-            process.stdout.clearLine(0);
-            process.stdout.cursorTo(0);
-            process.stdout.write(question + "*".repeat(password.length));
-          }
-          break;
-        default:
-          password += char;
-          process.stdout.write("*");
-          break;
-      }
-    };
-
-    stdin.on("data", onData);
-  });
-}
-
-// Sign in user
-async function signIn() {
-  // Check if running in an interactive terminal
+// Check if running in an interactive terminal
+function checkInteractive() {
   if (!process.stdin.isTTY) {
     console.error(
       chalk.red("\n❌ ERROR: This command requires an interactive terminal\n")
@@ -117,31 +46,15 @@ async function signIn() {
       chalk.cyan("Please run this command yourself in your terminal:")
     );
     console.log(
-      chalk.white(`  npm run doc:fetch "${process.argv[2] || "/path/to/doc"}"\n`)
+      chalk.white(
+        `  npm run doc:fetch "${process.argv[2] || "/path/to/doc"}"\n`
+      )
     );
     console.log(
       chalk.gray(
         "Then you'll be prompted for your Firebase email and password."
       )
     );
-    process.exit(1);
-  }
-
-  console.log(chalk.cyan("\n🔐 Authentication required\n"));
-
-  const email = await prompt("Email: ");
-  const password = await promptPassword("Password: ");
-
-  try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    console.log(chalk.green(`✅ Signed in as ${userCredential.user.email}\n`));
-    return userCredential.user;
-  } catch (error) {
-    console.error(chalk.red("❌ Authentication failed:"), error.message);
     process.exit(1);
   }
 }
@@ -177,7 +90,7 @@ async function fetchDocument(docPath) {
 
   try {
     // Sign in user
-    await signIn();
+    await authenticateUser(auth);
 
     // Parse and validate path
     const { segments, isDocument } = parsePath(docPath);
@@ -222,7 +135,7 @@ async function fetchCollection(collectionPath, limitCount) {
 
   try {
     // Sign in user
-    await signIn();
+    await authenticateUser(auth);
 
     // Parse and validate path
     const { segments, isCollection } = parsePath(collectionPath);
@@ -253,9 +166,7 @@ async function fetchCollection(collectionPath, limitCount) {
       });
     });
 
-    console.log(
-      chalk.green(`✅ Found ${documents.length} document(s)!\n`)
-    );
+    console.log(chalk.green(`✅ Found ${documents.length} document(s)!\n`));
     console.log(JSON.stringify(documents, null, 2));
   } catch (error) {
     console.error(chalk.red("\n❌ Fetch failed:"), error.message);
@@ -277,7 +188,10 @@ const limitCount =
 
 if (!docPath) {
   console.error(chalk.red("\n❌ Path required"));
-  console.log(chalk.white("\nUsage:"), chalk.cyan("npm run doc:fetch <path> [--limit N]"));
+  console.log(
+    chalk.white("\nUsage:"),
+    chalk.cyan("npm run doc:fetch <path> [--limit N]")
+  );
   console.log(chalk.white("\nExamples:"));
   console.log(
     chalk.cyan("  npm run doc:fetch /apps/starter-app"),
@@ -307,4 +221,3 @@ if (limitCount !== null) {
 } else {
   fetchDocument(docPath);
 }
-

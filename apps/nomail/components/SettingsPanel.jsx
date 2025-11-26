@@ -1,0 +1,264 @@
+/**
+ * Settings Panel - Configure Gmail OAuth and phone number
+ */
+
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Stack,
+  Paper,
+  Title,
+  Text,
+  Button,
+  TextInput,
+  Switch,
+  Alert,
+  Group,
+  Loader,
+  Badge,
+  Divider,
+} from "@mantine/core";
+import { IconBrandGmail, IconPhone, IconCheck, IconAlertCircle } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { useOAuth, OAuthScopes } from "../../../framework/hooks/useOAuth.js";
+import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { collections } from "../schema.js";
+
+export function SettingsPanel() {
+  const { user } = useAuth();
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [enabled, setEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Use centralized OAuth hook
+  const {
+    isConnected: isGmailConnected,
+    loading: oauthLoading,
+    initiateOAuth,
+    disconnect,
+    tokens,
+  } = useOAuth("google");
+
+  console.log('SettingsPanel render:', { oauthLoading, isGmailConnected, tokens });
+  console.log('ENV CHECK:', import.meta.env.VITE_GMAIL_CLIENT_ID);
+  // Memoize the query options to prevent infinite loop
+  const configQuery = useMemo(() => ({
+    where: [["userId", "==", "auth.uid"]],
+  }), []);
+
+  // Load user config (for phone number and settings only, NOT tokens)
+  const { data: configs, loading, add, update } = useCollection(
+    collections.userConfigs,
+    configQuery
+  );
+
+  const userConfig = configs?.[0] || null;
+
+  // Initialize form from existing config
+  useEffect(() => {
+    if (userConfig) {
+      setPhoneNumber(userConfig.phoneNumber || "");
+      setEnabled(userConfig.enabled !== false);
+    }
+  }, [userConfig]);
+
+  const handleGmailOAuth = async () => {
+    try {
+      initiateOAuth({
+        scopes: [
+          OAuthScopes.google.gmail.readonly,
+          OAuthScopes.google.gmail.modify,
+        ],
+        redirectUri: window.location.origin,
+      });
+    } catch (error) {
+      console.error("OAuth initiation failed:", error);
+      notifications.show({
+        title: "Connection Failed",
+        message: error.message || "Could not initiate Gmail connection",
+        color: "red",
+      });
+    }
+  };
+
+  const handleDisconnectGmail = async () => {
+    try {
+      await disconnect();
+      notifications.show({
+        title: "Disconnected",
+        message: "Gmail has been disconnected",
+        color: "gray",
+      });
+    } catch (error) {
+      console.error("Disconnect failed:", error);
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect Gmail",
+        color: "red",
+      });
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!user) return;
+
+    try {
+      setSaving(true);
+
+      const configData = {
+        userId: user.uid,
+        phoneNumber,
+        enabled,
+      };
+
+      if (userConfig) {
+        await update(userConfig.id, configData);
+      } else {
+        await add(configData);
+      }
+
+      notifications.show({
+        title: "Settings Saved",
+        message: "Your settings have been updated successfully",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      notifications.show({
+        title: "Error",
+        message: "Failed to save settings. Please try again.",
+        color: "red",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Don't show loading spinner - just render the UI
+  // if (oauthLoading) {
+  //   return (
+  //     <Stack align="center" p="xl">
+  //       <Loader size="lg" />
+  //       <Text c="dimmed">Loading settings...</Text>
+  //     </Stack>
+  //   );
+  // }
+
+  return (
+    <Stack gap="lg" style={{ maxWidth: 800 }}>
+      <Paper shadow="sm" p="xl" withBorder>
+        <Stack gap="md">
+          <Group justify="space-between">
+            <div>
+              <Title order={4}>Gmail Connection</Title>
+              <Text size="sm" c="dimmed" mt={4}>
+                Connect your Gmail account to monitor incoming messages
+              </Text>
+            </div>
+            {isGmailConnected && (
+              <Badge color="green" leftSection={<IconCheck size={12} />}>
+                Connected
+              </Badge>
+            )}
+          </Group>
+
+          {!isGmailConnected && (
+            <Alert icon={<IconAlertCircle size={16} />} color="blue">
+              You need to connect your Gmail account to use NoMail. Click the button below to
+              authorize access to your emails.
+            </Alert>
+          )}
+
+          <Group>
+            <Button
+              leftSection={<IconBrandGmail size={20} />}
+              onClick={handleGmailOAuth}
+              variant={isGmailConnected ? "light" : "filled"}
+            >
+              {isGmailConnected ? "Reconnect Gmail" : "Connect Gmail"}
+            </Button>
+            
+            {isGmailConnected && (
+              <Button
+                variant="subtle"
+                color="gray"
+                onClick={handleDisconnectGmail}
+              >
+                Disconnect
+              </Button>
+            )}
+          </Group>
+
+          {isGmailConnected && tokens && (
+            <Text size="sm" c="dimmed">
+              Connected:{" "}
+              {tokens.grantedAt
+                ? new Date(tokens.grantedAt.toDate ? tokens.grantedAt.toDate() : tokens.grantedAt).toLocaleString()
+                : "Recently"}
+            </Text>
+          )}
+          
+          {isGmailConnected && userConfig?.lastCheckTime && (
+            <Text size="sm" c="dimmed">
+              Last checked:{" "}
+              {new Date(userConfig.lastCheckTime.toDate()).toLocaleString()}
+            </Text>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper shadow="sm" p="xl" withBorder>
+        <Stack gap="md">
+          <div>
+            <Title order={4}>Phone Number</Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Optional: Receive SMS notifications for important emails
+            </Text>
+          </div>
+
+          <TextInput
+            leftSection={<IconPhone size={16} />}
+            placeholder="+1 (555) 123-4567"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+          />
+        </Stack>
+      </Paper>
+
+      <Paper shadow="sm" p="xl" withBorder>
+        <Stack gap="md">
+          <div>
+            <Title order={4}>Monitoring</Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Control whether NoMail actively monitors your inbox
+            </Text>
+          </div>
+
+          <Switch
+            label="Enable email monitoring"
+            description="Check my inbox every hour for new important messages"
+            checked={enabled}
+            onChange={(e) => setEnabled(e.currentTarget.checked)}
+          />
+
+          {isGmailConnected && (
+            <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
+              Monitoring runs automatically in the background. Important emails will be flagged
+              by AI and shown in your inbox.
+            </Alert>
+          )}
+        </Stack>
+      </Paper>
+
+      <Divider />
+
+      <Group justify="flex-end">
+        <Button onClick={handleSaveSettings} loading={saving} size="md">
+          Save Settings
+        </Button>
+      </Group>
+    </Stack>
+  );
+}
+

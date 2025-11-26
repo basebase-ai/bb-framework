@@ -9,13 +9,12 @@
  * 3. Updates APP_ID in apps/{appId}/schema.js
  */
 
-import { readFile, writeFile } from "fs/promises";
+import { readFile, writeFile, mkdir, cp, access, constants } from "fs/promises";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
-import * as readline from "readline";
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 import {
   getFirestore,
   doc,
@@ -24,6 +23,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { firebaseConfig } from "../config/firebase.config.js";
+import { prompt, promptPassword, authenticateUser } from "./lib/auth-utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,76 +32,6 @@ const rootDir = resolve(__dirname, "..");
 // Detect non-interactive terminal
 function isInteractive() {
   return process.stdin.isTTY && process.stdout.isTTY;
-}
-
-// Helper to prompt for user input
-function prompt(question) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
-
-// Helper to prompt for password (hidden input)
-function promptPassword(question) {
-  return new Promise((resolve) => {
-    const stdin = process.stdin;
-    let password = "";
-
-    process.stdout.write(question);
-
-    // Remove any existing listeners to prevent duplicates
-    stdin.removeAllListeners("data");
-
-    // Hide input
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding("utf8");
-
-    const onData = (char) => {
-      char = char.toString("utf8");
-
-      switch (char) {
-        case "\n":
-        case "\r":
-        case "\u0004": // Ctrl-D
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.removeListener("data", onData);
-          process.stdout.write("\n");
-          resolve(password);
-          break;
-        case "\u0003": // Ctrl-C
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.removeListener("data", onData);
-          process.exit();
-          break;
-        case "\u007f": // Backspace
-        case "\b":
-          if (password.length > 0) {
-            password = password.slice(0, -1);
-            process.stdout.clearLine(0);
-            process.stdout.cursorTo(0);
-            process.stdout.write(question + "*".repeat(password.length));
-          }
-          break;
-        default:
-          password += char;
-          process.stdout.write("*");
-          break;
-      }
-    };
-
-    stdin.on("data", onData);
-  });
 }
 
 // Validate app ID format
@@ -119,6 +49,28 @@ function validateAppId(appId) {
   }
 
   return null;
+}
+
+// Copy starter-app template to create new app directory
+async function copyStarterTemplate(appId) {
+  const starterPath = resolve(rootDir, "apps/starter-app");
+  const appPath = resolve(rootDir, `apps/${appId}`);
+
+  console.log(chalk.blue(`📁 Creating app directory structure...`));
+
+  // Check if app directory already exists
+  try {
+    await access(appPath, constants.F_OK);
+    console.log(chalk.yellow(`⚠️  Directory apps/${appId} already exists, skipping copy.\n`));
+    return;
+  } catch {
+    // Directory doesn't exist, proceed with copy
+  }
+
+  // Copy the entire starter-app directory
+  await cp(starterPath, appPath, { recursive: true });
+
+  console.log(chalk.green(`✓ Created app directory from starter template\n`));
 }
 
 // Update APP_ID in schema.js
@@ -201,32 +153,15 @@ async function main() {
   // Get description
   const description = await prompt(`Enter app description (optional): `);
 
-  console.log(chalk.cyan("\n🔐 Firebase Authentication Required\n"));
-  console.log(
-    chalk.gray("You need to sign in to create the app in Firestore.\n")
-  );
-
-  // Get email and password
-  const email = await prompt("Email: ");
-  const password = await promptPassword("Password: ");
-
-  console.log(chalk.blue("\n🔄 Authenticating..."));
-
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
   try {
-    // Sign in
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
+    // Sign in with centralized auth
+    const userCredential = await authenticateUser(auth);
     const user = userCredential.user;
-
-    console.log(chalk.green(`✓ Signed in as ${user.email}\n`));
 
     // Check if app already exists
     console.log(chalk.blue(`📡 Checking if app '${appId}' exists...`));
@@ -266,7 +201,8 @@ async function main() {
       console.log(chalk.green(`✓ Created app in Firestore\n`));
     }
 
-    // Update schema file
+    // Copy starter template and update schema file
+    await copyStarterTemplate(appId);
     await updateSchemaFile(appId);
 
     console.log(chalk.bold.green("✨ App initialization complete!\n"));

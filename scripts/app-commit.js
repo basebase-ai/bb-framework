@@ -11,17 +11,6 @@ import {
   getDoc,
   setDoc,
   serverTimestamp,
-} from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { readFile, readdir } from "fs/promises";
-import { join, relative } from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-import { transform } from "sucrase";
-import chalk from "chalk";
-import { createHash } from "crypto";
-import readline from "readline";
-import {
   collection,
   getDocs,
   deleteDoc,
@@ -29,7 +18,16 @@ import {
   orderBy as firestoreOrderBy,
   limit as firestoreLimit,
 } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { readFile, readdir } from "fs/promises";
+import { join, relative } from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+import { transform } from "sucrase";
+import chalk from "chalk";
+import { createHash } from "crypto";
 import { firebaseConfig } from "../config/firebase.config.js";
+import { authenticateUser } from "./lib/auth-utils.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -40,79 +38,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Helper to prompt for input
-function prompt(question) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer);
-    });
-  });
-}
-
-// Helper to prompt for password (hidden input)
-function promptPassword(question) {
-  return new Promise((resolve) => {
-    const stdin = process.stdin;
-    let password = "";
-
-    process.stdout.write(question);
-
-    // Remove any existing listeners to prevent duplicates
-    stdin.removeAllListeners("data");
-
-    // Hide input
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding("utf8");
-
-    const onData = (char) => {
-      char = char.toString("utf8");
-
-      switch (char) {
-        case "\n":
-        case "\r":
-        case "\u0004": // Ctrl-D
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.removeListener("data", onData);
-          process.stdout.write("\n");
-          resolve(password);
-          break;
-        case "\u0003": // Ctrl-C
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.removeListener("data", onData);
-          process.exit();
-          break;
-        case "\u007f": // Backspace
-        case "\b":
-          if (password.length > 0) {
-            password = password.slice(0, -1);
-            process.stdout.clearLine(0);
-            process.stdout.cursorTo(0);
-            process.stdout.write(question + "*".repeat(password.length));
-          }
-          break;
-        default:
-          password += char;
-          process.stdout.write("*");
-          break;
-      }
-    };
-
-    stdin.on("data", onData);
-  });
-}
-
-// Sign in user
-async function signIn() {
-  // Check if running in an interactive terminal
+// Check if running in an interactive terminal
+function checkInteractive() {
   if (!process.stdin.isTTY) {
     console.error(
       chalk.red("\n❌ ERROR: This command requires an interactive terminal\n")
@@ -138,24 +65,6 @@ async function signIn() {
         "Then you'll be prompted for your Firebase email and password."
       )
     );
-    process.exit(1);
-  }
-
-  console.log(chalk.cyan("\n🔐 Authentication required\n"));
-
-  const email = await prompt("Email: ");
-  const password = await promptPassword("Password: ");
-
-  try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    console.log(chalk.green(`✅ Signed in as ${userCredential.user.email}\n`));
-    return userCredential.user;
-  } catch (error) {
-    console.error(chalk.red("❌ Authentication failed:"), error.message);
     process.exit(1);
   }
 }
@@ -328,8 +237,10 @@ async function commit(appId, message = "Updated via app:commit") {
   console.log(chalk.cyan(`\n📤 Committing app: ${appId}\n`));
 
   try {
-    // Sign in user
-    const user = await signIn();
+    // Check if interactive, then sign in user
+    checkInteractive();
+    const userCredential = await authenticateUser(auth);
+    const user = userCredential.user;
 
     // Get app document to check permissions
     console.log(chalk.cyan("🔍 Checking permissions..."));
