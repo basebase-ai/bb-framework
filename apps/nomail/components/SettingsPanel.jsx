@@ -2,7 +2,7 @@
  * Settings Panel - Configure Gmail OAuth and phone number
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Stack,
   Paper,
@@ -21,7 +21,7 @@ import { IconBrandGmail, IconPhone, IconCheck, IconAlertCircle } from "@tabler/i
 import { notifications } from "@mantine/notifications";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useOAuth, OAuthScopes } from "../../../framework/hooks/useOAuth.js";
-import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { useDocument } from "../../../framework/hooks/useDocument.js";
 import { collections } from "../schema.js";
 
 export function SettingsPanel() {
@@ -29,6 +29,7 @@ export function SettingsPanel() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [enabled, setEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
+  const configCreatedRef = useRef(false);
 
   // Use centralized OAuth hook
   const {
@@ -39,20 +40,11 @@ export function SettingsPanel() {
     tokens,
   } = useOAuth("google");
 
-  console.log('SettingsPanel render:', { oauthLoading, isGmailConnected, tokens });
-  console.log('ENV CHECK:', import.meta.env.VITE_GMAIL_CLIENT_ID);
-  // Memoize the query options to prevent infinite loop
-  const configQuery = useMemo(() => ({
-    where: [["userId", "==", "auth.uid"]],
-  }), []);
-
-  // Load user config (for phone number and settings only, NOT tokens)
-  const { data: configs, loading, add, update } = useCollection(
+  // Use useDocument instead of useCollection since we know the doc ID (userId)
+  const { data: userConfig, loading, set, update } = useDocument(
     collections.userConfigs,
-    configQuery
+    user?.uid
   );
-
-  const userConfig = configs?.[0] || null;
 
   // Initialize form from existing config
   useEffect(() => {
@@ -80,6 +72,31 @@ export function SettingsPanel() {
       });
     }
   };
+
+  // Auto-create config when Gmail is connected
+  useEffect(() => {
+    if (isGmailConnected && user && !userConfig && !loading && !configCreatedRef.current) {
+      // Gmail just connected but no config exists - create one
+      configCreatedRef.current = true; // Mark as creating to prevent duplicates
+      const createDefaultConfig = async () => {
+        try {
+          console.log("Creating default config for user", user.uid);
+          await set({
+            userId: user.uid,
+            enabled: true,
+            phoneNumber: "",
+            lastCheckTime: new Date(0), // Start of epoch to check all messages
+            checkIntervalMinutes: 60,
+          });
+          console.log("✅ Created default config for user");
+        } catch (error) {
+          console.error("❌ Failed to create default config:", error);
+          configCreatedRef.current = false; // Reset on error so it can retry
+        }
+      };
+      createDefaultConfig();
+    }
+  }, [isGmailConnected, user, userConfig, loading, set]);
 
   const handleDisconnectGmail = async () => {
     try {
@@ -109,13 +126,12 @@ export function SettingsPanel() {
         userId: user.uid,
         phoneNumber,
         enabled,
+        checkIntervalMinutes: userConfig?.checkIntervalMinutes || 60,
+        lastCheckTime: userConfig?.lastCheckTime || new Date(0),
       };
 
-      if (userConfig) {
-        await update(userConfig.id, configData);
-      } else {
-        await add(configData);
-      }
+      // Always use set since userId is the doc ID
+      await set(configData);
 
       notifications.show({
         title: "Settings Saved",
@@ -202,7 +218,11 @@ export function SettingsPanel() {
           {isGmailConnected && userConfig?.lastCheckTime && (
             <Text size="sm" c="dimmed">
               Last checked:{" "}
-              {new Date(userConfig.lastCheckTime.toDate()).toLocaleString()}
+              {new Date(
+                userConfig.lastCheckTime.toDate 
+                  ? userConfig.lastCheckTime.toDate() 
+                  : userConfig.lastCheckTime
+              ).toLocaleString()}
             </Text>
           )}
         </Stack>

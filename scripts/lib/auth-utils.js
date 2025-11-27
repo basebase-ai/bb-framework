@@ -2,9 +2,14 @@
  * Shared authentication utilities for scripts
  */
 
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithCustomToken } from 'firebase/auth';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+import { homedir } from 'os';
 import readline from 'readline';
 import chalk from 'chalk';
+
+const AUTH_CACHE_FILE = join(homedir(), '.basebase-auth.json');
 
 /**
  * Prompt for input
@@ -86,6 +91,31 @@ export function promptPassword(question) {
 }
 
 /**
+ * Load cached auth credentials
+ */
+async function loadCachedAuth() {
+  try {
+    const data = await readFile(AUTH_CACHE_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save auth credentials to cache
+ */
+async function saveCachedAuth(email, refreshToken) {
+  try {
+    const data = JSON.stringify({ email, refreshToken, timestamp: Date.now() }, null, 2);
+    await writeFile(AUTH_CACHE_FILE, data, { mode: 0o600 }); // Read/write for owner only
+  } catch (error) {
+    // Silently fail if we can't cache
+    console.warn(chalk.yellow('⚠️  Could not cache auth credentials'));
+  }
+}
+
+/**
  * Authenticate with Firebase
  * @param {Object} auth - Firebase Auth instance
  * @param {Object} options - Optional configuration
@@ -95,15 +125,33 @@ export function promptPassword(question) {
 export async function authenticateUser(auth, options = {}) {
   const { silent = false } = options;
 
+  // Try to use cached credentials first
+  const cached = await loadCachedAuth();
+  if (cached && cached.email && cached.refreshToken) {
+    try {
+      // Firebase Admin SDK uses refresh tokens, but client SDK doesn't expose them directly
+      // For now, we'll just cache email and prompt for password
+      // A better solution would be to use a custom token system
+      if (!silent) {
+        console.log(chalk.cyan(`\n🔐 Found cached credentials for ${cached.email}\n`));
+      }
+    } catch {
+      // Cache invalid, continue to manual auth
+    }
+  }
+
   if (!silent) {
     console.log(chalk.cyan('\n🔐 Authentication required\n'));
   }
 
-  const email = await prompt('Email: ');
+  const email = cached?.email || await prompt('Email: ');
   const password = await promptPassword('Password: ');
 
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    
+    // Save credentials for next time
+    await saveCachedAuth(email, userCredential.user.refreshToken);
     
     if (!silent) {
       console.log(chalk.green(`✅ Signed in as ${email}\n`));

@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { doc, getDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../core/firebase-init.js";
 import { useAuth } from "./useAuth.js";
 
@@ -69,7 +69,7 @@ export function useDocument(collectionName, documentId, options = {}) {
     }
   }, [collectionName, documentId, realtime]);
 
-  // Update document
+  // Update document (requires document to exist)
   const update = useCallback(
     async (updates) => {
       if (!documentId) {
@@ -86,6 +86,32 @@ export function useDocument(collectionName, documentId, options = {}) {
         await updateDoc(doc(db, collectionName, documentId), updatesWithMeta);
       } catch (error) {
         console.error("Failed to update document:", error);
+        throw error;
+      }
+    },
+    [collectionName, documentId, user]
+  );
+
+  // Set document (creates or overwrites)
+  const set = useCallback(
+    async (data) => {
+      if (!documentId) {
+        throw new Error("Cannot set document without ID");
+      }
+
+      try {
+        const dataWithMeta = {
+          ...data,
+          createdAt: serverTimestamp(),
+          createdBy: user?.uid || null,
+          updatedAt: serverTimestamp(),
+          updatedBy: user?.uid || null,
+          owner: user?.uid || null,
+        };
+
+        await setDoc(doc(db, collectionName, documentId), dataWithMeta);
+      } catch (error) {
+        console.error("Failed to set document:", error);
         throw error;
       }
     },
@@ -112,6 +138,7 @@ export function useDocument(collectionName, documentId, options = {}) {
     error,
     exists,
     update,
+    set,
     remove,
   };
 }

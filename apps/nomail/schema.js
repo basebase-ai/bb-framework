@@ -27,7 +27,7 @@ export const collections = {
   users: "users",
 
   // Your app-specific collections (automatically namespaced)
-  userConfigs: `${APP_ID}_user_configs`,
+  userConfigs: `${APP_ID}_user-configs`,
   emails: `${APP_ID}_emails`,
 };
 

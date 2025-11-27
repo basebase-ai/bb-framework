@@ -66,6 +66,19 @@ export function EmailCard({
               {formattedDate}
             </Text>
             {!email.isRead && <Badge size="sm" color="blue">New</Badge>}
+            {email.urgencyScore && (
+              <Badge 
+                size="sm" 
+                color={
+                  email.urgencyScore >= 10 ? "red" : 
+                  email.urgencyScore >= 9 ? "orange" : 
+                  "yellow"
+                }
+                variant="filled"
+              >
+                {email.urgencyScore >= 10 ? "🔥 " : ""}{email.urgencyScore}
+              </Badge>
+            )}
             <ActionIcon
               variant="subtle"
               size="sm"
@@ -103,17 +116,17 @@ export function EmailCard({
               </Box>
             )}
 
-            {email.to && email.to.length > 0 && (
+            {email.to && (
               <div>
                 <Text size="xs" c="dimmed" fw={500}>To:</Text>
-                <Text size="sm">{email.to.join(", ")}</Text>
+                <Text size="sm">{Array.isArray(email.to) ? email.to.join(", ") : email.to}</Text>
               </div>
             )}
 
-            {email.cc && email.cc.length > 0 && (
+            {email.cc && (
               <div>
                 <Text size="xs" c="dimmed" fw={500}>CC:</Text>
-                <Text size="sm">{email.cc.join(", ")}</Text>
+                <Text size="sm">{Array.isArray(email.cc) ? email.cc.join(", ") : email.cc}</Text>
               </div>
             )}
 

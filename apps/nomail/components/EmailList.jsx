@@ -2,7 +2,7 @@
  * Email List - Display important emails that need responses
  */
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Stack,
   Paper,
@@ -27,7 +27,7 @@ import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useOAuth } from "../../../framework/hooks/useOAuth.js";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useFunction } from "../../../framework/hooks/useFunction.js";
-import { collections } from "../schema.js";
+import { collections, APP_ID } from "../schema.js";
 import { EmailCard } from "./EmailCard.jsx";
 
 export function EmailList() {
@@ -37,10 +37,17 @@ export function EmailList() {
   // Check if Gmail is connected using centralized OAuth
   const { isConnected: isGmailConnected } = useOAuth("google");
 
-  // Load user config for last check time
-  const { data: configs } = useCollection(collections.userConfigs, {
+  // Memoize query options to prevent infinite re-renders
+  const configQuery = useMemo(() => ({
     where: [["userId", "==", "auth.uid"]],
-  });
+  }), []);
+
+  const emailQuery = useMemo(() => ({
+    where: [["userId", "==", "auth.uid"]],
+  }), []);
+
+  // Load user config for last check time
+  const { data: configs } = useCollection(collections.userConfigs, configQuery);
 
   const userConfig = configs?.[0] || null;
 
@@ -50,18 +57,17 @@ export function EmailList() {
     loading,
     update,
     refresh,
-  } = useCollection(collections.emails, {
-    where: [
-      ["userId", "==", "auth.uid"],
-    ],
-  });
+  } = useCollection(collections.emails, emailQuery);
 
   // Manual check function
-  const { call: checkEmails, loading: checking } = useFunction("checkEmails");
+  const { call: scanGmail, loading: checking } = useFunction("scanGmail");
 
   const handleManualCheck = async () => {
     try {
-      await checkEmails({ userId: user?.uid });
+      await scanGmail(
+        { userId: user?.uid },
+        { appId: APP_ID }
+      );
       notifications.show({
         title: "Checking emails...",
         message: "Analyzing your inbox for important messages",
@@ -120,9 +126,20 @@ export function EmailList() {
 
   if (loading) {
     return (
-      <Stack align="center" p="xl">
+      <Stack align="center" p="xl" gap="lg">
         <Loader size="lg" />
         <Text c="dimmed">Loading your important emails...</Text>
+        <Button
+          leftSection={<IconRefresh size={16} />}
+          onClick={handleManualCheck}
+          loading={checking}
+          variant="light"
+        >
+          Check for New Messages
+        </Button>
+        <Text c="dimmed" size="xs">
+          First time? Click to scan your inbox
+        </Text>
       </Stack>
     );
   }

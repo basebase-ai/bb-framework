@@ -50,8 +50,14 @@ module.exports = async function (params, context) {
             content: message,
           },
         ],
-        max_tokens: options.maxTokens || 1000,
-        temperature: options.temperature || 0.7,
+        max_completion_tokens: options.maxTokens || 1000, // Changed from max_tokens for newer models
+        // Note: GPT-5 models don't support custom temperature (only default 1)
+        // Older models like gpt-4o still support it
+        ...(options.temperature !== undefined &&
+          options.temperature !== 1 &&
+          !model.startsWith("gpt-5") && {
+            temperature: options.temperature,
+          }),
       };
       break;
 
@@ -98,8 +104,21 @@ module.exports = async function (params, context) {
     // Parse response based on provider
     let parsedResponse;
     if (provider.toLowerCase() === "openai") {
+      const choice = response.data.choices[0];
+      const message = choice.message;
+
+      // Log for debugging GPT-5 response structure
+      context.log("OpenAI Response Structure:", {
+        model: response.data.model,
+        choiceFinishReason: choice.finish_reason,
+        messageKeys: message ? Object.keys(message) : [],
+        hasContent: !!message.content,
+        contentLength: message.content?.length || 0,
+        hasRefusal: !!message.refusal,
+      });
+
       parsedResponse = {
-        response: response.data.choices[0].message.content,
+        response: message.content || "",
         usage: response.data.usage,
       };
     } else if (provider.toLowerCase() === "anthropic") {
@@ -134,6 +153,15 @@ module.exports = async function (params, context) {
       const status = error.response.status;
       const errorData = error.response.data;
 
+      // Log the full error response for debugging
+      context.error("OpenAI Error Response:", {
+        status,
+        errorData: JSON.stringify(errorData),
+        errorMessage: errorData?.error?.message,
+        errorType: errorData?.error?.type,
+        errorCode: errorData?.error?.code,
+      });
+
       if (status === 401) {
         throw new Error(`Invalid API key for ${provider}`);
       } else if (status === 429) {
@@ -143,7 +171,9 @@ module.exports = async function (params, context) {
       } else if (status === 400) {
         throw new Error(
           `Bad request to ${provider}: ${
-            errorData.error?.message || "Invalid parameters"
+            errorData?.error?.message ||
+            JSON.stringify(errorData) ||
+            "Invalid parameters"
           }`
         );
       } else {

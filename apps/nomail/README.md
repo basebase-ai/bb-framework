@@ -67,13 +67,15 @@ VITE_GMAIL_CLIENT_ID=your_client_id_here
 
 ### 5. Backend Setup
 
-Deploy the `checkEmails` function:
+Deploy the required functions:
 
 ```bash
-npm run function:commit checkEmails
+npm run function:commit scanGmail
+npm run function:commit readGmail
+npm run function:commit sendGmail
 ```
 
-Set up a scheduled task to run `checkEmails` hourly (no userId parameter for batch processing).
+Set up a scheduled task to run `scanGmail` hourly (no userId parameter for batch processing).
 
 ## Usage
 
@@ -95,10 +97,17 @@ Set up a scheduled task to run `checkEmails` hourly (no userId parameter for bat
 
 #### Backend Functions
 
-- `checkEmails.js` - Main function to fetch and analyze emails
-  - Fetches new Gmail messages
+- `scanGmail.js` - Main function to fetch and analyze emails
+  - Calls `readGmail` to fetch new Gmail messages
   - Uses AI to determine importance
   - Stores important messages in Firestore
+- `readGmail.js` - Helper function to read Gmail messages
+  - Handles OAuth token refresh
+  - Fetches messages via Gmail API
+  - Parses message headers and bodies
+- `sendGmail.js` - Helper function to send emails via Gmail
+  - Handles OAuth token refresh
+  - Sends emails via Gmail API
 
 #### Schema
 
@@ -157,8 +166,13 @@ npm run dev
 ## Production Deployment
 
 1. Commit the app: `npm run app:commit nomail`
-2. Commit the function: `npm run function:commit checkEmails`
-3. Set up a cron job or scheduled task to call `checkEmails` every hour
+2. Commit the functions:
+   ```bash
+   npm run function:commit scanGmail
+   npm run function:commit readGmail
+   npm run function:commit sendGmail
+   ```
+3. Set up a cron job or scheduled task to call `scanGmail` every hour
 4. Configure Google OAuth credentials in production environment
 
 ## Support
