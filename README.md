@@ -265,12 +265,20 @@ npm run app:checkout news-base
 - Creates a new directory for the app with all its files
 - `APP_ID` is automatically set to `news-base`
 
-### Step 2: Develop and Deploy
+### Step 2: Run App Locally and Make Changes
 
 ```bash
 npm run dev                                     # Start dev server
 # Visit http://localhost:3000?app=news-base    # Test your changes
+```
+
+### Step 3: Deploy to Production (Publish)
+
+When you have properly tested all of your changes and they are working locally on `http://localhost:3000?app=news-base' then you might want to publish them so that anyone else in the world can see them.
+
+```bash
 npm run app:commit news-base "Added feature"   # Publish (requires auth)
+# Visit https://apps.basebase.ai?app=news-base    # View your published app!
 ```
 
 ### Key Points
