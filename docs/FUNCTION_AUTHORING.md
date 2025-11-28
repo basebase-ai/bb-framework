@@ -70,6 +70,18 @@ const result = await context.callFunction(functionId, params);
 // Access secrets (app-level or Basebase-provided)
 const apiKey = await context.getSecret('API_KEY');
 
+// Get user document from system collection
+const user = await context.getUser(userId);
+// Returns: { id: 'user123', email: '...', name: '...', ... } or null if not found
+
+// Get app document from system collection
+const app = await context.getApp(appId);
+// Returns: { id: 'app123', name: '...', secrets: {...}, ... } or null if not found
+
+// Get current app document (using context.appId)
+const currentApp = await context.getCurrentApp();
+// Returns: { id: 'app123', name: '...', secrets: {...}, ... } or throws if no appId
+
 // Namespaced Firestore access (for app data)
 const doc = await context.firebase.collection('users').doc('123').get();
 
@@ -397,7 +409,7 @@ try {
 
 Functions can operate on behalf of specific users:
 
-### Accessing User ID
+### Accessing User ID and User Document
 
 ```javascript
 module.exports = async function (params, context) {
@@ -409,12 +421,54 @@ module.exports = async function (params, context) {
   
   context.log('Processing for user', { userId });
   
+  // Get the full user document from the users collection
+  const user = await context.getUser(userId);
+  
+  if (!user) {
+    throw new Error(`User ${userId} not found`);
+  }
+  
+  context.log('User details', { 
+    email: user.email, 
+    name: user.name 
+  });
+  
   // Use userId in your logic
   await context.firebase.collection('user-data').doc(userId).set({
     lastAction: context.firebase.FieldValue.serverTimestamp()
   });
   
-  return { success: true, userId };
+  return { success: true, userId, userName: user.name };
+};
+```
+
+### Accessing App Configuration
+
+Access the current app's configuration and settings:
+
+```javascript
+module.exports = async function (params, context) {
+  // Get the current app document
+  const app = await context.getCurrentApp();
+  
+  if (!app) {
+    throw new Error('App not found');
+  }
+  
+  context.log('App configuration', {
+    appName: app.name,
+    hasSecrets: !!app.secrets
+  });
+  
+  // Access app-level secrets directly from the app document
+  const apiKey = app.secrets?.CUSTOM_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('CUSTOM_API_KEY not configured for this app');
+  }
+  
+  // Your logic here...
+  return { success: true, appName: app.name };
 };
 ```
 

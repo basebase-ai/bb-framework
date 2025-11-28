@@ -40,6 +40,7 @@ export function useFunction(functionName) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [taskId, setTaskId] = useState(null);
   const unsubscribeRef = useRef(null);
 
   /**
@@ -77,6 +78,9 @@ export function useFunction(functionName) {
 
         // Add to tasks collection
         const taskRef = await addDoc(collection(db, "tasks"), task);
+        
+        // Store task ID in state
+        setTaskId(taskRef.id);
 
         console.log(`⏳ Task created: ${taskRef.id}`);
 
@@ -183,5 +187,6 @@ export function useFunction(functionName) {
     loading,
     result,
     error,
+    taskId,
   };
 }
