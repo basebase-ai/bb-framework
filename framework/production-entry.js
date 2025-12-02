@@ -19,6 +19,7 @@ import { useUserProfiles } from "./hooks/useUserProfiles.js";
 import { useRouter } from "./hooks/useRouter.js";
 import { useFunction } from "./hooks/useFunction.js";
 import { useOAuth, OAuthScopes } from "./hooks/useOAuth.js";
+import { useStorage } from "./hooks/useStorage.js";
 import { AuthProvider, SignOutButton } from "./components/AuthProvider.jsx";
 import {
   app as firebaseAppInstance,
@@ -246,6 +247,9 @@ async function init() {
       "framework/hooks/useOAuth.js": { useOAuth, OAuthScopes },
       "../framework/hooks/useOAuth.js": { useOAuth, OAuthScopes },
       "../../framework/hooks/useOAuth.js": { useOAuth, OAuthScopes },
+      "framework/hooks/useStorage.js": { useStorage },
+      "../framework/hooks/useStorage.js": { useStorage },
+      "../../framework/hooks/useStorage.js": { useStorage },
 
       // Framework components (with path variants)
       "framework/components/AuthProvider.js": {
