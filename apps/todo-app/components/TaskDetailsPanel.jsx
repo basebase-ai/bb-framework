@@ -23,6 +23,7 @@ import { IconCheck, IconTrash, IconDots, IconFile, IconDownload, IconX } from "@
 import { DateInput } from "@mantine/dates";
 import { useStorage } from "../../../framework/hooks/useStorage.js";
 import { FileUploader } from "../../../framework/components/FileUploader.jsx";
+import { TaskComments } from "./TaskComments.jsx";
 import { APP_ID } from "../schema.js";
 
 const STATUS_OPTIONS = [
@@ -417,6 +418,11 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
             preview={false}
           />
         </div>
+
+        <Divider />
+
+        {/* Comments */}
+        <TaskComments task={task} onUpdateTask={onUpdate} />
 
         <Divider />
 

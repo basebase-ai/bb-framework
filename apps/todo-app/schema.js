@@ -30,6 +30,7 @@ export const collections = {
   // Your app-specific collections (automatically namespaced)
   projects: `${APP_ID}_projects`,
   todoItems: `${APP_ID}_todo-items`,
+  comments: `${APP_ID}_comments`,
 };
 
 /**
@@ -228,6 +229,30 @@ export const schema = {
       create: "auth != null && request.resource.data.owner == auth.uid",
       // Owner or project members can delete todo items
       delete: "auth != null",
+    },
+  },
+
+  [`${APP_ID}_comments`]: {
+    fields: {
+      taskId: { type: "string", required: true }, // Reference to task
+      projectId: { type: "string", required: true }, // For access control
+      text: { type: "string", required: true }, // Comment text
+      authorId: { type: "string", required: true }, // Firebase Auth UID
+      attachments: { type: "array", items: { type: "map" }, default: [] }, // Optional file attachments
+      createdAt: { type: "timestamp", auto: true },
+      updatedAt: { type: "timestamp", auto: true },
+    },
+
+    indexes: [
+      ["taskId", "createdAt"],
+      ["projectId", "createdAt"],
+    ],
+
+    rules: {
+      read: "auth != null",
+      write: "auth != null",
+      create: "auth != null && request.resource.data.authorId == auth.uid",
+      delete: "auth != null && auth.uid == resource.data.authorId",
     },
   },
 };

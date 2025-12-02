@@ -13,6 +13,7 @@ import { ProjectManager } from "./components/ProjectManager.jsx";
 import { ProjectTable } from "./components/ProjectTable.jsx";
 import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
+import { ImproveThisButton } from "./components/ImproveThisButton.jsx";
 
 // Mantine CSS imports
 import "@mantine/core/styles.css";
@@ -23,7 +24,7 @@ const SELECTED_PROJECT_KEY = "todo-app:selectedProjectId";
 function AppContent() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
-  const { sidebarOpen, toggleSidebar } = useAppStore();
+  const { sidebarOpen, toggleSidebar, setSidebarOpen } = useAppStore();
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
 
@@ -43,6 +44,15 @@ function AppContent() {
       localStorage.removeItem(SELECTED_PROJECT_KEY);
     }
   }, [selectedProjectId]);
+
+  const handleSelectProject = (projectId) => {
+    setSelectedProjectId(projectId);
+    
+    // Close sidebar on mobile when project is selected
+    if (window.innerWidth < 768) { // sm breakpoint
+      setSidebarOpen(false);
+    }
+  };
 
   return (
     <AppShell
@@ -75,7 +85,7 @@ function AppContent() {
 
       <AppShell.Navbar p="md">
         <ProjectManager
-          onSelectProject={setSelectedProjectId}
+          onSelectProject={handleSelectProject}
           selectedProjectId={selectedProjectId}
         />
       </AppShell.Navbar>
@@ -89,6 +99,9 @@ function AppContent() {
         opened={profileModalOpened} 
         onClose={() => setProfileModalOpened(false)} 
       />
+
+      {/* Improve This Button */}
+      <ImproveThisButton />
     </AppShell>
   );
 }
