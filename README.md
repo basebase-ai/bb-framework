@@ -4,7 +4,7 @@
 
 ## What Is This?
 
-Basebase is a web application development and deployment framework providing always-on database access, local state management, user authentication, third-party API access and more. When you build an app on Basebase, you can use any IDE and AI coding assistant, and you are guaranteed that your app is already connected to real data and APIs, and sharable to other users, from the very start.
+Basebase is a collaborative web application development and deployment framework providing always-on database access, local state management, user authentication, third-party API access and more. When you build an app on Basebase, you can use any IDE and AI coding assistant, and you are guaranteed that your app is already connected to real data and APIs, and sharable to other users, from the very start.
 
 **Key Features:**
 
