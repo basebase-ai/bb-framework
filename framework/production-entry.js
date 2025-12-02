@@ -21,6 +21,8 @@ import { useFunction } from "./hooks/useFunction.js";
 import { useOAuth, OAuthScopes } from "./hooks/useOAuth.js";
 import { useStorage } from "./hooks/useStorage.js";
 import { AuthProvider, SignOutButton } from "./components/AuthProvider.jsx";
+import { FileUploader } from "./components/FileUploader.jsx";
+import { EditImage } from "./components/EditImage.jsx";
 import {
   app as firebaseAppInstance,
   auth as firebaseAuthInstance,
@@ -190,7 +192,6 @@ async function init() {
 
     // Create framework exports that will be available to app code
     const frameworkExports = {
-      
       // React and ecosystem
       react: React,
       "react-dom/client": ReactDOM,
@@ -256,6 +257,18 @@ async function init() {
         AuthProvider,
         SignOutButton,
       },
+      "../framework/components/AuthProvider.js": {
+        AuthProvider,
+        SignOutButton,
+      },
+      "../../framework/components/AuthProvider.js": {
+        AuthProvider,
+        SignOutButton,
+      },
+      "framework/components/AuthProvider.jsx": {
+        AuthProvider,
+        SignOutButton,
+      },
       "../framework/components/AuthProvider.jsx": {
         AuthProvider,
         SignOutButton,
@@ -264,6 +277,18 @@ async function init() {
         AuthProvider,
         SignOutButton,
       },
+      "framework/components/FileUploader.js": { FileUploader },
+      "../framework/components/FileUploader.js": { FileUploader },
+      "../../framework/components/FileUploader.js": { FileUploader },
+      "framework/components/FileUploader.jsx": { FileUploader },
+      "../framework/components/FileUploader.jsx": { FileUploader },
+      "../../framework/components/FileUploader.jsx": { FileUploader },
+      "framework/components/EditImage.js": { EditImage },
+      "../framework/components/EditImage.js": { EditImage },
+      "../../framework/components/EditImage.js": { EditImage },
+      "framework/components/EditImage.jsx": { EditImage },
+      "../framework/components/EditImage.jsx": { EditImage },
+      "../../framework/components/EditImage.jsx": { EditImage },
 
       // Framework core
       "framework/core/firebase-init.js": {
