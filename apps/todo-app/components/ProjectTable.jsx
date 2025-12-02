@@ -207,48 +207,48 @@ function TodoRow({ item, onUpdate, onDelete, onDragStart, onDragOver, onDrop, is
       <Table.Td style={{ minWidth: 250 }}>
         <Group gap={4} wrap="nowrap" style={{ width: "100%" }}>
           <div style={{ flex: 1 }}>
-            {isEditingTitle ? (
-              <TextInput
+        {isEditingTitle ? (
+          <TextInput
                 ref={inputRef}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={handleTitleBlur}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleTitleBlur();
-                  if (e.key === "Escape") {
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={handleTitleBlur}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleTitleBlur();
+              if (e.key === "Escape") {
                     setTitle(item.title || "");
-                    setIsEditingTitle(false);
-                  }
-                }}
+                setIsEditingTitle(false);
+              }
+            }}
                 placeholder="New task"
-                autoFocus
+            autoFocus
                 size="sm"
-                styles={{
-                  input: {
-                    border: "none",
-                    padding: 0,
+            styles={{
+              input: {
+                border: "none",
+                padding: 0,
                     height: "21px",
                     minHeight: "21px",
                     fontSize: "14px",
                     lineHeight: "21px",
-                  },
-                }}
-              />
-            ) : (
-              <Text
-                size="sm"
-                style={{
-                  cursor: "text",
-                  textDecoration: item.completed ? "line-through" : "none",
+              },
+            }}
+          />
+        ) : (
+          <Text
+            size="sm"
+            style={{
+              cursor: "text",
+              textDecoration: item.completed ? "line-through" : "none",
                   color: item.completed ? "#888" : item.title ? "inherit" : "#aaa",
                   lineHeight: "21px",
                   minHeight: "21px",
-                }}
-                onClick={() => setIsEditingTitle(true)}
-              >
+            }}
+            onClick={() => setIsEditingTitle(true)}
+          >
                 {item.title || "New task"}
-              </Text>
-            )}
+          </Text>
+        )}
           </div>
           <ActionIcon
             variant="subtle"
@@ -291,7 +291,7 @@ function TodoRow({ item, onUpdate, onDelete, onDragStart, onDragOver, onDrop, is
               },
             })}
           />
-        </Table.Td>
+      </Table.Td>
       ))}
     </Table.Tr>
   );
@@ -556,21 +556,21 @@ export function ProjectTable({ projectId }) {
           </Text>
           <Box style={{ overflowX: "auto" }}>
             <Table striped highlightOnHover withTableBorder withColumnBorders>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th style={{ width: 30 }}></Table.Th>
-                <Table.Th style={{ width: 40 }}>Done</Table.Th>
-                <Table.Th style={{ minWidth: 250 }}>Task</Table.Th>
-                <Table.Th style={{ width: 120 }}>Status</Table.Th>
-                <Table.Th style={{ width: 120 }}>Priority</Table.Th>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th style={{ width: 30 }}></Table.Th>
+                  <Table.Th style={{ width: 40 }}>Done</Table.Th>
+                  <Table.Th style={{ minWidth: 250 }}>Task</Table.Th>
+                  <Table.Th style={{ width: 120 }}>Status</Table.Th>
+                  <Table.Th style={{ width: 120 }}>Priority</Table.Th>
                 {/* Custom Field Headers */}
                 {project?.customFields?.filter(f => f.showInTable !== false).map((field) => (
                   <Table.Th key={field.id} style={{ width: 150 }}>
                     {field.name}
                   </Table.Th>
                 ))}
-              </Table.Tr>
-            </Table.Thead>
+                </Table.Tr>
+              </Table.Thead>
               <Table.Tbody>
                 {completedTodoItems.map((item) => (
                   <TodoRow

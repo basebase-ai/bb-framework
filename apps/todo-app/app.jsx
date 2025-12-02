@@ -70,14 +70,14 @@ function AppContent() {
           <Title order={3}>Todo App</Title>
           {user && (
             <Group ml="auto" gap="md">
-              <Avatar 
-                src={profile?.photoURL} 
-                alt={profile?.displayName || user.email}
-                size="sm"
-                radius="xl"
+                <Avatar 
+                  src={profile?.photoURL} 
+                  alt={profile?.displayName || user.email}
+                  size="sm"
+                  radius="xl"
                 style={{ cursor: 'pointer' }}
                 onClick={() => setProfileModalOpened(true)}
-              />
+                />
             </Group>
           )}
         </Group>

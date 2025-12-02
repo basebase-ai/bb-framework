@@ -77,6 +77,15 @@ export function useUserProfiles(userIds = []) {
           console.error(`Error fetching user profile for ${userId}:`, err);
           setError(err);
           
+          // Set a placeholder even on error so the UI doesn't hang
+          profilesMap.set(userId, {
+            id: userId,
+            displayName: 'Unknown User',
+            photoURL: null,
+            email: null,
+          });
+          setProfiles(new Map(profilesMap));
+          
           loadedCount++;
           if (loadedCount >= validUserIds.length) {
             setLoading(false);

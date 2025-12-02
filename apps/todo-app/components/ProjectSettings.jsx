@@ -115,25 +115,25 @@ export function ProjectSettings({ projectId, opened, onClose }) {
     setAddingMember(true);
 
     try {
-      // Find user by email
-      const userToAdd = allUsers.find(
-        (u) => u.email.toLowerCase() === newMemberEmail.toLowerCase().trim()
-      );
+    // Find user by email
+    const userToAdd = allUsers.find(
+      (u) => u.email.toLowerCase() === newMemberEmail.toLowerCase().trim()
+    );
 
       if (userToAdd) {
         // User exists - add them to the project
-        if (project.memberIds?.includes(userToAdd.id)) {
-          alert("User is already a member of this project.");
-          setNewMemberEmail("");
+    if (project.memberIds?.includes(userToAdd.id)) {
+      alert("User is already a member of this project.");
+      setNewMemberEmail("");
           setAddingMember(false);
-          return;
-        }
+      return;
+    }
 
-        await updateProject({
-          memberIds: [...(project.memberIds || []), userToAdd.id],
-        });
+    await updateProject({
+      memberIds: [...(project.memberIds || []), userToAdd.id],
+    });
 
-        setNewMemberEmail("");
+    setNewMemberEmail("");
       } else {
         // User doesn't exist - create a placeholder user doc and send invitation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -305,8 +305,8 @@ export function ProjectSettings({ projectId, opened, onClose }) {
         />
       )}
 
-      <Modal opened={opened} onClose={onClose} title="Project Settings" size="md">
-        <Stack gap="lg">
+    <Modal opened={opened} onClose={onClose} title="Project Settings" size="md">
+      <Stack gap="lg">
           {/* Non-owner warning */}
           {!isOwner && (
             <Alert
@@ -476,7 +476,7 @@ export function ProjectSettings({ projectId, opened, onClose }) {
                 </Text>
                 <Text size="xs" c="dimmed">
                   • Or enter a new email to send an invitation
-                </Text>
+              </Text>
               </Stack>
             </div>
           </>
@@ -519,7 +519,7 @@ export function ProjectSettings({ projectId, opened, onClose }) {
           </Button>
         </Group>
       </Stack>
-      </Modal>
+    </Modal>
     </>
   );
 }

@@ -35,6 +35,9 @@ export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
+// Debug: Log Firebase config being used
+console.log('[firebase-init] Using project:', firebaseConfig.projectId);
+
 // Development mode setup - only use emulators if explicitly enabled
 if (import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === "true") {
   // Connect to emulators if available (but don't fail if not)

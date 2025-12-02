@@ -42,8 +42,13 @@ import {
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
+import { useUserProfiles } from "../../../framework/hooks/useUserProfiles.js";
+import { useStorage } from "../../../framework/hooks/useStorage.js";
 import { SignOutButton } from "../../../framework/components/AuthProvider.jsx";
 import { showNotification } from "@mantine/notifications";
+import { ProfileModal } from "./ProfileModal.jsx";
+import { EditImage } from "../../../framework/components/EditImage.jsx";
+import { APP_ID } from "../schema.js";
 
 const CATEGORIES = [
   "Productivity",
@@ -71,9 +76,32 @@ const DEMO_TAGS = [
   "Automation",
 ];
 
-function AppCard({ app, onView, onEdit, onImprove, onRequest }) {
+// Helper function to format relative time
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return "";
+  
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  const diffWeek = Math.floor(diffDay / 7);
+  const diffMonth = Math.floor(diffDay / 30);
+  const diffYear = Math.floor(diffDay / 365);
+  
+  if (diffSec < 60) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  if (diffDay < 7) return `${diffDay}d ago`;
+  if (diffWeek < 4) return `${diffWeek}w ago`;
+  if (diffMonth < 12) return `${diffMonth}mo ago`;
+  return `${diffYear}y ago`;
+}
+
+function AppCard({ app, ownerProfile, onView, onEdit, onImprove, onRequest }) {
   const { user } = useAuth();
-  const { profile: ownerProfile } = useUserProfile(app.owner);
   const isOwner = user && app.owner === user.uid;
   const isCollaborator = user && app.collaborators && app.collaborators.includes(user.uid);
   const canImprove = app.publicEdit === true || isCollaborator;
@@ -107,10 +135,10 @@ function AppCard({ app, onView, onEdit, onImprove, onRequest }) {
           background: "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(79, 70, 229, 0.1) 100%)",
         }}
       >
-        <Group position="apart" align="flex-start" noWrap>
+        <Group position="apart" align="flex-start" wrap="nowrap">
           <Group spacing="sm" style={{ flex: 1, minWidth: 0 }}>
             <Avatar
-              src={app.logo}
+              src={app.logoURL}
               alt={app.name}
               radius="md"
               size="lg"
@@ -183,18 +211,25 @@ function AppCard({ app, onView, onEdit, onImprove, onRequest }) {
           radius="xl"
           color="violet"
         >
-          {(ownerProfile?.displayName || "?").charAt(0).toUpperCase()}
+          {(ownerProfile?.displayName || "Unknown User").charAt(0).toUpperCase()}
         </Avatar>
-        <Text size="xs" color="dimmed" style={{ flex: 1 }}>
-          {ownerProfile?.displayName || "Loading..."}
-        </Text>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Text size="xs" color="dimmed">
+            {ownerProfile?.displayName || "Unknown User"}
+          </Text>
+          {app.updatedAt && (
+            <Text size="xs" color="dimmed" style={{ opacity: 0.7 }}>
+              {formatRelativeTime(app.updatedAt)}
+            </Text>
+          )}
+        </div>
       </Group>
 
       <Group spacing="xs" mt="md" grow>
         <Button
           variant="filled"
           color="violet"
-          leftIcon={<IconEye size={16} />}
+          leftSection={<IconEye size={16} />}
           onClick={() => onView(app)}
           size="sm"
         >
@@ -204,7 +239,7 @@ function AppCard({ app, onView, onEdit, onImprove, onRequest }) {
           <Button
             variant="light"
             color="violet"
-            leftIcon={<IconEdit size={16} />}
+            leftSection={<IconEdit size={16} />}
             onClick={() => onEdit(app)}
             size="sm"
           >
@@ -214,7 +249,7 @@ function AppCard({ app, onView, onEdit, onImprove, onRequest }) {
           <Button
             variant="light"
             color="violet"
-            leftIcon={<IconCode size={16} />}
+            leftSection={<IconCode size={16} />}
             onClick={() => onImprove(app)}
             size="sm"
           >
@@ -224,7 +259,7 @@ function AppCard({ app, onView, onEdit, onImprove, onRequest }) {
           <Button
             variant="light"
             color="violet"
-            leftIcon={<IconUsers size={16} />}
+            leftSection={<IconUsers size={16} />}
             onClick={() => onRequest(app)}
             size="sm"
           >
@@ -340,7 +375,7 @@ function ViewAppModal({ app, opened, onClose }) {
       title={
         <Group spacing="sm">
           <Avatar
-            src={app.logo}
+            src={app.logoURL}
             alt={app.name}
             radius="md"
             size="md"
@@ -426,9 +461,12 @@ function ViewAppModal({ app, opened, onClose }) {
 }
 
 function EditAppModal({ app, opened, onClose, onUpdate }) {
+  const { upload, uploading, progress } = useStorage(APP_ID);
+  
   const [formData, setFormData] = useState({
     name: app?.name || "",
     description: app?.description || "",
+    logoURL: app?.logoURL || "",
     accessMode: app?.accessMode || "open",
     publicUse: app?.publicUse ?? true,
     publicEdit: app?.publicEdit ?? false,
@@ -440,6 +478,7 @@ function EditAppModal({ app, opened, onClose, onUpdate }) {
       setFormData({
         name: app.name || "",
         description: app.description || "",
+        logoURL: app.logoURL || "",
         accessMode: app.accessMode || "open",
         publicUse: app.publicUse ?? true,
         publicEdit: app.publicEdit ?? false,
@@ -447,6 +486,32 @@ function EditAppModal({ app, opened, onClose, onUpdate }) {
       });
     }
   }, [app]);
+
+  const handleLogoUpload = async (file) => {
+    try {
+      // Upload to storage with app ID in path
+      const path = `app-logos/${app.id}/${Date.now()}_${file.name}`;
+      const result = await upload(file, path);
+      
+      // Update form data
+      setFormData({ ...formData, logoURL: result.url });
+      
+      // Auto-save to app
+      onUpdate(app.id, { logoURL: result.url });
+    } catch (err) {
+      console.error('Error uploading logo:', err);
+      showNotification({
+        title: "Error",
+        message: "Failed to upload logo. Please try again.",
+        color: "red",
+      });
+    }
+  };
+
+  const handleLogoClear = async () => {
+    setFormData({ ...formData, logoURL: "" });
+    onUpdate(app.id, { logoURL: null });
+  };
 
   const handleSubmit = () => {
     if (!formData.name.trim()) {
@@ -477,6 +542,17 @@ function EditAppModal({ app, opened, onClose, onUpdate }) {
       size="lg"
     >
       <Stack spacing="md">
+        {/* App Logo */}
+        <EditImage
+          value={formData.logoURL}
+          onChange={handleLogoClear}
+          onUpload={handleLogoUpload}
+          uploading={uploading}
+          progress={progress}
+          size={80}
+          maxSize={2 * 1024 * 1024}
+        />
+
         <TextInput
           label="App Name"
           placeholder="My Awesome App"
@@ -740,169 +816,11 @@ function RequestAccessModal({ app, opened, onClose }) {
   );
 }
 
-function ProfileModal({ opened, onClose }) {
-  const { user } = useAuth();
-  const { profile, loading, update } = useUserProfile(user?.uid);
-  
-  const [displayName, setDisplayName] = useState("");
-  const [photoURL, setPhotoURL] = useState("");
-  const [bio, setBio] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-
-  // Initialize form with current profile data
-  React.useEffect(() => {
-    if (profile) {
-      setDisplayName(profile.displayName || "");
-      setPhotoURL(profile.photoURL || "");
-      setBio(profile.bio || "");
-    }
-  }, [profile]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    setError(null);
-    setSuccess(false);
-
-    try {
-      await update({
-        displayName: displayName.trim() || user?.email?.split('@')[0] || 'User',
-        photoURL: photoURL.trim() || null,
-        bio: bio.trim() || null,
-      });
-      
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        onClose();
-      }, 1500);
-    } catch (err) {
-      console.error('Error updating profile:', err);
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    // Reset form to current profile data
-    if (profile) {
-      setDisplayName(profile.displayName || "");
-      setPhotoURL(profile.photoURL || "");
-      setBio(profile.bio || "");
-    }
-    setError(null);
-    setSuccess(false);
-    onClose();
-  };
-
-  if (loading && !profile) {
-    return (
-      <Modal opened={opened} onClose={onClose} title="Edit Profile" size="md">
-        <Text c="dimmed">Loading...</Text>
-      </Modal>
-    );
-  }
-
-  return (
-    <Modal 
-      opened={opened} 
-      onClose={handleCancel} 
-      title="Edit Profile" 
-      size="md"
-      zIndex={10000}
-    >
-      <Stack gap="lg">
-        {/* Avatar Preview */}
-        <Group justify="center">
-          <Avatar 
-            src={photoURL || profile?.photoURL} 
-            alt={displayName || profile?.displayName}
-            size={100}
-            radius="xl"
-          />
-        </Group>
-
-        {/* Display Name */}
-        <TextInput
-          label="Display Name"
-          placeholder="Your name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          leftSection={<IconUser size={16} />}
-          required
-        />
-
-        {/* Photo URL */}
-        <TextInput
-          label="Photo URL"
-          placeholder="https://example.com/photo.jpg"
-          value={photoURL}
-          onChange={(e) => setPhotoURL(e.target.value)}
-          leftSection={<IconPhoto size={16} />}
-          description="Enter a direct link to your profile picture"
-        />
-
-        {/* Bio */}
-        <Textarea
-          label="Bio"
-          placeholder="Tell us about yourself..."
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          leftSection={<IconAlignLeft size={16} />}
-          minRows={3}
-          maxRows={6}
-          description="Optional short bio or description"
-        />
-
-        {/* Email (read-only) */}
-        <TextInput
-          label="Email"
-          value={user?.email || ""}
-          disabled
-          description="Email cannot be changed here"
-        />
-
-        {/* Success Message */}
-        {success && (
-          <Alert color="green" title="Success">
-            Profile updated successfully!
-          </Alert>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <Alert color="red" title="Error">
-            {error}
-          </Alert>
-        )}
-
-        <Divider />
-
-        {/* Actions */}
-        <Group justify="space-between">
-          <SignOutButton variant="subtle" color="red" />
-          <Group>
-            <Button variant="default" onClick={handleCancel} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} loading={saving}>
-              Save Changes
-            </Button>
-          </Group>
-        </Group>
-      </Stack>
-    </Modal>
-  );
-}
+// ProfileModal is now imported from ./ProfileModal.jsx - see import at top of file
 
 export default function AppPlayground() {
-  console.log("🎮 AppPlayground component rendering...");
-  
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
-  console.log("👤 User:", user?.email || "not loaded");
   
   const { data: allApps = [], loading, add: addItem, update: updateItem, error } = useCollection("apps");
   
@@ -911,8 +829,12 @@ export default function AppPlayground() {
     return allApps.filter(app => app.publicUse === true);
   }, [allApps]);
   
-  console.log("📦 Apps:", apps?.length || 0, "loading:", loading, "error:", error);
-  console.log("📦 First app data:", apps[0]);
+  // Get all unique owner IDs and fetch their profiles
+  const ownerIds = useMemo(() => {
+    return [...new Set(apps.map(app => app.owner).filter(Boolean))];
+  }, [apps]);
+  
+  const { profiles: ownerProfiles } = useUserProfiles(ownerIds);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [createModalOpened, setCreateModalOpened] = useState(false);
@@ -990,7 +912,14 @@ export default function AppPlayground() {
     >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <IconSparkles size={32} color="var(--mantine-color-violet-6)" />
+          <Group gap="xs">
+            <Avatar
+              src="/favicon.svg"
+              alt="Basebase"
+              size="md"
+              radius="sm"
+            />
+          </Group>
           {user && (
             <Group 
               gap="xs"
@@ -1013,7 +942,13 @@ export default function AppPlayground() {
       </AppShell.Header>
 
       <AppShell.Main>
-        <Container size="xl" py="xl">
+        <Box
+          maw={1200}
+          mx="auto"
+          w="100%"
+          p={{ base: 0, sm: 'md' }}
+          py={{ base: 0, sm: 'xl' }}
+        >
           <LoadingOverlay visible={loading} />
         
         {/* Header */}
@@ -1059,7 +994,7 @@ export default function AppPlayground() {
               size="lg"
               variant="gradient"
               gradient={{ from: "violet", to: "grape", deg: 135 }}
-              leftIcon={<IconPlus size={20} />}
+              leftSection={<IconPlus size={20} />}
               onClick={() => setCreateModalOpened(true)}
               style={{ boxShadow: "0 8px 24px rgba(147, 51, 234, 0.3)" }}
             >
@@ -1165,7 +1100,7 @@ export default function AppPlayground() {
                 <Button
                   variant="gradient"
                   gradient={{ from: "violet", to: "grape", deg: 135 }}
-                  leftIcon={<IconPlus size={20} />}
+                  leftSection={<IconPlus size={20} />}
                   onClick={() => setCreateModalOpened(true)}
                   size="lg"
                   mt="md"
@@ -1180,7 +1115,8 @@ export default function AppPlayground() {
             {filteredApps.map((app) => (
               <Grid.Col key={app.id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
                 <AppCard 
-                  app={app} 
+                  app={app}
+                  ownerProfile={ownerProfiles.get(app.owner)}
                   onView={handleViewApp} 
                   onEdit={handleEditApp}
                   onImprove={handleImproveApp}
@@ -1190,7 +1126,7 @@ export default function AppPlayground() {
             ))}
           </Grid>
         )}
-        </Container>
+        </Box>
       </AppShell.Main>
 
       {/* Modals */}

@@ -140,9 +140,9 @@ export function ProfileModal({ opened, onClose }) {
           onUpload={handlePhotoUpload}
           uploading={uploading}
           progress={progress}
-          size={100}
+            size={100}
           maxSize={5 * 1024 * 1024}
-        />
+          />
 
         {/* Display Name */}
         <TextInput
