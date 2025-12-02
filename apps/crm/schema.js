@@ -27,6 +27,8 @@ export const collections = {
   users: "users",
 
   // CRM-specific collections (automatically namespaced)
+  organizations: `${APP_ID}_organizations`,
+  members: `${APP_ID}_members`,  // Document ID format: {orgId}_{email}
   leads: `${APP_ID}_leads`,
   contacts: `${APP_ID}_contacts`,
   accounts: `${APP_ID}_accounts`,
@@ -104,6 +106,49 @@ export const schema = {
     },
   },
 
+  // CRM Organizations
+  organizations: {
+    fields: {
+      name: { type: "string", required: true },
+      createdAt: { type: "timestamp", auto: true },
+      createdBy: { type: "string", required: true }, // userId of creator/owner
+    },
+    indexes: [
+      ["createdBy", "createdAt"],
+    ],
+    rules: {
+      read: "auth != null",
+      write: "auth != null",
+      create: "auth != null",
+      delete: "auth != null",
+    },
+  },
+
+  // CRM Members - Document ID format: {orgId}_{email}
+  members: {
+    fields: {
+      orgId: { type: "string", required: true },
+      email: { type: "string", required: true },
+      userId: { type: "string" },  // null until user signs in
+      role: { type: "enum", values: ["owner", "member"], default: "member" },
+      status: { type: "enum", values: ["invited", "active"], default: "invited" },
+      invitedAt: { type: "timestamp", auto: true },
+      invitedBy: { type: "string", required: true },
+      joinedAt: { type: "timestamp" },  // set when status becomes active
+    },
+    indexes: [
+      ["orgId"],
+      ["userId"],
+      ["email"],
+    ],
+    rules: {
+      read: "auth != null",
+      write: "auth != null",
+      create: "auth != null",
+      delete: "auth != null",
+    },
+  },
+
   "apps/{appId}/versions": {
     subcollection: true,
     fields: {
@@ -128,6 +173,7 @@ export const schema = {
   // CRM Collections
   leads: {
     fields: {
+      orgId: { type: "string", required: true }, // Organization scope
       firstName: { type: "string", required: true },
       lastName: { type: "string", required: true },
       email: { type: "string" },
@@ -148,6 +194,8 @@ export const schema = {
       updatedAt: { type: "timestamp", auto: true },
     },
     indexes: [
+      ["orgId", "createdAt"],
+      ["orgId", "status"],
       ["owner", "createdAt"],
       ["status", "updatedAt"],
       ["assignedTo", "status"],
@@ -162,6 +210,7 @@ export const schema = {
 
   contacts: {
     fields: {
+      orgId: { type: "string", required: true }, // Organization scope
       firstName: { type: "string", required: true },
       lastName: { type: "string", required: true },
       email: { type: "string" },
@@ -176,6 +225,7 @@ export const schema = {
       updatedAt: { type: "timestamp", auto: true },
     },
     indexes: [
+      ["orgId", "createdAt"],
       ["owner", "createdAt"],
       ["accountId", "updatedAt"],
       ["assignedTo", "createdAt"],
@@ -190,6 +240,7 @@ export const schema = {
 
   accounts: {
     fields: {
+      orgId: { type: "string", required: true }, // Organization scope
       name: { type: "string", required: true },
       website: { type: "string" },
       industry: { type: "string" },
@@ -206,6 +257,7 @@ export const schema = {
       updatedAt: { type: "timestamp", auto: true },
     },
     indexes: [
+      ["orgId", "createdAt"],
       ["owner", "createdAt"],
       ["assignedTo", "updatedAt"],
     ],
@@ -219,6 +271,7 @@ export const schema = {
 
   opportunities: {
     fields: {
+      orgId: { type: "string", required: true }, // Organization scope
       name: { type: "string", required: true },
       accountId: { type: "string" },
       contactId: { type: "string" },
@@ -237,6 +290,8 @@ export const schema = {
       updatedAt: { type: "timestamp", auto: true },
     },
     indexes: [
+      ["orgId", "createdAt"],
+      ["orgId", "stage"],
       ["owner", "createdAt"],
       ["stage", "closeDate"],
       ["assignedTo", "stage"],
@@ -251,6 +306,7 @@ export const schema = {
 
   activities: {
     fields: {
+      orgId: { type: "string", required: true }, // Organization scope
       type: {
         type: "enum",
         values: ["call", "email", "meeting", "task", "note"],
@@ -273,6 +329,7 @@ export const schema = {
       updatedAt: { type: "timestamp", auto: true },
     },
     indexes: [
+      ["orgId", "createdAt"],
       ["owner", "dueDate"],
       ["assignedTo", "status"],
       ["relatedTo", "createdAt"],
@@ -287,6 +344,7 @@ export const schema = {
 
   notes: {
     fields: {
+      orgId: { type: "string", required: true }, // Organization scope
       content: { type: "string", required: true },
       relatedTo: { type: "string" }, // ID of related record
       relatedType: { type: "string" }, // "lead", "contact", "account", "opportunity"
@@ -295,6 +353,7 @@ export const schema = {
       updatedAt: { type: "timestamp", auto: true },
     },
     indexes: [
+      ["orgId", "createdAt"],
       ["owner", "createdAt"],
       ["relatedTo", "createdAt"],
     ],

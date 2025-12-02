@@ -9,19 +9,27 @@ import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 
-export function Dashboard() {
+/**
+ * @typedef {Object} DashboardProps
+ * @property {string | null} orgId - Organization ID to scope data
+ */
+
+/**
+ * @param {DashboardProps} props
+ */
+export function Dashboard({ orgId }) {
   const { user } = useAuth();
 
   const { data: leads } = useCollection(collections.leads, {
-    where: [["owner", "==", user?.uid || ""]],
+    where: [["orgId", "==", orgId || ""]],
   });
 
   const { data: contacts } = useCollection(collections.contacts, {
-    where: [["owner", "==", user?.uid || ""]],
+    where: [["orgId", "==", orgId || ""]],
   });
 
   const { data: opportunities } = useCollection(collections.opportunities, {
-    where: [["owner", "==", user?.uid || ""]],
+    where: [["orgId", "==", orgId || ""]],
   });
 
   // Calculate metrics

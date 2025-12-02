@@ -24,16 +24,23 @@ import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 
-export function Contacts() {
+/**
+ * @typedef {Object} ContactsProps
+ * @property {string | null} orgId - Organization ID to scope data
+ */
+
+/**
+ * @param {ContactsProps} props
+ */
+export function Contacts({ orgId }) {
   const { user, loading: authLoading } = useAuth();
   const [modalOpened, setModalOpened] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
 
-  // Query without orderBy to avoid needing composite index
-  // We'll sort client-side instead
+  // Query by organization ID
   const { data: contactsRaw, loading, add, update, remove } = useCollection(collections.contacts, {
-    where: [["owner", "==", user?.uid || ""]],
-    realtime: !!user?.uid,
+    where: [["orgId", "==", orgId || ""]],
+    realtime: !!orgId,
   });
 
   // Sort client-side by createdAt descending
@@ -103,6 +110,7 @@ export function Contacts() {
       } else {
         await add({
           ...formData,
+          orgId,
           owner: user.uid,
         });
         notifications.show({

@@ -181,10 +181,18 @@ async function fetchCollection(collectionPath, limitCount) {
 const args = process.argv.slice(2);
 const docPath = args[0];
 const limitIndex = args.indexOf("--limit");
-const limitCount =
-  limitIndex !== -1 && args[limitIndex + 1]
-    ? parseInt(args[limitIndex + 1], 10)
-    : null;
+
+// Support both "--limit N" and just "N" as second arg (for npm run compatibility)
+let limitCount = null;
+if (limitIndex !== -1 && args[limitIndex + 1]) {
+  limitCount = parseInt(args[limitIndex + 1], 10);
+} else if (args[1] && !args[1].startsWith("-")) {
+  // Second arg is a number (npm run strips --limit)
+  const parsed = parseInt(args[1], 10);
+  if (!isNaN(parsed)) {
+    limitCount = parsed;
+  }
+}
 
 if (!docPath) {
   console.error(chalk.red("\n❌ Path required"));

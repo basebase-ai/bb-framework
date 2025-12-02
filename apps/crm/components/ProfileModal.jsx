@@ -10,19 +10,22 @@ import {
   Textarea,
   Button,
   Group,
-  Avatar,
   Text,
   Alert,
   Divider,
 } from "@mantine/core";
-import { IconUser, IconPhoto, IconAlignLeft } from "@tabler/icons-react";
+import { IconUser, IconAlignLeft, IconLogout } from "@tabler/icons-react";
 import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { useStorage } from "../../../framework/hooks/useStorage.js";
 import { SignOutButton } from "../../../framework/components/AuthProvider.jsx";
+import { EditImage } from "../../../framework/components/EditImage.jsx";
+import { APP_ID } from "../schema.js";
 
 export function ProfileModal({ opened, onClose }) {
   const { user } = useAuth();
   const { profile, loading, update } = useUserProfile(user?.uid);
+  const { upload, uploading, progress } = useStorage(APP_ID);
   
   const [displayName, setDisplayName] = useState("");
   const [photoURL, setPhotoURL] = useState("");
@@ -39,6 +42,40 @@ export function ProfileModal({ opened, onClose }) {
       setBio(profile.bio || "");
     }
   }, [profile]);
+
+  const handlePhotoUpload = async (file) => {
+    try {
+      // Upload to storage with user ID in path
+      const path = `profile-photos/${user.uid}/${Date.now()}_${file.name}`;
+      const result = await upload(file, path);
+      
+      // Set the download URL
+      setPhotoURL(result.url);
+      
+      // Auto-save to profile
+      await update({
+        photoURL: result.url,
+      });
+    } catch (err) {
+      console.error('Error uploading photo:', err);
+      setError('Failed to upload photo. Please try again.');
+    }
+  };
+
+  const handlePhotoClear = async () => {
+    try {
+      // Clear the local state
+      setPhotoURL("");
+      
+      // Auto-save to profile
+      await update({
+        photoURL: null,
+      });
+    } catch (err) {
+      console.error('Error clearing photo:', err);
+      setError('Failed to clear photo. Please try again.');
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -94,15 +131,16 @@ export function ProfileModal({ opened, onClose }) {
       zIndex={10000}
     >
       <Stack gap="lg">
-        {/* Avatar Preview */}
-        <Group justify="center">
-          <Avatar 
-            src={photoURL || profile?.photoURL} 
-            alt={displayName || profile?.displayName}
-            size={100}
-            radius="xl"
-          />
-        </Group>
+        {/* Photo Upload */}
+        <EditImage
+          value={photoURL || profile?.photoURL}
+          onChange={handlePhotoClear}
+          onUpload={handlePhotoUpload}
+          uploading={uploading}
+          progress={progress}
+          size={100}
+          maxSize={5 * 1024 * 1024}
+        />
 
         {/* Display Name */}
         <TextInput
@@ -112,16 +150,6 @@ export function ProfileModal({ opened, onClose }) {
           onChange={(e) => setDisplayName(e.target.value)}
           leftSection={<IconUser size={16} />}
           required
-        />
-
-        {/* Photo URL */}
-        <TextInput
-          label="Photo URL"
-          placeholder="https://example.com/photo.jpg"
-          value={photoURL}
-          onChange={(e) => setPhotoURL(e.target.value)}
-          leftSection={<IconPhoto size={16} />}
-          description="Enter a direct link to your profile picture"
         />
 
         {/* Bio */}
@@ -158,19 +186,27 @@ export function ProfileModal({ opened, onClose }) {
           </Alert>
         )}
 
+        {/* Actions */}
+        <Group justify="flex-end" mt="md">
+          <Button variant="default" onClick={handleCancel} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} loading={saving}>
+            Save Changes
+          </Button>
+        </Group>
+
         <Divider />
 
-        {/* Actions */}
-        <Group justify="space-between">
-          <SignOutButton variant="subtle" color="red" />
-          <Group>
-            <Button variant="default" onClick={handleCancel} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} loading={saving}>
-              Save Changes
-            </Button>
-          </Group>
+        {/* Sign Out */}
+        <Group justify="center">
+          <SignOutButton 
+            variant="subtle" 
+            color="red"
+            leftSection={<IconLogout size={16} />}
+          >
+            Sign Out
+          </SignOutButton>
         </Group>
       </Stack>
     </Modal>

@@ -24,16 +24,23 @@ import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 
-export function Accounts() {
+/**
+ * @typedef {Object} AccountsProps
+ * @property {string | null} orgId - Organization ID to scope data
+ */
+
+/**
+ * @param {AccountsProps} props
+ */
+export function Accounts({ orgId }) {
   const { user, loading: authLoading } = useAuth();
   const [modalOpened, setModalOpened] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
 
-  // Query without orderBy to avoid needing composite index
-  // We'll sort client-side instead
+  // Query by organization ID
   const { data: accountsRaw, loading, add, update, remove } = useCollection(collections.accounts, {
-    where: [["owner", "==", user?.uid || ""]],
-    realtime: !!user?.uid,
+    where: [["orgId", "==", orgId || ""]],
+    realtime: !!orgId,
   });
 
   // Sort client-side by createdAt descending
@@ -112,6 +119,7 @@ export function Accounts() {
       } else {
         await add({
           ...formData,
+          orgId,
           owner: user.uid,
         });
         notifications.show({

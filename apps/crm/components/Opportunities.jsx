@@ -37,18 +37,25 @@ const STAGES = [
   { value: "closed-lost", label: "Closed Lost", color: "red" },
 ];
 
-export function Opportunities() {
+/**
+ * @typedef {Object} OpportunitiesProps
+ * @property {string | null} orgId - Organization ID to scope data
+ */
+
+/**
+ * @param {OpportunitiesProps} props
+ */
+export function Opportunities({ orgId }) {
   const { user, loading: authLoading } = useAuth();
   const [modalOpened, setModalOpened] = useState(false);
   const [editingOpp, setEditingOpp] = useState(null);
 
-  // Query without orderBy to avoid needing composite index
-  // We'll sort client-side instead
+  // Query by organization ID
   const { data: opportunitiesRaw, loading, add, update, remove } = useCollection(
     collections.opportunities,
     {
-      where: [["owner", "==", user?.uid || ""]],
-      realtime: !!user?.uid,
+      where: [["orgId", "==", orgId || ""]],
+      realtime: !!orgId,
     }
   );
 
@@ -121,6 +128,7 @@ export function Opportunities() {
       } else {
         await add({
           ...dataToSave,
+          orgId,
           owner: user.uid,
         });
         notifications.show({

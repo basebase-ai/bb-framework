@@ -42,19 +42,26 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled", color: "red" },
 ];
 
-export function Activities() {
+/**
+ * @typedef {Object} ActivitiesProps
+ * @property {string | null} orgId - Organization ID to scope data
+ */
+
+/**
+ * @param {ActivitiesProps} props
+ */
+export function Activities({ orgId }) {
   const { user, loading: authLoading } = useAuth();
   const [modalOpened, setModalOpened] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
 
-  // Query without orderBy to avoid needing composite index
-  // We'll sort client-side instead
+  // Query by organization ID
   const { data: activitiesRaw, loading, add, update, remove } = useCollection(
     collections.activities,
     {
-      where: [["owner", "==", user?.uid || ""]],
-      realtime: !!user?.uid,
+      where: [["orgId", "==", orgId || ""]],
+      realtime: !!orgId,
     }
   );
 
@@ -124,6 +131,7 @@ export function Activities() {
       } else {
         await add({
           ...dataToSave,
+          orgId,
           owner: user.uid,
         });
         notifications.show({

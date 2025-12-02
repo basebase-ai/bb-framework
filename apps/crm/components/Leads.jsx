@@ -43,18 +43,24 @@ const SOURCE_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
-export function Leads() {
+/**
+ * @typedef {Object} LeadsProps
+ * @property {string | null} orgId - Organization ID to scope data
+ */
+
+/**
+ * @param {LeadsProps} props
+ */
+export function Leads({ orgId }) {
   const { user, loading: authLoading } = useAuth();
   const [modalOpened, setModalOpened] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
 
-  // Query without orderBy to avoid needing composite index
-  // We'll sort client-side instead
-  // Only query once user is loaded to prevent flickering
+  // Query by organization ID
   const { data: leadsRaw, loading, add, update, remove } = useCollection(collections.leads, {
-    where: [["owner", "==", user?.uid || ""]],
-    realtime: !!user?.uid, // Only enable realtime once user is loaded
+    where: [["orgId", "==", orgId || ""]],
+    realtime: !!orgId,
   });
 
   // Sort client-side by createdAt descending
@@ -133,6 +139,7 @@ export function Leads() {
       } else {
         await add({
           ...formData,
+          orgId,
           owner: user.uid,
         });
         notifications.show({
