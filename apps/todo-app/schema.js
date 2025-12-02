@@ -206,6 +206,7 @@ export const schema = {
         values: ["low", "medium", "high", "urgent"],
         default: "medium",
       },
+      assigneeId: { type: "string", nullable: true }, // Firebase Auth UID of assigned user, or null
       customFieldValues: { type: "map", default: {} }, // Map of custom field values (fieldId -> value)
       attachments: { type: "array", items: { type: "map" }, default: [] }, // Array of {url, name, path, uploadedAt}
       order: { type: "number", default: 0 }, // For drag-to-reorder

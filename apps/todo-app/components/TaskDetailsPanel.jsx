@@ -24,6 +24,7 @@ import { DateInput } from "@mantine/dates";
 import { useStorage } from "../../../framework/hooks/useStorage.js";
 import { FileUploader } from "../../../framework/components/FileUploader.jsx";
 import { TaskComments } from "./TaskComments.jsx";
+import { AssigneePicker } from "./AssigneePicker.jsx";
 import { APP_ID } from "../schema.js";
 
 const STATUS_OPTIONS = [
@@ -45,6 +46,7 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("todo");
   const [priority, setPriority] = useState("medium");
+  const [assigneeId, setAssigneeId] = useState(null);
   const [customFieldValues, setCustomFieldValues] = useState({});
   const [attachments, setAttachments] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -59,6 +61,7 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
       setDescription(task.description || "");
       setStatus(task.status || "todo");
       setPriority(task.priority || "medium");
+      setAssigneeId(task.assigneeId || null);
       setCustomFieldValues(task.customFieldValues || {});
       setAttachments(task.attachments || []);
     }
@@ -116,6 +119,7 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
     if (description !== (task.description || "")) updates.description = description;
     if (status !== (task.status || "todo")) updates.status = status;
     if (priority !== (task.priority || "medium")) updates.priority = priority;
+    if (assigneeId !== (task.assigneeId || null)) updates.assigneeId = assigneeId;
     
     const taskCustomFieldValues = task.customFieldValues || {};
     if (JSON.stringify(customFieldValues) !== JSON.stringify(taskCustomFieldValues)) {
@@ -126,7 +130,7 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
       debouncedSave(updates);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, description, status, priority, customFieldValues]);
+  }, [title, description, status, priority, assigneeId, customFieldValues]);
 
   const handleCustomFieldChange = (fieldId, value) => {
     setCustomFieldValues(prev => ({
@@ -270,6 +274,17 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
             onChange={(value) => setPriority(value || "medium")}
             data={PRIORITY_OPTIONS}
             size="sm"
+          />
+        </div>
+
+        {/* Assignee */}
+        <div>
+          <Text size="sm" fw={500} mb="xs">
+            Assignee
+          </Text>
+          <AssigneePicker
+            value={assigneeId}
+            onChange={setAssigneeId}
           />
         </div>
 

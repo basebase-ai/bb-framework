@@ -63,6 +63,12 @@ export function Leads({ orgId }) {
     realtime: !!orgId,
   });
 
+  // Access contacts collection to find/create contacts when leads are added
+  const { data: contactsRaw, add: addContact } = useCollection(collections.contacts, {
+    where: [["orgId", "==", orgId || ""]],
+    realtime: !!orgId,
+  });
+
   // Sort client-side by createdAt descending
   const leads = React.useMemo(() => {
     return [...(leadsRaw || [])].sort((a, b) => {
@@ -118,6 +124,46 @@ export function Leads({ orgId }) {
     setModalOpened(true);
   };
 
+  /**
+   * Finds or creates a contact for a lead based on email match.
+   * @param {typeof formData} leadData - The lead form data
+   * @returns {Promise<string | null>} The contact ID if found/created, null otherwise
+   */
+  const findOrCreateContact = async (leadData) => {
+    // Only proceed if lead has an email
+    if (!leadData.email) {
+      return null;
+    }
+
+    // Check if a contact with this email already exists
+    const existingContact = (contactsRaw || []).find(
+      (c) => c.email?.toLowerCase() === leadData.email.toLowerCase()
+    );
+
+    if (existingContact) {
+      return existingContact.id;
+    }
+
+    // Create new contact from lead data
+    try {
+      const newContactId = await addContact({
+        firstName: leadData.firstName,
+        lastName: leadData.lastName,
+        email: leadData.email,
+        phone: leadData.phone || "",
+        mobile: "",
+        title: leadData.title || "",
+        notes: `Auto-created from lead. Company: ${leadData.company || "N/A"}`,
+        orgId,
+        owner: user.uid,
+      });
+      return newContactId;
+    } catch (error) {
+      console.error("Failed to auto-create contact:", error);
+      return null;
+    }
+  };
+
   const handleSubmit = async () => {
     if (!formData.firstName || !formData.lastName) {
       notifications.show({
@@ -137,16 +183,33 @@ export function Leads({ orgId }) {
           color: "green",
         });
       } else {
+        // Find or create a contact when creating a new lead
+        const contactId = await findOrCreateContact(formData);
+
         await add({
           ...formData,
           orgId,
           owner: user.uid,
         });
-        notifications.show({
-          title: "Success",
-          message: "Lead created successfully",
-          color: "green",
-        });
+
+        if (contactId) {
+          const isExisting = (contactsRaw || []).some(
+            (c) => c.email?.toLowerCase() === formData.email?.toLowerCase()
+          );
+          notifications.show({
+            title: "Success",
+            message: isExisting
+              ? "Lead created and linked to existing contact"
+              : "Lead created and contact auto-created",
+            color: "green",
+          });
+        } else {
+          notifications.show({
+            title: "Success",
+            message: "Lead created successfully",
+            color: "green",
+          });
+        }
       }
       setModalOpened(false);
     } catch (error) {

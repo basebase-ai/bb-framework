@@ -24,6 +24,7 @@ import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 import { ProjectSettings } from "./ProjectSettings.jsx";
 import { TaskDetailsPanel } from "./TaskDetailsPanel.jsx";
+import { AssigneePicker } from "./AssigneePicker.jsx";
 
 const STATUS_CONFIG = {
   backlog: { color: "gray", label: "Backlog" },
@@ -137,7 +138,7 @@ function CustomFieldCell({ field, value, onChange }) {
   return <Text size="sm" c="dimmed">—</Text>;
 }
 
-function TodoRow({ item, onUpdate, onDelete, onDragStart, onDragOver, onDrop, isDragging, onComplete, startInEditMode, onOpenDetails, customFields }) {
+function TodoRow({ item, onUpdate, onDelete, onDragStart, onDragOver, onDrop, isDragging, onComplete, startInEditMode, onOpenDetails, customFields, users }) {
   const [title, setTitle] = useState(item.title);
   const [isEditingTitle, setIsEditingTitle] = useState(startInEditMode || false);
   const inputRef = useRef(null);
@@ -277,6 +278,12 @@ function TodoRow({ item, onUpdate, onDelete, onDragStart, onDragOver, onDrop, is
       </Table.Td>
       <Table.Td style={{ width: 120 }}>
         <PriorityBadge value={item.priority} onChange={handlePriorityChange} />
+      </Table.Td>
+      <Table.Td style={{ width: 180 }}>
+        <AssigneePicker
+          value={item.assigneeId || null}
+          onChange={(userId) => onUpdate(item.id, { assigneeId: userId })}
+        />
       </Table.Td>
       {/* Custom Fields */}
       {customFields?.filter(f => f.showInTable !== false).map((field) => (
@@ -518,6 +525,7 @@ export function ProjectTable({ projectId }) {
                 <Table.Th style={{ minWidth: 250 }}>Task</Table.Th>
                 <Table.Th style={{ width: 120 }}>Status</Table.Th>
                 <Table.Th style={{ width: 120 }}>Priority</Table.Th>
+                <Table.Th style={{ width: 180 }}>Assignee</Table.Th>
                 {/* Custom Field Headers */}
                 {project?.customFields?.filter(f => f.showInTable !== false).map((field) => (
                   <Table.Th key={field.id} style={{ width: 150 }}>
@@ -563,6 +571,7 @@ export function ProjectTable({ projectId }) {
                   <Table.Th style={{ minWidth: 250 }}>Task</Table.Th>
                   <Table.Th style={{ width: 120 }}>Status</Table.Th>
                   <Table.Th style={{ width: 120 }}>Priority</Table.Th>
+                  <Table.Th style={{ width: 180 }}>Assignee</Table.Th>
                 {/* Custom Field Headers */}
                 {project?.customFields?.filter(f => f.showInTable !== false).map((field) => (
                   <Table.Th key={field.id} style={{ width: 150 }}>
