@@ -169,6 +169,7 @@ export const schema = {
       name: { type: "string", required: true },
       memberIds: { type: "array", items: { type: "string" }, required: true }, // Array of Firebase Auth UIDs
       owner: { type: "string", required: true }, // Firebase Auth UID of creator
+      customFields: { type: "array", items: { type: "map" }, default: [] }, // Array of custom field definitions
       createdAt: { type: "timestamp", auto: true },
       updatedAt: { type: "timestamp", auto: true },
     },
@@ -204,6 +205,8 @@ export const schema = {
         values: ["low", "medium", "high", "urgent"],
         default: "medium",
       },
+      customFieldValues: { type: "map", default: {} }, // Map of custom field values (fieldId -> value)
+      attachments: { type: "array", items: { type: "map" }, default: [] }, // Array of {url, name, path, uploadedAt}
       order: { type: "number", default: 0 }, // For drag-to-reorder
       owner: { type: "string", required: true }, // Firebase Auth UID of creator
       createdAt: { type: "timestamp", auto: true },

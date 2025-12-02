@@ -15,34 +15,50 @@ import {
   Badge,
   Divider,
   Avatar,
+  Autocomplete,
+  Loader,
+  Alert,
 } from "@mantine/core";
-import { IconTrash, IconUserPlus } from "@tabler/icons-react";
+import { IconTrash, IconUserPlus, IconAlertCircle, IconLogout } from "@tabler/icons-react";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useUserProfiles } from "../../../framework/hooks/useUserProfiles.js";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../../../framework/core/firebase-init.js";
 import { collections } from "../schema.js";
+import { InvitationModal } from "./InvitationModal.jsx";
+import { CustomFieldsManager } from "./CustomFieldsManager.jsx";
 
 export function ProjectSettings({ projectId, opened, onClose }) {
   const { user } = useAuth();
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [projectName, setProjectName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
+  const [addingMember, setAddingMember] = useState(false);
+  const [invitationModalOpened, setInvitationModalOpened] = useState(false);
+  const [invitationDetails, setInvitationDetails] = useState(null);
+  const [deletingProject, setDeletingProject] = useState(false);
 
   // Get project data
   const {
     data: project,
     loading: projectLoading,
     update: updateProject,
+    remove: deleteProject,
   } = useDocument(collections.projects, projectId);
 
-  // Get all users to look up emails (still needed for adding new members)
+  // Get all users to look up emails (for searching and adding new members)
+  const usersWhereClause = useMemo(() => [["email", "!=", ""]], []);
   const { data: allUsers } = useCollection(collections.users, {
-    where: [["email", "!=", ""]],
+    where: usersWhereClause,
   });
 
   // Use profiles hook to get detailed member data with avatars
   const { profiles: memberProfiles } = useUserProfiles(project?.memberIds || []);
+  
+  // Get current user's profile for invitation message
+  const currentUserProfile = memberProfiles.get(user?.uid);
 
   // Get member details with profile data
   const members = useMemo(() => {
@@ -60,6 +76,28 @@ export function ProjectSettings({ projectId, opened, onClose }) {
       .filter((m) => m.email !== "Unknown");
   }, [project?.memberIds, memberProfiles]);
 
+  // Create autocomplete data for user search
+  const userAutocompleteData = useMemo(() => {
+    if (!allUsers) return [];
+    
+    // Filter out members and deduplicate by email
+    const seenEmails = new Set();
+    return allUsers
+      .filter((u) => !project?.memberIds?.includes(u.id))
+      .filter((u) => {
+        if (seenEmails.has(u.email)) {
+          return false;
+        }
+        seenEmails.add(u.email);
+        return true;
+      })
+      .map((u) => ({
+        value: u.email,
+        label: u.displayName ? `${u.displayName} (${u.email})` : u.email,
+        userId: u.id,
+      }));
+  }, [allUsers, project?.memberIds]);
+
   // Initialize project name when project loads
   React.useEffect(() => {
     if (project?.name && !projectName) {
@@ -67,31 +105,97 @@ export function ProjectSettings({ projectId, opened, onClose }) {
     }
   }, [project?.name]);
 
+  const handleUpdateCustomFields = async (newCustomFields) => {
+    await updateProject({ customFields: newCustomFields });
+  };
+
   const handleAddMember = async () => {
     if (!newMemberEmail.trim() || !project) return;
 
-    // Find user by email
-    const userToAdd = allUsers.find(
-      (u) => u.email.toLowerCase() === newMemberEmail.toLowerCase().trim()
-    );
+    setAddingMember(true);
 
-    if (!userToAdd) {
-      alert("User not found. They need to sign up first.");
-      return;
+    try {
+      // Find user by email
+      const userToAdd = allUsers.find(
+        (u) => u.email.toLowerCase() === newMemberEmail.toLowerCase().trim()
+      );
+
+      if (userToAdd) {
+        // User exists - add them to the project
+        if (project.memberIds?.includes(userToAdd.id)) {
+          alert("User is already a member of this project.");
+          setNewMemberEmail("");
+          setAddingMember(false);
+          return;
+        }
+
+        await updateProject({
+          memberIds: [...(project.memberIds || []), userToAdd.id],
+        });
+
+        setNewMemberEmail("");
+      } else {
+        // User doesn't exist - create a placeholder user doc and send invitation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(newMemberEmail.trim())) {
+          alert("Please enter a valid email address.");
+          setAddingMember(false);
+          return;
+        }
+
+        // Create a user document with a deterministic ID based on email
+        const newUserId = `pending_${newMemberEmail.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+        
+        // Check if this pending user already exists
+        const existingPendingUser = allUsers.find(u => u.id === newUserId);
+        
+        if (existingPendingUser) {
+          if (project.memberIds?.includes(existingPendingUser.id)) {
+            alert("This user has already been invited to the project.");
+            setNewMemberEmail("");
+            setAddingMember(false);
+            return;
+          }
+          
+          // Add existing pending user to project
+          await updateProject({
+            memberIds: [...(project.memberIds || []), existingPendingUser.id],
+          });
+        } else {
+          // Create new pending user document
+          const userRef = doc(db, collections.users, newUserId);
+          await setDoc(userRef, {
+            email: newMemberEmail.toLowerCase().trim(),
+            displayName: "",
+            photoURL: "",
+            role: "user",
+            status: "pending_invitation",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+
+          // Add to project
+          await updateProject({
+            memberIds: [...(project.memberIds || []), newUserId],
+          });
+
+          // Show invitation modal
+          setInvitationDetails({
+            projectName: project.name,
+            inviterName: currentUserProfile?.displayName || currentUserProfile?.email || user.email,
+            inviteeEmail: newMemberEmail.toLowerCase().trim(),
+          });
+          setInvitationModalOpened(true);
+        }
+
+        setNewMemberEmail("");
+      }
+    } catch (error) {
+      console.error("Failed to add member:", error);
+      alert(`Failed to add member: ${error.message}`);
+    } finally {
+      setAddingMember(false);
     }
-
-    if (project.memberIds?.includes(userToAdd.id)) {
-      alert("User is already a member of this project.");
-      setNewMemberEmail("");
-      return;
-    }
-
-    // Add user to memberIds
-    await updateProject({
-      memberIds: [...(project.memberIds || []), userToAdd.id],
-    });
-
-    setNewMemberEmail("");
   };
 
   const handleRemoveMember = async (memberId) => {
@@ -131,6 +235,48 @@ export function ProjectSettings({ projectId, opened, onClose }) {
     setIsEditingName(false);
   };
 
+  const handleLeaveProject = async () => {
+    if (!project || !user?.uid) return;
+
+    if (!confirm(`Are you sure you want to leave "${project.name}"? You'll need to be re-invited to access it again.`)) {
+      return;
+    }
+
+    await updateProject({
+      memberIds: (project.memberIds || []).filter((id) => id !== user.uid),
+    });
+
+    onClose();
+  };
+
+  const handleDeleteProject = async () => {
+    if (!project) return;
+
+    const confirmText = `Are you sure you want to DELETE "${project.name}"? This will permanently delete the project and all its tasks. This action cannot be undone.`;
+    
+    if (!confirm(confirmText)) {
+      return;
+    }
+
+    // Double confirmation for safety
+    const doubleConfirm = prompt(`Type "${project.name}" to confirm deletion:`);
+    if (doubleConfirm !== project.name) {
+      alert("Project name doesn't match. Deletion cancelled.");
+      return;
+    }
+
+    setDeletingProject(true);
+    try {
+      await deleteProject();
+      onClose();
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+      alert(`Failed to delete project: ${error.message}`);
+    } finally {
+      setDeletingProject(false);
+    }
+  };
+
   if (!project || projectLoading) {
     return (
       <Modal opened={opened} onClose={onClose} title="Project Settings" size="md">
@@ -140,10 +286,38 @@ export function ProjectSettings({ projectId, opened, onClose }) {
   }
 
   const isOwner = user?.uid === project.owner;
+  const ownerProfile = memberProfiles.get(project.owner);
+  const ownerName = ownerProfile?.displayName || ownerProfile?.email || "the project owner";
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Project Settings" size="md">
-      <Stack gap="lg">
+    <>
+      {/* Invitation Modal */}
+      {invitationDetails && (
+        <InvitationModal
+          opened={invitationModalOpened}
+          onClose={() => {
+            setInvitationModalOpened(false);
+            setInvitationDetails(null);
+          }}
+          projectName={invitationDetails.projectName}
+          inviterName={invitationDetails.inviterName}
+          inviteeEmail={invitationDetails.inviteeEmail}
+        />
+      )}
+
+      <Modal opened={opened} onClose={onClose} title="Project Settings" size="md">
+        <Stack gap="lg">
+          {/* Non-owner warning */}
+          {!isOwner && (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              title="View Only"
+              color="yellow"
+              variant="light"
+            >
+              You are not the owner of this project. Please contact {ownerName} to make changes to the project settings or member list.
+            </Alert>
+          )}
         {/* Project Name */}
         <div>
           <Text size="sm" fw={500} mb="xs">
@@ -195,6 +369,17 @@ export function ProjectSettings({ projectId, opened, onClose }) {
         </div>
 
         <Divider />
+
+        {/* Custom Fields */}
+        {isOwner && (
+          <>
+            <CustomFieldsManager
+              customFields={project.customFields || []}
+              onChange={handleUpdateCustomFields}
+            />
+            <Divider />
+          </>
+        )}
 
         {/* Members List */}
         <div>
@@ -264,30 +449,69 @@ export function ProjectSettings({ projectId, opened, onClose }) {
               <Text size="sm" fw={500} mb="xs">
                 Add Member
               </Text>
-              <Group gap="xs">
-                <TextInput
-                  placeholder="Enter email address"
+              <Group gap="xs" align="flex-start">
+                <Autocomplete
+                  placeholder="Search by name or email, or enter new email"
                   value={newMemberEmail}
-                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  onChange={setNewMemberEmail}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleAddMember();
                   }}
+                  data={userAutocompleteData}
+                  limit={5}
                   style={{ flex: 1 }}
                 />
                 <Button
-                  leftSection={<IconUserPlus size={16} />}
+                  leftSection={addingMember ? <Loader size={16} /> : <IconUserPlus size={16} />}
                   onClick={handleAddMember}
-                  disabled={!newMemberEmail.trim()}
+                  disabled={!newMemberEmail.trim() || addingMember}
+                  loading={addingMember}
                 >
                   Add
                 </Button>
               </Group>
-              <Text size="xs" c="dimmed" mt="xs">
-                User must have a Basebase account to be added.
-              </Text>
+              <Stack gap="xs" mt="xs">
+                <Text size="xs" c="dimmed">
+                  • Search for existing users by name or email
+                </Text>
+                <Text size="xs" c="dimmed">
+                  • Or enter a new email to send an invitation
+                </Text>
+              </Stack>
             </div>
           </>
         )}
+
+        <Divider />
+
+        {/* Danger Zone */}
+        <div>
+          <Text size="sm" fw={500} mb="xs" c="red">
+            Danger Zone
+          </Text>
+          {isOwner ? (
+            <Button
+              fullWidth
+              color="red"
+              variant="light"
+              leftSection={<IconTrash size={16} />}
+              onClick={handleDeleteProject}
+              loading={deletingProject}
+            >
+              Delete Project
+            </Button>
+          ) : (
+            <Button
+              fullWidth
+              color="orange"
+              variant="light"
+              leftSection={<IconLogout size={16} />}
+              onClick={handleLeaveProject}
+            >
+              Leave Project
+            </Button>
+          )}
+        </div>
 
         <Group justify="flex-end" mt="md">
           <Button variant="default" onClick={onClose}>
@@ -295,7 +519,8 @@ export function ProjectSettings({ projectId, opened, onClose }) {
           </Button>
         </Group>
       </Stack>
-    </Modal>
+      </Modal>
+    </>
   );
 }
 

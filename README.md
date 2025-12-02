@@ -438,6 +438,69 @@ const {
 - **Invite-only apps**: Set `accessMode: "invite-only"` in app doc, require explicit membership
 - **Paid apps**: Check `tier` in your components to gate premium features
 
+### useStorage(appId)
+
+Upload and manage files in Firebase Storage with automatic app namespacing:
+
+```javascript
+import { useStorage } from "../../../framework/hooks/useStorage.js";
+import { APP_ID } from "../schema.js";
+
+const { upload, deleteFile, getURL, uploading, progress } = useStorage(APP_ID);
+
+// Upload a file
+const handleUpload = async (file) => {
+  const result = await upload(
+    file,
+    `attachments/${Date.now()}_${file.name}` // Path within your app's storage
+  );
+
+  console.log("Download URL:", result.url);
+  console.log("Storage path:", result.path);
+};
+
+// Delete a file
+await deleteFile("attachments/123_photo.jpg");
+
+// Get download URL
+const url = await getURL("attachments/123_photo.jpg");
+```
+
+**Built-in FileUploader Component:**
+
+```javascript
+import { FileUploader } from "../../../framework/components/FileUploader.jsx";
+
+<FileUploader
+  onUpload={handleUpload}
+  uploading={uploading}
+  progress={progress}
+  maxSize={10 * 1024 * 1024} // 10MB
+  accept="image/*" // Or "*" for all files
+  multiple={false}
+/>;
+```
+
+**Automatic Namespacing:**
+
+- All files are stored under `apps/{appId}/{your-path}`
+- No collisions between apps
+- Uses same Firebase Auth credentials
+- Supports progress tracking, file deletion, and listing
+
+**Storage Schema Example:**
+
+```javascript
+// In your schema.js
+{
+  attachments: {
+    type: "array",
+    items: { type: "map" },
+    default: []
+  } // Store: [{url, name, path, size, uploadedAt}]
+}
+```
+
 ## Server Functions
 
 Need to run code on the server? Use server functions for AI, emails, PDFs, and more!

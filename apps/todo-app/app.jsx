@@ -2,7 +2,7 @@
  * Main app entry point
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { MantineProvider, AppShell, Burger, Group, Title, Text, Stack, Avatar } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
@@ -11,12 +11,14 @@ import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
 import { ProjectManager } from "./components/ProjectManager.jsx";
 import { ProjectTable } from "./components/ProjectTable.jsx";
-import { AuthProvider, SignOutButton } from "../../framework/components/AuthProvider.jsx";
+import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 
 // Mantine CSS imports
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+
+const SELECTED_PROJECT_KEY = "todo-app:selectedProjectId";
 
 function AppContent() {
   const { user } = useAuth();
@@ -24,6 +26,23 @@ function AppContent() {
   const { sidebarOpen, toggleSidebar } = useAppStore();
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
+
+  // Load selected project from localStorage on mount
+  useEffect(() => {
+    const savedProjectId = localStorage.getItem(SELECTED_PROJECT_KEY);
+    if (savedProjectId) {
+      setSelectedProjectId(savedProjectId);
+    }
+  }, []);
+
+  // Save selected project to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedProjectId) {
+      localStorage.setItem(SELECTED_PROJECT_KEY, selectedProjectId);
+    } else {
+      localStorage.removeItem(SELECTED_PROJECT_KEY);
+    }
+  }, [selectedProjectId]);
 
   return (
     <AppShell
@@ -41,22 +60,14 @@ function AppContent() {
           <Title order={3}>Todo App</Title>
           {user && (
             <Group ml="auto" gap="md">
-              <Group 
-                gap="xs" 
+              <Avatar 
+                src={profile?.photoURL} 
+                alt={profile?.displayName || user.email}
+                size="sm"
+                radius="xl"
                 style={{ cursor: 'pointer' }}
                 onClick={() => setProfileModalOpened(true)}
-              >
-                <Avatar 
-                  src={profile?.photoURL} 
-                  alt={profile?.displayName || user.email}
-                  size="sm"
-                  radius="xl"
-                />
-                <Text size="sm" c="dimmed">
-                  {profile?.displayName || user.email}
-                </Text>
-              </Group>
-              <SignOutButton size="xs" />
+              />
             </Group>
           )}
         </Group>
