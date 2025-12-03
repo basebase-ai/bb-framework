@@ -1,0 +1,877 @@
+/**
+ * Portfolio - Track and visualize your investment portfolio
+ */
+
+import React, { useState, useMemo } from "react";
+import {
+  Container,
+  Title,
+  Button,
+  Group,
+  Stack,
+  Paper,
+  Text,
+  Table,
+  ActionIcon,
+  Modal,
+  TextInput,
+  NumberInput,
+  Loader,
+  Center,
+  Badge,
+  SimpleGrid,
+  SegmentedControl,
+  Tooltip,
+  Menu,
+  Alert,
+} from "@mantine/core";
+import { DatePickerInput } from "@mantine/dates";
+import {
+  IconPlus,
+  IconTrash,
+  IconEdit,
+  IconTrendingUp,
+  IconTrendingDown,
+  IconMinus,
+  IconChartLine,
+  IconCurrencyDollar,
+  IconCalendar,
+  IconTestPipe,
+  IconDotsVertical,
+} from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
+import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { collections, getCollection } from "../schema.js";
+
+import "@mantine/dates/styles.css";
+
+/** @typedef {{ id: string; ticker: string; units: number; purchaseDate: Date; purchasePrice: number; owner: string }} Holding */
+
+/**
+ * Simple SVG line chart for portfolio performance
+ */
+function PerformanceChart({ data, width = 600, height = 200 }) {
+  if (!data || data.length === 0) {
+    return (
+      <Paper withBorder p="lg" h={height}>
+        <Center h="100%">
+          <Text c="dimmed" size="sm">No performance data yet</Text>
+        </Center>
+      </Paper>
+    );
+  }
+
+  const padding = { top: 20, right: 20, bottom: 30, left: 60 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  const values = data.map((d) => d.value);
+  const minValue = Math.min(...values) * 0.95;
+  const maxValue = Math.max(...values) * 1.05;
+  const valueRange = maxValue - minValue || 1;
+
+  const points = data.map((d, i) => {
+    const x = padding.left + (i / Math.max(data.length - 1, 1)) * chartWidth;
+    const y = padding.top + chartHeight - ((d.value - minValue) / valueRange) * chartHeight;
+    return { x, y, ...d };
+  });
+
+  const pathD = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+    .join(" ");
+
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${padding.top + chartHeight} L ${points[0].x} ${padding.top + chartHeight} Z`;
+
+  const isPositive = data.length >= 2 && data[data.length - 1].value >= data[0].value;
+  const strokeColor = isPositive ? "#40c057" : "#fa5252";
+  const fillColor = isPositive ? "rgba(64, 192, 87, 0.1)" : "rgba(250, 82, 82, 0.1)";
+
+  // Y-axis labels
+  const yLabels = [0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+    const value = minValue + fraction * valueRange;
+    const y = padding.top + chartHeight - fraction * chartHeight;
+    return { value, y };
+  });
+
+  // X-axis labels (first, middle, last)
+  const xLabels = [];
+  if (data.length > 0) {
+    xLabels.push({ label: data[0].label, x: points[0].x });
+    if (data.length > 2) {
+      const midIndex = Math.floor(data.length / 2);
+      xLabels.push({ label: data[midIndex].label, x: points[midIndex].x });
+    }
+    if (data.length > 1) {
+      xLabels.push({ label: data[data.length - 1].label, x: points[points.length - 1].x });
+    }
+  }
+
+  return (
+    <Paper withBorder p="md" style={{ overflow: "hidden" }}>
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+        {/* Grid lines */}
+        {yLabels.map((l, i) => (
+          <line
+            key={i}
+            x1={padding.left}
+            y1={l.y}
+            x2={width - padding.right}
+            y2={l.y}
+            stroke="var(--mantine-color-gray-3)"
+            strokeDasharray="4,4"
+            strokeWidth={0.5}
+          />
+        ))}
+
+        {/* Area fill */}
+        <path d={areaD} fill={fillColor} />
+
+        {/* Line */}
+        <path d={pathD} fill="none" stroke={strokeColor} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* Points */}
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r={3} fill={strokeColor} />
+        ))}
+
+        {/* Y-axis labels */}
+        {yLabels.map((l, i) => (
+          <text
+            key={i}
+            x={padding.left - 8}
+            y={l.y}
+            textAnchor="end"
+            alignmentBaseline="middle"
+            fill="var(--mantine-color-dimmed)"
+            fontSize={11}
+          >
+            ${l.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </text>
+        ))}
+
+        {/* X-axis labels */}
+        {xLabels.map((l, i) => (
+          <text
+            key={i}
+            x={l.x}
+            y={height - 8}
+            textAnchor="middle"
+            fill="var(--mantine-color-dimmed)"
+            fontSize={11}
+          >
+            {l.label}
+          </text>
+        ))}
+      </svg>
+    </Paper>
+  );
+}
+
+/**
+ * Stat card for summary metrics
+ */
+function StatCard({ title, value, change, icon: Icon, color = "blue" }) {
+  const isPositive = change !== undefined && change >= 0;
+  const changeColor = change === undefined ? "gray" : isPositive ? "green" : "red";
+  const ChangeIcon = change === undefined ? IconMinus : isPositive ? IconTrendingUp : IconTrendingDown;
+
+  return (
+    <Paper withBorder p="md" radius="md">
+      <Group justify="space-between" mb="xs">
+        <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+          {title}
+        </Text>
+        <Icon size={20} color={`var(--mantine-color-${color}-6)`} />
+      </Group>
+      <Text size="xl" fw={700}>
+        {value}
+      </Text>
+      {change !== undefined && (
+        <Group gap={4} mt={4}>
+          <ChangeIcon size={14} color={`var(--mantine-color-${changeColor}-6)`} />
+          <Text size="sm" c={changeColor} fw={500}>
+            {change >= 0 ? "+" : ""}
+            {change.toFixed(2)}%
+          </Text>
+        </Group>
+      )}
+    </Paper>
+  );
+}
+
+export function Portfolio() {
+  const { user } = useAuth();
+  
+  // Memoize where conditions to prevent re-renders
+  const holdingsWhere = useMemo(
+    () => (user?.uid ? [["owner", "==", user.uid]] : []),
+    [user?.uid]
+  );
+
+  // Holdings from Firestore - only query when user is available
+  const {
+    data: holdings,
+    loading: holdingsLoading,
+    add: addHolding,
+    update: updateHolding,
+    remove: removeHolding,
+  } = useCollection(collections.holdings, {
+    where: holdingsWhere,
+    realtime: !!user?.uid,
+  });
+
+  // Analyses for current prices
+  const { data: analyses, loading: analysesLoading } = useCollection(
+    getCollection("stock-analyses"),
+    { realtime: !!user?.uid }
+  );
+
+  // Modal state
+  const [modalOpened, setModalOpened] = useState(false);
+  const [editingHolding, setEditingHolding] = useState(/** @type {Holding | null} */ (null));
+  const [formData, setFormData] = useState({
+    ticker: "",
+    units: 1,
+    purchaseDate: /** @type {Date | null} */ (new Date()),
+    purchasePrice: 0,
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Time range for chart
+  const [timeRange, setTimeRange] = useState("1M");
+
+  // Build price lookup from analyses
+  const priceMap = useMemo(() => {
+    /** @type {Map<string, { currentPrice: number; previousClose: number; weekAgoPrice: number; monthAgoPrice: number }>} */
+    const map = new Map();
+    
+    if (!analyses) return map;
+    
+    // Group analyses by ticker, sorted by date (most recent first)
+    const byTicker = /** @type {Map<string, Array<any>>} */ (new Map());
+    analyses.forEach((a) => {
+      if (a.ticker && a.success) {
+        if (!byTicker.has(a.ticker)) {
+          byTicker.set(a.ticker, []);
+        }
+        byTicker.get(a.ticker)?.push(a);
+      }
+    });
+
+    byTicker.forEach((tickerAnalyses, ticker) => {
+      // Sort by date descending
+      tickerAnalyses.sort((a, b) => {
+        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      const latest = tickerAnalyses[0];
+      // Try to get current price from data (could be in different places)
+      const currentPrice =
+        latest.data?.currentPrice ||
+        latest.data?.price ||
+        latest.currentPrice ||
+        latest.price ||
+        100; // Fallback for demo
+
+      // Previous close (simplified - use 99% of current for demo)
+      const previousClose = currentPrice * 0.995;
+      // Week ago (simplified)
+      const weekAgoPrice = currentPrice * 0.98;
+      // Month ago (simplified)
+      const monthAgoPrice = currentPrice * 0.95;
+
+      map.set(ticker, { currentPrice, previousClose, weekAgoPrice, monthAgoPrice });
+    });
+
+    return map;
+  }, [analyses]);
+
+  // Calculate portfolio metrics
+  const portfolioMetrics = useMemo(() => {
+    if (!holdings || holdings.length === 0) {
+      return {
+        totalValue: 0,
+        totalCost: 0,
+        totalGainLoss: 0,
+        totalGainLossPercent: 0,
+        dayChange: 0,
+        dayChangePercent: 0,
+        weekChange: 0,
+        weekChangePercent: 0,
+        monthChange: 0,
+        monthChangePercent: 0,
+      };
+    }
+
+    let totalValue = 0;
+    let totalCost = 0;
+    let previousDayValue = 0;
+    let weekAgoValue = 0;
+    let monthAgoValue = 0;
+
+    holdings.forEach((h) => {
+      const priceData = priceMap.get(h.ticker);
+      const currentPrice = priceData?.currentPrice || h.purchasePrice || 100;
+      const previousClose = priceData?.previousClose || currentPrice * 0.995;
+      const weekAgo = priceData?.weekAgoPrice || currentPrice * 0.98;
+      const monthAgo = priceData?.monthAgoPrice || currentPrice * 0.95;
+
+      const value = h.units * currentPrice;
+      const cost = h.units * (h.purchasePrice || currentPrice);
+
+      totalValue += value;
+      totalCost += cost;
+      previousDayValue += h.units * previousClose;
+      weekAgoValue += h.units * weekAgo;
+      monthAgoValue += h.units * monthAgo;
+    });
+
+    const totalGainLoss = totalValue - totalCost;
+    const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
+
+    const dayChange = totalValue - previousDayValue;
+    const dayChangePercent = previousDayValue > 0 ? (dayChange / previousDayValue) * 100 : 0;
+
+    const weekChange = totalValue - weekAgoValue;
+    const weekChangePercent = weekAgoValue > 0 ? (weekChange / weekAgoValue) * 100 : 0;
+
+    const monthChange = totalValue - monthAgoValue;
+    const monthChangePercent = monthAgoValue > 0 ? (monthChange / monthAgoValue) * 100 : 0;
+
+    return {
+      totalValue,
+      totalCost,
+      totalGainLoss,
+      totalGainLossPercent,
+      dayChange,
+      dayChangePercent,
+      weekChange,
+      weekChangePercent,
+      monthChange,
+      monthChangePercent,
+    };
+  }, [holdings, priceMap]);
+
+  // Generate chart data based on time range
+  const chartData = useMemo(() => {
+    if (!holdings || holdings.length === 0) return [];
+
+    const now = new Date();
+    let daysBack = 30;
+    let labelFormat = "short";
+
+    switch (timeRange) {
+      case "1W":
+        daysBack = 7;
+        labelFormat = "weekday";
+        break;
+      case "1M":
+        daysBack = 30;
+        labelFormat = "short";
+        break;
+      case "3M":
+        daysBack = 90;
+        labelFormat = "month";
+        break;
+      case "1Y":
+        daysBack = 365;
+        labelFormat = "month";
+        break;
+      case "ALL":
+        daysBack = 365 * 2;
+        labelFormat = "year";
+        break;
+      default:
+        daysBack = 30;
+    }
+
+    // Generate simulated historical data points
+    const points = [];
+    const numPoints = Math.min(daysBack, 50); // Cap at 50 points for performance
+    const interval = daysBack / numPoints;
+
+    const baseValue = portfolioMetrics.totalValue || 10000;
+    const volatility = 0.02; // 2% daily volatility
+
+    for (let i = numPoints; i >= 0; i--) {
+      const daysAgo = Math.floor(i * interval);
+      const date = new Date(now);
+      date.setDate(date.getDate() - daysAgo);
+
+      // Simulate price movement (random walk with slight upward bias)
+      const randomFactor = 1 + (Math.random() - 0.48) * volatility * Math.sqrt(daysAgo);
+      const value = baseValue / randomFactor;
+
+      let label = "";
+      switch (labelFormat) {
+        case "weekday":
+          label = date.toLocaleDateString("en-US", { weekday: "short" });
+          break;
+        case "short":
+          label = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          break;
+        case "month":
+          label = date.toLocaleDateString("en-US", { month: "short" });
+          break;
+        case "year":
+          label = date.toLocaleDateString("en-US", { year: "2-digit", month: "short" });
+          break;
+        default:
+          label = date.toLocaleDateString();
+      }
+
+      points.push({ date, value, label });
+    }
+
+    return points;
+  }, [holdings, portfolioMetrics.totalValue, timeRange]);
+
+  // Holdings with enriched data
+  const enrichedHoldings = useMemo(() => {
+    if (!holdings) return [];
+
+    return holdings.map((h) => {
+      const priceData = priceMap.get(h.ticker);
+      const currentPrice = priceData?.currentPrice || h.purchasePrice || 100;
+      const totalValue = h.units * currentPrice;
+      const costBasis = h.units * (h.purchasePrice || currentPrice);
+      const gainLoss = totalValue - costBasis;
+      const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
+
+      return {
+        ...h,
+        currentPrice,
+        totalValue,
+        costBasis,
+        gainLoss,
+        gainLossPercent,
+      };
+    });
+  }, [holdings, priceMap]);
+
+  // Handlers
+  const handleOpenAddModal = () => {
+    setEditingHolding(null);
+    setFormData({
+      ticker: "",
+      units: 1,
+      purchaseDate: new Date(),
+      purchasePrice: 0,
+    });
+    setModalOpened(true);
+  };
+
+  const handleOpenEditModal = (holding) => {
+    setEditingHolding(holding);
+    setFormData({
+      ticker: holding.ticker,
+      units: holding.units,
+      purchaseDate: holding.purchaseDate?.toDate?.() || new Date(holding.purchaseDate),
+      purchasePrice: holding.purchasePrice || 0,
+    });
+    setModalOpened(true);
+  };
+
+  const handleSave = async () => {
+    if (!formData.ticker.trim()) {
+      notifications.show({
+        title: "Validation Error",
+        message: "Ticker symbol is required",
+        color: "red",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const holdingData = {
+        ticker: formData.ticker.toUpperCase().trim(),
+        units: formData.units,
+        purchaseDate: formData.purchaseDate,
+        purchasePrice: formData.purchasePrice,
+      };
+
+      if (editingHolding) {
+        await updateHolding(editingHolding.id, holdingData);
+        notifications.show({
+          title: "Updated",
+          message: `${holdingData.ticker} holding updated`,
+          color: "green",
+        });
+      } else {
+        await addHolding(holdingData);
+        notifications.show({
+          title: "Added",
+          message: `${holdingData.ticker} added to portfolio`,
+          color: "green",
+        });
+      }
+
+      setModalOpened(false);
+    } catch (error) {
+      console.error("Error saving holding:", error);
+      notifications.show({
+        title: "Error",
+        message: "Failed to save holding",
+        color: "red",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (holdingId, ticker) => {
+    try {
+      await removeHolding(holdingId);
+      notifications.show({
+        title: "Deleted",
+        message: `${ticker} removed from portfolio`,
+        color: "green",
+      });
+    } catch (error) {
+      console.error("Error deleting holding:", error);
+      notifications.show({
+        title: "Error",
+        message: "Failed to delete holding",
+        color: "red",
+      });
+    }
+  };
+
+  // Add dummy data for testing
+  const handleAddDummyData = async () => {
+    const dummyHoldings = [
+      { ticker: "AAPL", units: 10, purchasePrice: 150, purchaseDate: new Date("2024-01-15") },
+      { ticker: "GOOGL", units: 5, purchasePrice: 140, purchaseDate: new Date("2024-02-20") },
+      { ticker: "MSFT", units: 8, purchasePrice: 380, purchaseDate: new Date("2024-03-10") },
+      { ticker: "AMZN", units: 12, purchasePrice: 175, purchaseDate: new Date("2024-04-05") },
+      { ticker: "NVDA", units: 6, purchasePrice: 850, purchaseDate: new Date("2024-05-01") },
+    ];
+
+    try {
+      for (const holding of dummyHoldings) {
+        await addHolding(holding);
+      }
+      notifications.show({
+        title: "Dummy Data Added",
+        message: "5 sample holdings added to your portfolio",
+        color: "blue",
+      });
+    } catch (error) {
+      console.error("Error adding dummy data:", error);
+      notifications.show({
+        title: "Error",
+        message: "Failed to add dummy data",
+        color: "red",
+      });
+    }
+  };
+
+  // Don't render until user is available
+  if (!user) {
+    return (
+      <Center style={{ height: "80vh" }}>
+        <Loader size="lg" />
+      </Center>
+    );
+  }
+
+  // Show loading only on initial load, not during re-fetches
+  if (holdingsLoading && holdings.length === 0) {
+    return (
+      <Center style={{ height: "80vh" }}>
+        <Loader size="lg" />
+      </Center>
+    );
+  }
+
+  return (
+    <Container size="xl" fluid>
+      <Stack gap="lg">
+        {/* Header */}
+        <Group justify="space-between">
+          <div>
+            <Title order={2}>Portfolio</Title>
+            <Text size="sm" c="dimmed">
+              Track your investment performance
+            </Text>
+          </div>
+
+          <Group>
+            {/* TODO: Remove before deploying */}
+            <Button
+              leftSection={<IconTestPipe size={16} />}
+              onClick={handleAddDummyData}
+              variant="subtle"
+              color="orange"
+              title="Add test data (remove before deploying)"
+            >
+              Add Dummy Data
+            </Button>
+            <Button leftSection={<IconPlus size={16} />} onClick={handleOpenAddModal}>
+              Add Holding
+            </Button>
+          </Group>
+        </Group>
+
+        {/* Summary Stats */}
+        <SimpleGrid cols={{ base: 2, sm: 3, md: 5 }} spacing="md">
+          <StatCard
+            title="Total Value"
+            value={`$${portfolioMetrics.totalValue.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`}
+            change={portfolioMetrics.totalGainLossPercent}
+            icon={IconCurrencyDollar}
+            color="blue"
+          />
+          <StatCard
+            title="1 Day"
+            value={`$${Math.abs(portfolioMetrics.dayChange).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`}
+            change={portfolioMetrics.dayChangePercent}
+            icon={IconTrendingUp}
+            color="teal"
+          />
+          <StatCard
+            title="1 Week"
+            value={`$${Math.abs(portfolioMetrics.weekChange).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`}
+            change={portfolioMetrics.weekChangePercent}
+            icon={IconChartLine}
+            color="cyan"
+          />
+          <StatCard
+            title="1 Month"
+            value={`$${Math.abs(portfolioMetrics.monthChange).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`}
+            change={portfolioMetrics.monthChangePercent}
+            icon={IconChartLine}
+            color="grape"
+          />
+          <StatCard
+            title="Total Cost"
+            value={`$${portfolioMetrics.totalCost.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`}
+            icon={IconCalendar}
+            color="gray"
+          />
+        </SimpleGrid>
+
+        {/* Chart */}
+        <Paper withBorder p="md" radius="md">
+          <Group justify="space-between" mb="md">
+            <Text fw={600}>Portfolio Performance</Text>
+            <SegmentedControl
+              size="xs"
+              value={timeRange}
+              onChange={setTimeRange}
+              data={[
+                { label: "1W", value: "1W" },
+                { label: "1M", value: "1M" },
+                { label: "3M", value: "3M" },
+                { label: "1Y", value: "1Y" },
+                { label: "All", value: "ALL" },
+              ]}
+            />
+          </Group>
+          <PerformanceChart data={chartData} width={800} height={250} />
+        </Paper>
+
+        {/* Holdings Table */}
+        <Paper withBorder radius="md">
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Ticker</Table.Th>
+                <Table.Th style={{ textAlign: "right" }}>Units</Table.Th>
+                <Table.Th style={{ textAlign: "right" }}>Avg Cost</Table.Th>
+                <Table.Th style={{ textAlign: "right" }}>Current Price</Table.Th>
+                <Table.Th style={{ textAlign: "right" }}>Total Value</Table.Th>
+                <Table.Th style={{ textAlign: "right" }}>Gain/Loss</Table.Th>
+                <Table.Th>Purchase Date</Table.Th>
+                <Table.Th style={{ width: 40 }}></Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {enrichedHoldings.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={8}>
+                    <Center py="xl">
+                      <Stack align="center" gap="sm">
+                        <Text c="dimmed">No holdings yet</Text>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          leftSection={<IconPlus size={14} />}
+                          onClick={handleOpenAddModal}
+                        >
+                          Add your first holding
+                        </Button>
+                      </Stack>
+                    </Center>
+                  </Table.Td>
+                </Table.Tr>
+              ) : (
+                enrichedHoldings.map((holding) => (
+                  <Table.Tr key={holding.id}>
+                    <Table.Td>
+                      <Text fw={600}>{holding.ticker}</Text>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: "right" }}>
+                      {holding.units.toLocaleString()}
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: "right" }}>
+                      ${holding.purchasePrice?.toFixed(2) || "—"}
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: "right" }}>
+                      ${holding.currentPrice.toFixed(2)}
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: "right" }}>
+                      <Text fw={500}>
+                        ${holding.totalValue.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: "right" }}>
+                      <Group gap={4} justify="flex-end">
+                        <Badge
+                          color={holding.gainLoss >= 0 ? "green" : "red"}
+                          variant="light"
+                          size="sm"
+                        >
+                          {holding.gainLoss >= 0 ? "+" : ""}
+                          {holding.gainLossPercent.toFixed(2)}%
+                        </Badge>
+                        <Text size="sm" c={holding.gainLoss >= 0 ? "green" : "red"}>
+                          {holding.gainLoss >= 0 ? "+" : ""}$
+                          {holding.gainLoss.toFixed(2)}
+                        </Text>
+                      </Group>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {holding.purchaseDate?.toDate?.()?.toLocaleDateString() ||
+                          new Date(holding.purchaseDate).toLocaleDateString()}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Menu position="bottom-end">
+                        <Menu.Target>
+                          <ActionIcon variant="subtle" size="sm">
+                            <IconDotsVertical size={16} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            leftSection={<IconEdit size={14} />}
+                            onClick={() => handleOpenEditModal(holding)}
+                          >
+                            Edit
+                          </Menu.Item>
+                          <Menu.Item
+                            color="red"
+                            leftSection={<IconTrash size={14} />}
+                            onClick={() => handleDelete(holding.id, holding.ticker)}
+                          >
+                            Delete
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Table.Td>
+                  </Table.Tr>
+                ))
+              )}
+            </Table.Tbody>
+          </Table>
+        </Paper>
+
+        {enrichedHoldings.length > 0 && (
+          <Text size="sm" c="dimmed">
+            {enrichedHoldings.length} {enrichedHoldings.length === 1 ? "holding" : "holdings"}
+          </Text>
+        )}
+      </Stack>
+
+      {/* Add/Edit Modal */}
+      <Modal
+        opened={modalOpened}
+        onClose={() => !saving && setModalOpened(false)}
+        title={editingHolding ? "Edit Holding" : "Add Holding"}
+        centered
+      >
+        <Stack gap="md">
+          <TextInput
+            label="Ticker Symbol"
+            placeholder="e.g., AAPL, GOOGL"
+            value={formData.ticker}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, ticker: e.currentTarget.value.toUpperCase() }))
+            }
+            required
+            disabled={saving}
+          />
+          <NumberInput
+            label="Number of Units"
+            placeholder="10"
+            value={formData.units}
+            onChange={(value) =>
+              setFormData((prev) => ({ ...prev, units: typeof value === "number" ? value : 1 }))
+            }
+            min={0.0001}
+            step={1}
+            decimalScale={4}
+            required
+            disabled={saving}
+          />
+          <NumberInput
+            label="Purchase Price (per unit)"
+            placeholder="150.00"
+            value={formData.purchasePrice}
+            onChange={(value) =>
+              setFormData((prev) => ({
+                ...prev,
+                purchasePrice: typeof value === "number" ? value : 0,
+              }))
+            }
+            min={0}
+            decimalScale={2}
+            prefix="$"
+            disabled={saving}
+          />
+          <DatePickerInput
+            label="Purchase Date"
+            placeholder="Pick date"
+            value={formData.purchaseDate}
+            onChange={(date) => setFormData((prev) => ({ ...prev, purchaseDate: date }))}
+            maxDate={new Date()}
+            disabled={saving}
+          />
+
+          <Alert color="blue" variant="light" title="Price Data">
+            Current prices are pulled from your stock analyses. Add analyses for accurate pricing.
+          </Alert>
+
+          <Button onClick={handleSave} loading={saving} fullWidth>
+            {editingHolding ? "Update Holding" : "Add Holding"}
+          </Button>
+        </Stack>
+      </Modal>
+    </Container>
+  );
+}
+

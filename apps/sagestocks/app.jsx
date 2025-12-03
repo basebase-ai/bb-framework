@@ -15,14 +15,16 @@ import {
   useMantineColorScheme,
   Loader,
   Center,
+  Tabs,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { IconSun, IconMoon } from "@tabler/icons-react";
+import { IconSun, IconMoon, IconChartLine, IconWallet } from "@tabler/icons-react";
 import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
 import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import { TableView } from "./components/TableView.jsx";
+import { Portfolio } from "./components/Portfolio.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { APP_ID, collections, DEFAULT_STOCK_FIELDS } from "./schema.js";
 import { db } from "../../framework/core/firebase-init.js";
@@ -50,8 +52,9 @@ function AppContent() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
-  const [pageId, setPageId] = useState(null);
+  const [pageId, setPageId] = useState(/** @type {string | null} */ (null));
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(/** @type {string | null} */ ("portfolio"));
 
   // Auto-create or find default page configuration
   useEffect(() => {
@@ -109,12 +112,10 @@ function AppContent() {
   }
 
   return (
-    <AppShell header={{ height: 60 }} padding="md">
+    <AppShell header={{ height: 110 }} padding="md">
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Title order={3}>
-            SageStocks
-          </Title>
+        <Group h={60} px="md" justify="space-between">
+          <Title order={3}>SageStocks</Title>
 
           <Group gap="md">
             <ThemeToggle />
@@ -137,10 +138,31 @@ function AppContent() {
             )}
           </Group>
         </Group>
+
+        {/* Navigation Tabs */}
+        <Tabs
+          value={activeTab}
+          onChange={setActiveTab}
+          px="md"
+          styles={{
+            root: { borderBottom: "1px solid var(--mantine-color-gray-3)" },
+            list: { borderBottom: "none" },
+          }}
+        >
+          <Tabs.List>
+            <Tabs.Tab value="portfolio" leftSection={<IconWallet size={16} />}>
+              My Portfolio
+            </Tabs.Tab>
+            <Tabs.Tab value="analyses" leftSection={<IconChartLine size={16} />}>
+              Stock Analyses
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
       </AppShell.Header>
 
       <AppShell.Main>
-        {pageId && <TableView pageId={pageId} />}
+        {activeTab === "portfolio" && <Portfolio />}
+        {activeTab === "analyses" && pageId && <TableView pageId={pageId} />}
       </AppShell.Main>
 
       <ProfileModal

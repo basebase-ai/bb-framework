@@ -176,7 +176,7 @@ Basebase has a two-tier secrets system:
 
 ### Secret Resolution Order
 
-1. **App-level secrets** (in Firestore `apps/{appId}/secrets`)
+1. **App-level secrets** (in Firestore `app-secrets/{appId}` - separate secure collection)
 2. **Basebase secrets** (in GCP Secret Manager)
 
 ### Usage
@@ -457,11 +457,11 @@ module.exports = async function (params, context) {
   
   context.log('App configuration', {
     appName: app.name,
-    hasSecrets: !!app.secrets
   });
   
-  // Access app-level secrets directly from the app document
-  const apiKey = app.secrets?.CUSTOM_API_KEY;
+  // Access app-level secrets via context.getSecret() - NOT from app document
+  // App secrets are stored in a separate secure collection (app-secrets)
+  const apiKey = await context.getSecret('CUSTOM_API_KEY');
   
   if (!apiKey) {
     throw new Error('CUSTOM_API_KEY not configured for this app');

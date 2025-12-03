@@ -24,6 +24,7 @@ import {
   AppShell,
   Alert,
   Divider,
+  Autocomplete,
 } from "@mantine/core";
 import {
   IconSearch,
@@ -38,9 +39,15 @@ import {
   IconUser,
   IconPhoto,
   IconAlignLeft,
+  IconKey,
+  IconTrash,
+  IconEyeOff,
+  IconUserPlus,
+  IconX,
 } from "@tabler/icons-react";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { useDocument } from "../../../framework/hooks/useDocument.js";
 import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
 import { useUserProfiles } from "../../../framework/hooks/useUserProfiles.js";
 import { useStorage } from "../../../framework/hooks/useStorage.js";
@@ -460,9 +467,22 @@ function ViewAppModal({ app, opened, onClose }) {
   );
 }
 
-function EditAppModal({ app, opened, onClose, onUpdate }) {
+function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
+  const { user } = useAuth();
   const { upload, uploading, progress } = useStorage(APP_ID);
   
+  // Fetch all users for autocomplete (same pattern as todo-app)
+  const { data: allUsers = [] } = useCollection("users");
+  
+  // Fetch app secrets (only owner can access)
+  const { 
+    data: secretsDoc, 
+    loading: secretsLoading, 
+    exists: secretsExist,
+    set: setSecrets,
+    update: updateSecrets,
+  } = useDocument("app-secrets", app?.id);
+
   const [formData, setFormData] = useState({
     name: app?.name || "",
     description: app?.description || "",
@@ -473,6 +493,69 @@ function EditAppModal({ app, opened, onClose, onUpdate }) {
     collaborators: app?.collaborators || [],
   });
 
+  // Local state for secrets management
+  const [secrets, setLocalSecrets] = useState([]);
+  const [newSecretKey, setNewSecretKey] = useState("");
+  const [newSecretValue, setNewSecretValue] = useState("");
+  const [secretsModified, setSecretsModified] = useState(false);
+  const [savingSecrets, setSavingSecrets] = useState(false);
+  const [revealedSecrets, setRevealedSecrets] = useState(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [collaboratorSearch, setCollaboratorSearch] = useState("");
+
+  const isOwner = user && app?.owner === user.uid;
+
+  // Get profiles for current collaborators (for displaying with avatars)
+  const { profiles: collaboratorProfiles } = useUserProfiles(formData.collaborators);
+
+  // Build autocomplete data for user search (same pattern as todo-app ProjectSettings)
+  const userAutocompleteData = useMemo(() => {
+    if (!allUsers) return [];
+    
+    const excludeIds = new Set([app?.owner, ...(formData.collaborators || [])]);
+    const seenEmails = new Set();
+    
+    return allUsers
+      .filter((u) => !excludeIds.has(u.id))
+      .filter((u) => {
+        if (!u.email || seenEmails.has(u.email)) return false;
+        seenEmails.add(u.email);
+        return true;
+      })
+      .map((u) => ({
+        value: u.email,
+        label: u.displayName ? `${u.displayName} (${u.email})` : u.email,
+        userId: u.id,
+      }));
+  }, [allUsers, app?.owner, formData.collaborators]);
+
+  const handleAddCollaborator = (selectedValue) => {
+    const selectedUser = userAutocompleteData.find(u => u.value === selectedValue);
+    if (selectedUser && !formData.collaborators.includes(selectedUser.userId)) {
+      const newCollaborators = [...formData.collaborators, selectedUser.userId];
+      setFormData({
+        ...formData,
+        collaborators: newCollaborators,
+      });
+      // Auto-save collaborators silently (don't close modal)
+      onUpdate(app.id, { collaborators: newCollaborators }, { silent: true });
+    }
+    // Clear on next tick to override Autocomplete's default behavior
+    setTimeout(() => setCollaboratorSearch(""), 0);
+  };
+
+  const handleRemoveCollaborator = (userId) => {
+    const newCollaborators = formData.collaborators.filter(id => id !== userId);
+    setFormData({
+      ...formData,
+      collaborators: newCollaborators,
+    });
+    // Auto-save collaborators silently (don't close modal)
+    onUpdate(app.id, { collaborators: newCollaborators }, { silent: true });
+  };
+
+  // Reset form state when app changes (modal opens with new app)
   React.useEffect(() => {
     if (app) {
       setFormData({
@@ -484,19 +567,34 @@ function EditAppModal({ app, opened, onClose, onUpdate }) {
         publicEdit: app.publicEdit ?? false,
         collaborators: app.collaborators || [],
       });
+      // Reset other modal state
+      setCollaboratorSearch("");
+      setShowDeleteConfirm(false);
+      setNewSecretKey("");
+      setNewSecretValue("");
     }
   }, [app]);
 
+  // Load secrets from document when it changes
+  React.useEffect(() => {
+    if (secretsDoc?.secrets) {
+      const secretsArray = Object.entries(secretsDoc.secrets).map(
+        ([key, value]) => ({ key, value })
+      );
+      setLocalSecrets(secretsArray);
+      setSecretsModified(false);
+    } else {
+      setLocalSecrets([]);
+      setSecretsModified(false);
+    }
+    setRevealedSecrets(new Set());
+  }, [secretsDoc]);
+
   const handleLogoUpload = async (file) => {
     try {
-      // Upload to storage with app ID in path
       const path = `app-logos/${app.id}/${Date.now()}_${file.name}`;
       const result = await upload(file, path);
-      
-      // Update form data
       setFormData({ ...formData, logoURL: result.url });
-      
-      // Auto-save to app
       onUpdate(app.id, { logoURL: result.url });
     } catch (err) {
       console.error('Error uploading logo:', err);
@@ -511,6 +609,83 @@ function EditAppModal({ app, opened, onClose, onUpdate }) {
   const handleLogoClear = async () => {
     setFormData({ ...formData, logoURL: "" });
     onUpdate(app.id, { logoURL: null });
+  };
+
+  const handleAddSecret = () => {
+    const trimmedKey = newSecretKey.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+    const trimmedValue = newSecretValue.trim();
+    
+    if (!trimmedKey) {
+      showNotification({
+        title: "Error",
+        message: "Secret key is required",
+        color: "red",
+      });
+      return;
+    }
+    
+    if (secrets.some(s => s.key === trimmedKey)) {
+      showNotification({
+        title: "Error",
+        message: "A secret with this key already exists",
+        color: "red",
+      });
+      return;
+    }
+    
+    setLocalSecrets([...secrets, { key: trimmedKey, value: trimmedValue }]);
+    setNewSecretKey("");
+    setNewSecretValue("");
+    setSecretsModified(true);
+  };
+
+  const handleRemoveSecret = (keyToRemove) => {
+    setLocalSecrets(secrets.filter(s => s.key !== keyToRemove));
+    setSecretsModified(true);
+  };
+
+  const handleSaveSecrets = async () => {
+    setSavingSecrets(true);
+    try {
+      const secretsObject = {};
+      for (const { key, value } of secrets) {
+        secretsObject[key] = value;
+      }
+      
+      if (secretsExist) {
+        await updateSecrets({ secrets: secretsObject, appId: app.id });
+      } else {
+        await setSecrets({ secrets: secretsObject, appId: app.id });
+      }
+      
+      setSecretsModified(false);
+      showNotification({
+        title: "Success",
+        message: "Secrets saved successfully",
+        color: "teal",
+      });
+    } catch (err) {
+      console.error('Error saving secrets:', err);
+      showNotification({
+        title: "Error",
+        message: "Failed to save secrets. Please try again.",
+        color: "red",
+      });
+    } finally {
+      setSavingSecrets(false);
+    }
+  };
+
+  const toggleRevealSecret = (key) => {
+    setRevealedSecrets(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   };
 
   const handleSubmit = () => {
@@ -603,16 +778,240 @@ function EditAppModal({ app, opened, onClose, onUpdate }) {
             </Button>
           </div>
         </Group>
-        <Textarea
-          label="Collaborators (comma-separated UIDs)"
-          placeholder="uid1, uid2, uid3"
-          value={formData.collaborators.join(", ")}
-          onChange={(e) => setFormData({ 
-            ...formData, 
-            collaborators: e.target.value.split(",").map(s => s.trim()).filter(Boolean)
-          })}
-          minRows={2}
+        {/* Collaborators Section */}
+        <div>
+          <Text size="sm" weight={500} mb="xs">Collaborators</Text>
+          
+          {/* Current collaborators list */}
+          {formData.collaborators.length > 0 && (
+            <Stack spacing="xs" mb="sm">
+              {formData.collaborators.map((userId) => {
+                const profile = collaboratorProfiles.get(userId);
+                return (
+                  <Group key={userId} spacing="sm" style={{ 
+                    padding: '6px 10px',
+                    background: 'rgba(147, 51, 234, 0.05)',
+                    borderRadius: '6px',
+                  }}>
+                    <Avatar
+                      src={profile?.photoURL}
+                      alt={profile?.displayName || userId}
+                      size="sm"
+                      radius="xl"
+                      color="violet"
+                    >
+                      {(profile?.displayName || profile?.email || userId).charAt(0).toUpperCase()}
+                    </Avatar>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text size="sm" weight={500} truncate>
+                        {profile?.displayName || profile?.email || userId}
+                      </Text>
+                      {profile?.email && profile?.displayName && (
+                        <Text size="xs" color="dimmed" truncate>
+                          {profile.email}
+                        </Text>
+                      )}
+                    </div>
+                    <ActionIcon 
+                      size="sm" 
+                      color="red" 
+                      variant="subtle"
+                      onClick={() => handleRemoveCollaborator(userId)}
+                    >
+                      <IconX size={14} />
+                    </ActionIcon>
+                  </Group>
+                );
+              })}
+            </Stack>
+          )}
+          
+          {/* Add collaborator autocomplete */}
+          <Group spacing="xs" align="flex-end">
+            <Autocomplete
+              placeholder="Search by name or email..."
+              value={collaboratorSearch}
+              onChange={setCollaboratorSearch}
+              onOptionSubmit={handleAddCollaborator}
+              data={userAutocompleteData}
+              limit={5}
+              style={{ flex: 1 }}
+              leftSection={<IconUserPlus size={16} />}
+            />
+          </Group>
+          <Text size="xs" color="dimmed" mt={4}>
+            Search for users to add as collaborators
+          </Text>
+        </div>
+
+        {/* Secrets Management Section */}
+        <Divider 
+          label={
+            <Group spacing="xs">
+              <IconKey size={16} />
+              <Text size="sm" weight={500}>App Secrets (Environment Variables)</Text>
+            </Group>
+          }
+          labelPosition="left" 
         />
+        
+        <Stack spacing="xs">
+          <Text size="xs" color="dimmed">
+            Secrets are encrypted and only accessible by this app and its owner.
+          </Text>
+          
+          {secretsLoading ? (
+            <Text size="sm" color="dimmed">Loading secrets...</Text>
+          ) : (
+            <>
+              {/* Existing secrets */}
+              {secrets.length > 0 && (
+                <Stack spacing="xs">
+                  {secrets.map(({ key, value }) => (
+                    <Group key={key} spacing="xs" align="center">
+                      <TextInput
+                        value={key}
+                        readOnly
+                        size="xs"
+                        style={{ flex: 1, maxWidth: 180 }}
+                        styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
+                      />
+                      <TextInput
+                        value={revealedSecrets.has(key) ? value : '•'.repeat(Math.min(value.length, 20))}
+                        readOnly
+                        size="xs"
+                        style={{ flex: 2 }}
+                        styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
+                        rightSection={
+                          <ActionIcon 
+                            size="xs" 
+                            variant="subtle" 
+                            onClick={() => toggleRevealSecret(key)}
+                          >
+                            {revealedSecrets.has(key) ? <IconEyeOff size={14} /> : <IconEye size={14} />}
+                          </ActionIcon>
+                        }
+                      />
+                      <ActionIcon 
+                        color="red" 
+                        variant="subtle" 
+                        size="sm"
+                        onClick={() => handleRemoveSecret(key)}
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+              
+              {/* Add new secret */}
+              <Group spacing="xs" align="flex-end">
+                <TextInput
+                  placeholder="SECRET_KEY"
+                  value={newSecretKey}
+                  onChange={(e) => setNewSecretKey(e.target.value.toUpperCase())}
+                  size="xs"
+                  style={{ flex: 1, maxWidth: 180 }}
+                  styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
+                />
+                <TextInput
+                  placeholder="secret_value"
+                  value={newSecretValue}
+                  onChange={(e) => setNewSecretValue(e.target.value)}
+                  size="xs"
+                  style={{ flex: 2 }}
+                  styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
+                />
+                <ActionIcon 
+                  color="violet" 
+                  variant="filled" 
+                  size="sm"
+                  onClick={handleAddSecret}
+                  disabled={!newSecretKey.trim()}
+                >
+                  <IconPlus size={16} />
+                </ActionIcon>
+              </Group>
+              
+              {/* Save secrets button */}
+              {secretsModified && (
+                <Button
+                  variant="light"
+                  color="violet"
+                  size="xs"
+                  leftSection={<IconKey size={14} />}
+                  onClick={handleSaveSecrets}
+                  loading={savingSecrets}
+                >
+                  Save Secrets
+                </Button>
+              )}
+            </>
+          )}
+        </Stack>
+
+        {/* Delete App Section (Owner Only) */}
+        {isOwner && (
+          <>
+            <Divider mt="lg" />
+            {!showDeleteConfirm ? (
+              <Button
+                variant="subtle"
+                color="red"
+                leftSection={<IconTrash size={16} />}
+                onClick={() => setShowDeleteConfirm(true)}
+                fullWidth
+              >
+                Delete App
+              </Button>
+            ) : (
+              <Stack spacing="xs">
+                <Alert color="red" variant="light">
+                  <Text size="sm" weight={500}>
+                    Are you sure you want to delete "{app.name}"?
+                  </Text>
+                  <Text size="xs" color="dimmed" mt={4}>
+                    This action cannot be undone. All app data and secrets will be permanently deleted.
+                  </Text>
+                </Alert>
+                <Group spacing="xs" grow>
+                  <Button
+                    variant="subtle"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    color="red"
+                    onClick={async () => {
+                      setDeleting(true);
+                      try {
+                        await onDelete(app.id);
+                        onClose();
+                      } catch (err) {
+                        console.error('Error deleting app:', err);
+                        showNotification({
+                          title: "Error",
+                          message: "Failed to delete app. Please try again.",
+                          color: "red",
+                        });
+                      } finally {
+                        setDeleting(false);
+                        setShowDeleteConfirm(false);
+                      }
+                    }}
+                    loading={deleting}
+                  >
+                    Yes, Delete App
+                  </Button>
+                </Group>
+              </Stack>
+            )}
+          </>
+        )}
+
         <Group position="right" mt="md">
           <Button variant="subtle" onClick={onClose}>
             Cancel
@@ -822,21 +1221,10 @@ export default function AppPlayground() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   
-  const { data: allApps = [], loading, add: addItem, update: updateItem, error } = useCollection("apps");
-  
-  // Filter to only show apps with publicUse: true
-  const apps = useMemo(() => {
-    return allApps.filter(app => app.publicUse === true);
-  }, [allApps]);
-  
-  // Get all unique owner IDs and fetch their profiles
-  const ownerIds = useMemo(() => {
-    return [...new Set(apps.map(app => app.owner).filter(Boolean))];
-  }, [apps]);
-  
-  const { profiles: ownerProfiles } = useUserProfiles(ownerIds);
+  const { data: allApps = [], loading, add: addItem, update: updateItem, remove: removeItem, error } = useCollection("apps");
   
   const [searchQuery, setSearchQuery] = useState("");
+  const [showMyApps, setShowMyApps] = useState(false);
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [viewModalOpened, setViewModalOpened] = useState(false);
   const [editModalOpened, setEditModalOpened] = useState(false);
@@ -844,6 +1232,30 @@ export default function AppPlayground() {
   const [requestModalOpened, setRequestModalOpened] = useState(false);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
   const [selectedApp, setSelectedApp] = useState(null);
+
+  // All apps where user is owner or collaborator (regardless of publicUse)
+  const myApps = useMemo(() => {
+    if (!user) return [];
+    return allApps.filter(app => 
+      app.owner === user.uid || 
+      (app.collaborators && app.collaborators.includes(user.uid))
+    );
+  }, [allApps, user]);
+
+  // Public apps (publicUse: true)
+  const publicApps = useMemo(() => {
+    return allApps.filter(app => app.publicUse === true);
+  }, [allApps]);
+
+  // Apps to display based on filter mode
+  const apps = showMyApps ? myApps : publicApps;
+  
+  // Get all unique owner IDs and fetch their profiles
+  const ownerIds = useMemo(() => {
+    return [...new Set(apps.map(app => app.owner).filter(Boolean))];
+  }, [apps]);
+  
+  const { profiles: ownerProfiles } = useUserProfiles(ownerIds);
 
   const filteredApps = useMemo(() => {
     if (!apps || !searchQuery.trim()) return apps || [];
@@ -860,20 +1272,23 @@ export default function AppPlayground() {
   }, [apps, searchQuery]);
 
 
-  const handleUpdateApp = async (appId, data) => {
+  const handleUpdateApp = async (appId, data, options = {}) => {
+    const { silent = false } = options;
     try {
       await updateItem(appId, {
         ...data,
         updatedAt: new Date(),
       });
       
-      setEditModalOpened(false);
-      setSelectedApp(null);
-      showNotification({
-        title: "Success",
-        message: "App updated successfully",
-        color: "teal",
-      });
+      if (!silent) {
+        setEditModalOpened(false);
+        setSelectedApp(null);
+        showNotification({
+          title: "Success",
+          message: "App updated successfully",
+          color: "teal",
+        });
+      }
     } catch (error) {
       showNotification({
         title: "Error",
@@ -881,6 +1296,17 @@ export default function AppPlayground() {
         color: "red",
       });
     }
+  };
+
+  const handleDeleteApp = async (appId) => {
+    await removeItem(appId);
+    setEditModalOpened(false);
+    setSelectedApp(null);
+    showNotification({
+      title: "Success",
+      message: "App deleted successfully",
+      color: "teal",
+    });
   };
 
   const handleViewApp = (app) => {
@@ -1009,18 +1435,25 @@ export default function AppPlayground() {
                 padding="md"
                 radius="md"
                 style={{
-                  background: "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%)",
-                  border: "1px solid rgba(147, 51, 234, 0.2)",
+                  background: !showMyApps 
+                    ? "linear-gradient(135deg, rgba(147, 51, 234, 0.2) 0%, rgba(79, 70, 229, 0.15) 100%)"
+                    : "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%)",
+                  border: !showMyApps 
+                    ? "2px solid rgba(147, 51, 234, 0.5)"
+                    : "1px solid rgba(147, 51, 234, 0.2)",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
                 }}
+                onClick={() => setShowMyApps(false)}
               >
                 <Group spacing="xs">
                   <IconRocket size={24} color="var(--mantine-color-violet-6)" />
                   <div>
                     <Text size="xl" weight={700}>
-                      {apps.length}
+                      {publicApps.length}
                     </Text>
                     <Text size="xs" color="dimmed">
-                      Total Apps
+                      Public Apps
                     </Text>
                   </div>
                 </Group>
@@ -1031,15 +1464,22 @@ export default function AppPlayground() {
                 padding="md"
                 radius="md"
                 style={{
-                  background: "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%)",
-                  border: "1px solid rgba(147, 51, 234, 0.2)",
+                  background: showMyApps 
+                    ? "linear-gradient(135deg, rgba(147, 51, 234, 0.2) 0%, rgba(79, 70, 229, 0.15) 100%)"
+                    : "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%)",
+                  border: showMyApps 
+                    ? "2px solid rgba(147, 51, 234, 0.5)"
+                    : "1px solid rgba(147, 51, 234, 0.2)",
+                  cursor: user ? "pointer" : "default",
+                  transition: "all 0.2s ease",
                 }}
+                onClick={() => user && setShowMyApps(true)}
               >
                 <Group spacing="xs">
                   <IconCode size={24} color="var(--mantine-color-violet-6)" />
                   <div>
                     <Text size="xl" weight={700}>
-                      {apps.filter((a) => a.owner === user?.uid).length}
+                      {myApps.length}
                     </Text>
                     <Text size="xs" color="dimmed">
                       Your Apps
@@ -1061,7 +1501,7 @@ export default function AppPlayground() {
                   <IconUsers size={24} color="var(--mantine-color-violet-6)" />
                   <div>
                     <Text size="xl" weight={700}>
-                      {new Set(apps.map((a) => a.owner)).size}
+                      {new Set(publicApps.map((a) => a.owner)).size}
                     </Text>
                     <Text size="xs" color="dimmed">
                       Developers
@@ -1088,12 +1528,18 @@ export default function AppPlayground() {
               <IconRocket size={64} color="var(--mantine-color-violet-6)" opacity={0.5} />
               <div>
                 <Text size="lg" weight={600} mb="xs">
-                  {searchQuery ? "No apps found" : "No apps yet"}
+                  {searchQuery 
+                    ? "No apps found" 
+                    : showMyApps 
+                      ? "No apps yet" 
+                      : "No public apps yet"}
                 </Text>
                 <Text size="sm" color="dimmed">
                   {searchQuery
                     ? "Try adjusting your search query"
-                    : "Create your first app to get started"}
+                    : showMyApps
+                      ? "Create your first app to get started"
+                      : "Be the first to publish a public app!"}
                 </Text>
               </div>
               {!searchQuery && (
@@ -1150,6 +1596,7 @@ export default function AppPlayground() {
           setSelectedApp(null);
         }}
         onUpdate={handleUpdateApp}
+        onDelete={handleDeleteApp}
       />
       <ImproveAppModal
         app={selectedApp}

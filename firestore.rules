@@ -70,6 +70,13 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
+    // Global: app-secrets collection (API keys, tokens for apps)
+    // Only app owner can read/write from client; server functions use Admin SDK (bypasses rules)
+    match /app-secrets/{appId} {
+      allow read, write: if request.auth != null 
+                         && get(/databases/$(database)/documents/apps/$(appId)).data.owner == request.auth.uid;
+    }
+    
     // Global: app-members collection (manages access to all apps)
     match /app-members/{membershipId} {
       // Users can read their own memberships (pattern: {appId}_{userId})

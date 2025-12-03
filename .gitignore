@@ -9,4 +9,4 @@ coverage/
 .firebase/
 firebase-debug.log
 firestore-debug.log
-
+vibe-together-*.json

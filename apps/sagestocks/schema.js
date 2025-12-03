@@ -18,6 +18,7 @@ export const collections = {
 
   // App-specific collections
   pages: `${APP_ID}_pages`,
+  holdings: `${APP_ID}_holdings`,
   // Note: Other collections are referenced dynamically via getCollection()
 };
 
