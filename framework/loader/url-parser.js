@@ -16,14 +16,23 @@ export function getAppIdFromURL() {
   const hostname = url.hostname;
   const parts = hostname.split('.');
   
-  // Check for localhost subdomains (e.g., teg-app.localhost)
-  if (parts.length === 2 && parts[1] === 'localhost' && parts[0] !== 'www') {
+  // Check if this is a basebase domain (where www is a valid app ID)
+  const isBasebaseDomain = hostname.includes('basebase.ai') || hostname.includes('basebase.io');
+  
+  // Check for localhost subdomains (e.g., teg-app.localhost or www.localhost)
+  // www.localhost loads the "www" app for local testing
+  if (parts.length === 2 && parts[1] === 'localhost') {
     return parts[0];
   }
   
-  // Check for production subdomains (e.g., teg-app.basebase.io)
-  if (parts.length > 2 && parts[0] !== 'www' && parts[0] !== 'localhost') {
-    return parts[0];
+  // Check for production subdomains (e.g., teg-app.basebase.io or www.basebase.ai)
+  // On basebase domains, "www" is treated as a valid app ID (the landing page app)
+  if (parts.length > 2 && parts[0] !== 'localhost') {
+    // For basebase domains, always use the subdomain (including www)
+    // For other domains, skip www as it's just the standard prefix
+    if (isBasebaseDomain || parts[0] !== 'www') {
+      return parts[0];
+    }
   }
   
   // Option 3: Path-based (e.g., basebase.io/teg-app or localhost:3000/teg-app)
@@ -33,10 +42,15 @@ export function getAppIdFromURL() {
     return pathParts[0];
   }
   
-  // Default: For development, try to load from localStorage or return null
+  // Default: For development, try to load from localStorage
   const devApp = localStorage.getItem('__dev_app_id');
   if (devApp) {
     return devApp;
+  }
+  
+  // For production root domain (basebase.ai with no subdomain), default to "www" app
+  if (isBasebaseDomain) {
+    return 'www';
   }
   
   return null;

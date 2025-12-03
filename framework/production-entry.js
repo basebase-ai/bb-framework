@@ -137,8 +137,9 @@ function showError(title, message, details) {
             padding: 1rem;
             background: #f8f9fa;
             border-radius: 4px;
+            color: #495057;
           ">
-            <summary style="cursor: pointer; font-weight: 500;">Technical Details</summary>
+            <summary style="cursor: pointer; font-weight: 500; color: #495057;">Technical Details</summary>
             <pre style="
               margin: 1rem 0 0;
               padding: 0;

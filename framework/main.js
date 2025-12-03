@@ -5,11 +5,19 @@
 
 // Import Firebase initialization first
 import "./core/firebase-init.js";
+import { getAppIdFromURL as getAppIdFromURLParser } from "./loader/url-parser.js";
 
-// Get app ID from URL parameter
+// Get app ID from URL (supports query param, subdomain, and path)
 function getAppIdFromURL() {
+  // First try the full URL parser (handles subdomains like www.localhost)
+  const parsedAppId = getAppIdFromURLParser();
+  if (parsedAppId) {
+    return parsedAppId;
+  }
+  
+  // Fallback: query param or default
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('app') || 'starter-app'; // Default to starter-app
+  return urlParams.get('app') || 'starter-app';
 }
 
 // Dynamic import of the app entry point
