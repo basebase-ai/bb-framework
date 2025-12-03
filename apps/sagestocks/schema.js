@@ -19,6 +19,7 @@ export const collections = {
   // App-specific collections
   pages: `${APP_ID}_pages`,
   holdings: `${APP_ID}_holdings`,
+  quotes: `${APP_ID}_quotes`,
   // Note: Other collections are referenced dynamically via getCollection()
 };
 

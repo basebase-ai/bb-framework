@@ -2,7 +2,7 @@
  * Portfolio - Track and visualize your investment portfolio
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Container,
   Title,
@@ -36,13 +36,15 @@ import {
   IconChartLine,
   IconCurrencyDollar,
   IconCalendar,
-  IconTestPipe,
   IconDotsVertical,
+  IconRefresh,
+  IconGripVertical,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { useFunction } from "../../../framework/hooks/useFunction.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
-import { collections, getCollection } from "../schema.js";
+import { collections, APP_ID } from "../schema.js";
 
 import "@mantine/dates/styles.css";
 
@@ -203,6 +205,10 @@ function StatCard({ title, value, change, icon: Icon, color = "blue" }) {
 export function Portfolio() {
   const { user } = useAuth();
   
+  // Track if we've fetched quotes for current holdings
+  const fetchedTickersRef = useRef(/** @type {Set<string>} */ (new Set()));
+  const [refreshingQuotes, setRefreshingQuotes] = useState(false);
+
   // Memoize where conditions to prevent re-renders
   const holdingsWhere = useMemo(
     () => (user?.uid ? [["owner", "==", user.uid]] : []),
@@ -221,11 +227,89 @@ export function Portfolio() {
     realtime: !!user?.uid,
   });
 
-  // Analyses for current prices
-  const { data: analyses, loading: analysesLoading } = useCollection(
-    getCollection("stock-analyses"),
-    { realtime: !!user?.uid }
-  );
+  // Quotes collection for real-time prices (e.g., sagestocks_quotes/AAPL)
+  const { data: quotes, loading: quotesLoading } = useCollection(collections.quotes, {
+    realtime: !!user?.uid,
+  });
+
+  // Function to fetch quotes from FMP API
+  const { call: fetchQuotes, loading: fetchingQuotes } = useFunction("queryFMP");
+
+  // Get unique tickers from holdings
+  const holdingTickers = useMemo(() => {
+    if (!holdings) return [];
+    return [...new Set(holdings.map((h) => h.ticker).filter(Boolean))];
+  }, [holdings]);
+
+  // Fetch quotes for holdings on initial load and when holdings change
+  useEffect(() => {
+    if (!user || !holdingTickers.length) return;
+
+    // Find tickers we haven't fetched yet
+    const newTickers = holdingTickers.filter(
+      (ticker) => !fetchedTickersRef.current.has(ticker)
+    );
+
+    if (newTickers.length === 0) return;
+
+    // Mark tickers as pending immediately to prevent duplicate fetches
+    newTickers.forEach((ticker) => fetchedTickersRef.current.add(ticker));
+
+    const fetchNewQuotes = async () => {
+      try {
+        console.log("📈 Fetching quotes for:", newTickers);
+        
+        await fetchQuotes(
+          {
+            operation: "quote",
+            symbols: newTickers,
+            collectionName: "quotes", // Will be namespaced to sagestocks_quotes
+          },
+          { appId: APP_ID }
+        );
+
+        console.log("✅ Quotes fetched successfully");
+      } catch (error) {
+        console.error("Failed to fetch quotes:", error);
+        // Remove from fetched set so it can be retried
+        newTickers.forEach((ticker) => fetchedTickersRef.current.delete(ticker));
+      }
+    };
+
+    fetchNewQuotes();
+  }, [user, holdingTickers, fetchQuotes]);
+
+  // Manual refresh quotes
+  const handleRefreshQuotes = async () => {
+    if (!holdingTickers.length) return;
+
+    setRefreshingQuotes(true);
+    try {
+      await fetchQuotes(
+        {
+          operation: "quote",
+          symbols: holdingTickers,
+          collectionName: "quotes",
+        },
+        { appId: APP_ID }
+      );
+
+      notifications.show({
+        title: "Quotes Updated",
+        message: `Refreshed prices for ${holdingTickers.length} stocks`,
+        color: "green",
+      });
+    } catch (error) {
+      console.error("Failed to refresh quotes:", error);
+      notifications.show({
+        title: "Refresh Failed",
+        message: error instanceof Error ? error.message : "Failed to refresh quotes",
+        color: "red",
+      });
+    } finally {
+      setRefreshingQuotes(false);
+    }
+  };
 
   // Modal state
   const [modalOpened, setModalOpened] = useState(false);
@@ -241,53 +325,34 @@ export function Portfolio() {
   // Time range for chart
   const [timeRange, setTimeRange] = useState("1M");
 
-  // Build price lookup from analyses
+  // Drag and drop state
+  const [draggedItem, setDraggedItem] = useState(/** @type {any | null} */ (null));
+
+  // Build price lookup from quotes collection
   const priceMap = useMemo(() => {
-    /** @type {Map<string, { currentPrice: number; previousClose: number; weekAgoPrice: number; monthAgoPrice: number }>} */
+    /** @type {Map<string, { currentPrice: number; previousClose: number; change: number; changesPercentage: number; dayHigh: number; dayLow: number }>} */
     const map = new Map();
     
-    if (!analyses) return map;
+    if (!quotes) return map;
     
-    // Group analyses by ticker, sorted by date (most recent first)
-    const byTicker = /** @type {Map<string, Array<any>>} */ (new Map());
-    analyses.forEach((a) => {
-      if (a.ticker && a.success) {
-        if (!byTicker.has(a.ticker)) {
-          byTicker.set(a.ticker, []);
-        }
-        byTicker.get(a.ticker)?.push(a);
-      }
-    });
+    // Quotes are stored with ticker as document ID (e.g., sagestocks_quotes/AAPL)
+    quotes.forEach((quote) => {
+      // The document ID is the ticker symbol
+      const ticker = quote.symbol || quote.id;
+      if (!ticker) return;
 
-    byTicker.forEach((tickerAnalyses, ticker) => {
-      // Sort by date descending
-      tickerAnalyses.sort((a, b) => {
-        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
-        return dateB.getTime() - dateA.getTime();
+      map.set(ticker, {
+        currentPrice: quote.price ?? 0,
+        previousClose: quote.previousClose ?? quote.price ?? 0,
+        change: quote.change ?? 0,
+        changesPercentage: quote.changesPercentage ?? 0,
+        dayHigh: quote.dayHigh ?? quote.price ?? 0,
+        dayLow: quote.dayLow ?? quote.price ?? 0,
       });
-
-      const latest = tickerAnalyses[0];
-      // Try to get current price from data (could be in different places)
-      const currentPrice =
-        latest.data?.currentPrice ||
-        latest.data?.price ||
-        latest.currentPrice ||
-        latest.price ||
-        100; // Fallback for demo
-
-      // Previous close (simplified - use 99% of current for demo)
-      const previousClose = currentPrice * 0.995;
-      // Week ago (simplified)
-      const weekAgoPrice = currentPrice * 0.98;
-      // Month ago (simplified)
-      const monthAgoPrice = currentPrice * 0.95;
-
-      map.set(ticker, { currentPrice, previousClose, weekAgoPrice, monthAgoPrice });
     });
 
     return map;
-  }, [analyses]);
+  }, [quotes]);
 
   // Calculate portfolio metrics
   const portfolioMetrics = useMemo(() => {
@@ -308,45 +373,42 @@ export function Portfolio() {
 
     let totalValue = 0;
     let totalCost = 0;
+    let totalDayChange = 0;
     let previousDayValue = 0;
-    let weekAgoValue = 0;
-    let monthAgoValue = 0;
 
     holdings.forEach((h) => {
       const priceData = priceMap.get(h.ticker);
-      const currentPrice = priceData?.currentPrice || h.purchasePrice || 100;
-      const previousClose = priceData?.previousClose || currentPrice * 0.995;
-      const weekAgo = priceData?.weekAgoPrice || currentPrice * 0.98;
-      const monthAgo = priceData?.monthAgoPrice || currentPrice * 0.95;
+      const currentPrice = priceData?.currentPrice || h.purchasePrice || 0;
+      const previousClose = priceData?.previousClose || currentPrice;
+      const dayChangePerShare = priceData?.change || 0;
 
       const value = h.units * currentPrice;
       const cost = h.units * (h.purchasePrice || currentPrice);
 
       totalValue += value;
       totalCost += cost;
+      totalDayChange += h.units * dayChangePerShare;
       previousDayValue += h.units * previousClose;
-      weekAgoValue += h.units * weekAgo;
-      monthAgoValue += h.units * monthAgo;
     });
 
     const totalGainLoss = totalValue - totalCost;
     const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
-    const dayChange = totalValue - previousDayValue;
-    const dayChangePercent = previousDayValue > 0 ? (dayChange / previousDayValue) * 100 : 0;
+    const dayChangePercent = previousDayValue > 0 ? (totalDayChange / previousDayValue) * 100 : 0;
 
-    const weekChange = totalValue - weekAgoValue;
-    const weekChangePercent = weekAgoValue > 0 ? (weekChange / weekAgoValue) * 100 : 0;
-
-    const monthChange = totalValue - monthAgoValue;
-    const monthChangePercent = monthAgoValue > 0 ? (monthChange / monthAgoValue) * 100 : 0;
+    // Week and month changes are estimated (FMP quote doesn't include these)
+    // In a real app, you'd fetch historical data or track this separately
+    const weekChange = totalDayChange * 5; // Rough estimate
+    const weekChangePercent = dayChangePercent * 5;
+    const monthChange = totalDayChange * 20; // Rough estimate
+    const monthChangePercent = dayChangePercent * 20;
 
     return {
       totalValue,
       totalCost,
       totalGainLoss,
       totalGainLossPercent,
-      dayChange,
+      dayChange: totalDayChange,
       dayChangePercent,
       weekChange,
       weekChangePercent,
@@ -429,27 +491,29 @@ export function Portfolio() {
     return points;
   }, [holdings, portfolioMetrics.totalValue, timeRange]);
 
-  // Holdings with enriched data
+  // Holdings with enriched data, sorted by order
   const enrichedHoldings = useMemo(() => {
     if (!holdings) return [];
 
-    return holdings.map((h) => {
-      const priceData = priceMap.get(h.ticker);
-      const currentPrice = priceData?.currentPrice || h.purchasePrice || 100;
-      const totalValue = h.units * currentPrice;
-      const costBasis = h.units * (h.purchasePrice || currentPrice);
-      const gainLoss = totalValue - costBasis;
-      const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
+    return holdings
+      .map((h) => {
+        const priceData = priceMap.get(h.ticker);
+        const currentPrice = priceData?.currentPrice || h.purchasePrice || 100;
+        const totalValue = h.units * currentPrice;
+        const costBasis = h.units * (h.purchasePrice || currentPrice);
+        const gainLoss = totalValue - costBasis;
+        const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
 
-      return {
-        ...h,
-        currentPrice,
-        totalValue,
-        costBasis,
-        gainLoss,
-        gainLossPercent,
-      };
-    });
+        return {
+          ...h,
+          currentPrice,
+          totalValue,
+          costBasis,
+          gainLoss,
+          gainLossPercent,
+        };
+      })
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   }, [holdings, priceMap]);
 
   // Handlers
@@ -502,7 +566,11 @@ export function Portfolio() {
           color: "green",
         });
       } else {
-        await addHolding(holdingData);
+        // Set order to be last in the list
+        const maxOrder = holdings.length > 0
+          ? Math.max(...holdings.map((h) => h.order ?? 0))
+          : 0;
+        await addHolding({ ...holdingData, order: maxOrder + 1 });
         notifications.show({
           title: "Added",
           message: `${holdingData.ticker} added to portfolio`,
@@ -541,33 +609,59 @@ export function Portfolio() {
     }
   };
 
-  // Add dummy data for testing
-  const handleAddDummyData = async () => {
-    const dummyHoldings = [
-      { ticker: "AAPL", units: 10, purchasePrice: 150, purchaseDate: new Date("2024-01-15") },
-      { ticker: "GOOGL", units: 5, purchasePrice: 140, purchaseDate: new Date("2024-02-20") },
-      { ticker: "MSFT", units: 8, purchasePrice: 380, purchaseDate: new Date("2024-03-10") },
-      { ticker: "AMZN", units: 12, purchasePrice: 175, purchaseDate: new Date("2024-04-05") },
-      { ticker: "NVDA", units: 6, purchasePrice: 850, purchaseDate: new Date("2024-05-01") },
-    ];
+  // Drag and drop handlers
+  const handleDragStart = (e, item) => {
+    setDraggedItem(item);
+    e.dataTransfer.effectAllowed = "move";
+  };
 
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = async (e, targetItem) => {
+    e.preventDefault();
+
+    if (!draggedItem || draggedItem.id === targetItem.id) {
+      setDraggedItem(null);
+      return;
+    }
+
+    const draggedIndex = enrichedHoldings.findIndex((h) => h.id === draggedItem.id);
+    const targetIndex = enrichedHoldings.findIndex((h) => h.id === targetItem.id);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedItem(null);
+      return;
+    }
+
+    // Reorder items
+    const reorderedItems = [...enrichedHoldings];
+    const [removed] = reorderedItems.splice(draggedIndex, 1);
+    reorderedItems.splice(targetIndex, 0, removed);
+
+    // Update order values for all items
     try {
-      for (const holding of dummyHoldings) {
-        await addHolding(holding);
-      }
-      notifications.show({
-        title: "Dummy Data Added",
-        message: "5 sample holdings added to your portfolio",
-        color: "blue",
-      });
+      await Promise.all(
+        reorderedItems.map((item, index) =>
+          updateHolding(item.id, { order: index })
+        )
+      );
     } catch (error) {
-      console.error("Error adding dummy data:", error);
+      console.error("Error reordering holdings:", error);
       notifications.show({
         title: "Error",
-        message: "Failed to add dummy data",
+        message: "Failed to reorder holdings",
         color: "red",
       });
     }
+
+    setDraggedItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
   };
 
   // Don't render until user is available
@@ -601,16 +695,17 @@ export function Portfolio() {
           </div>
 
           <Group>
-            {/* TODO: Remove before deploying */}
-            <Button
-              leftSection={<IconTestPipe size={16} />}
-              onClick={handleAddDummyData}
-              variant="subtle"
-              color="orange"
-              title="Add test data (remove before deploying)"
-            >
-              Add Dummy Data
-            </Button>
+            <Tooltip label="Refresh stock prices from FMP API">
+              <Button
+                leftSection={<IconRefresh size={16} />}
+                onClick={handleRefreshQuotes}
+                loading={refreshingQuotes || fetchingQuotes}
+                variant="light"
+                disabled={holdingTickers.length === 0}
+              >
+                Refresh Quotes
+              </Button>
+            </Tooltip>
             <Button leftSection={<IconPlus size={16} />} onClick={handleOpenAddModal}>
               Add Holding
             </Button>
@@ -695,6 +790,7 @@ export function Portfolio() {
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
+                <Table.Th style={{ width: 40 }}></Table.Th>
                 <Table.Th>Ticker</Table.Th>
                 <Table.Th style={{ textAlign: "right" }}>Units</Table.Th>
                 <Table.Th style={{ textAlign: "right" }}>Avg Cost</Table.Th>
@@ -708,7 +804,7 @@ export function Portfolio() {
             <Table.Tbody>
               {enrichedHoldings.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={8}>
+                  <Table.Td colSpan={9}>
                     <Center py="xl">
                       <Stack align="center" gap="sm">
                         <Text c="dimmed">No holdings yet</Text>
@@ -726,7 +822,23 @@ export function Portfolio() {
                 </Table.Tr>
               ) : (
                 enrichedHoldings.map((holding) => (
-                  <Table.Tr key={holding.id}>
+                  <Table.Tr
+                    key={holding.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, holding)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, holding)}
+                    onDragEnd={handleDragEnd}
+                    style={{
+                      opacity: draggedItem?.id === holding.id ? 0.5 : 1,
+                      cursor: "grab",
+                    }}
+                  >
+                    <Table.Td style={{ cursor: "grab" }}>
+                      <ActionIcon variant="subtle" size="sm" style={{ cursor: "grab" }}>
+                        <IconGripVertical size={16} />
+                      </ActionIcon>
+                    </Table.Td>
                     <Table.Td>
                       <Text fw={600}>{holding.ticker}</Text>
                     </Table.Td>
@@ -863,7 +975,7 @@ export function Portfolio() {
           />
 
           <Alert color="blue" variant="light" title="Price Data">
-            Current prices are pulled from your stock analyses. Add analyses for accurate pricing.
+            Prices are fetched from FMP API in real-time. Use the "Refresh Quotes" button to update.
           </Alert>
 
           <Button onClick={handleSave} loading={saving} fullWidth>

@@ -6,15 +6,16 @@
  *
  * @param {Object} params - Function parameters
  * @param {string} params.operation - Operation type: 'quote' | 'historical' | 'profile' | 'income-statement' | 'balance-sheet' | 'ratios' | 'rsi' | 'sma' | 'ema' | 'earnings-calendar' | 'dividend-calendar' | 'stock-split-calendar' | 'economic-calendar'
- * @param {string} [params.symbol] - Stock symbol (required for most operations)
+ * @param {string} [params.symbol] - Stock symbol (required for most operations, use symbols for batch quote)
+ * @param {string[]} [params.symbols] - Array of stock symbols (for batch quote operation - fetches all and writes each to collection with symbol as doc ID)
  * @param {string} [params.from] - Start date YYYY-MM-DD (for historical/calendar operations)
  * @param {string} [params.to] - End date YYYY-MM-DD (for historical/calendar operations)
  * @param {number} [params.period] - Period for technical indicators (default: 14 for RSI, 50 for SMA, 12 for EMA)
  * @param {string} [params.timeframe] - Timeframe for technical indicators: '1min' | '5min' | '15min' | '30min' | '1hour' | '4hour' | 'daily' (default: 'daily')
  * @param {'annual' | 'quarter'} [params.statementPeriod] - Period for financial statements (default: 'annual')
  * @param {number} [params.limit] - Limit for financial statements (default: 4)
- * @param {string} [params.collectionName] - Optional: Collection to write results to
- * @param {string} [params.documentId] - Optional: Document ID to use (auto-generated if not provided)
+ * @param {string} [params.collectionName] - Optional: Collection to write results to (for batch quotes, uses symbol as doc ID)
+ * @param {string} [params.documentId] - Optional: Document ID to use (auto-generated if not provided, ignored for batch quotes)
  * @param {Object} context - Function context
  * @returns {Promise<Object>} API response with data and optional document reference
  */
@@ -22,6 +23,7 @@ module.exports = async function (params, context) {
   const {
     operation,
     symbol,
+    symbols,
     from,
     to,
     period,
@@ -61,7 +63,7 @@ module.exports = async function (params, context) {
     );
   }
 
-  // Operations that require a symbol
+  // Operations that require a symbol (quote can also use symbols array)
   const symbolRequiredOps = [
     "quote",
     "historical",
@@ -74,9 +76,18 @@ module.exports = async function (params, context) {
     "ema",
   ];
 
-  if (symbolRequiredOps.includes(operation) && !symbol) {
+  // For quote operation, allow either symbol or symbols array
+  const hasSymbol =
+    symbol || (operation === "quote" && symbols && symbols.length > 0);
+
+  if (symbolRequiredOps.includes(operation) && !hasSymbol) {
     throw new Error(`symbol parameter is required for operation: ${operation}`);
   }
+
+  // Determine effective symbol(s) for the request
+  /** @type {string} */
+  const effectiveSymbol =
+    symbols && symbols.length > 0 ? symbols.join(",") : symbol;
 
   // Operations that require date range
   const dateRangeOps = [
@@ -92,7 +103,12 @@ module.exports = async function (params, context) {
     );
   }
 
-  context.log("Querying FMP API", { operation, symbol, from, to });
+  context.log("Querying FMP API", {
+    operation,
+    symbol: effectiveSymbol,
+    from,
+    to,
+  });
 
   // Get FMP API key from secrets
   const apiKey = await context.getSecret("FMP_API_KEY");
@@ -114,51 +130,52 @@ module.exports = async function (params, context) {
     // Build endpoint and params based on operation
     switch (operation) {
       case "quote":
-        endpoint = `/quote/${symbol}`;
+        // Supports single symbol or comma-separated list for batch quotes
+        endpoint = `/quote/${effectiveSymbol}`;
         break;
 
       case "historical":
-        endpoint = `/historical-price-full/${symbol}`;
+        endpoint = `/historical-price-full/${effectiveSymbol}`;
         if (from) queryParams.from = from;
         if (to) queryParams.to = to;
         break;
 
       case "profile":
-        endpoint = `/profile/${symbol}`;
+        endpoint = `/profile/${effectiveSymbol}`;
         break;
 
       case "income-statement":
-        endpoint = `/income-statement/${symbol}`;
+        endpoint = `/income-statement/${effectiveSymbol}`;
         queryParams.period = statementPeriod;
         queryParams.limit = limit;
         break;
 
       case "balance-sheet":
-        endpoint = `/balance-sheet-statement/${symbol}`;
+        endpoint = `/balance-sheet-statement/${effectiveSymbol}`;
         queryParams.period = statementPeriod;
         queryParams.limit = limit;
         break;
 
       case "ratios":
-        endpoint = `/ratios/${symbol}`;
+        endpoint = `/ratios/${effectiveSymbol}`;
         queryParams.period = statementPeriod;
         queryParams.limit = limit;
         break;
 
       case "rsi":
-        endpoint = `/technical_indicator/${timeframe}/${symbol}`;
+        endpoint = `/technical_indicator/${timeframe}/${effectiveSymbol}`;
         queryParams.type = "rsi";
         queryParams.period = period ?? 14;
         break;
 
       case "sma":
-        endpoint = `/technical_indicator/${timeframe}/${symbol}`;
+        endpoint = `/technical_indicator/${timeframe}/${effectiveSymbol}`;
         queryParams.type = "sma";
         queryParams.period = period ?? 50;
         break;
 
       case "ema":
-        endpoint = `/technical_indicator/${timeframe}/${symbol}`;
+        endpoint = `/technical_indicator/${timeframe}/${effectiveSymbol}`;
         queryParams.type = "ema";
         queryParams.period = period ?? 12;
         break;
@@ -220,14 +237,39 @@ module.exports = async function (params, context) {
     /** @type {unknown} */
     let data;
 
+    // Flag for batch quote mode
+    const isBatchQuote = operation === "quote" && symbols && symbols.length > 0;
+
     switch (operation) {
       case "quote":
+        if (isBatchQuote) {
+          // Batch quote: keep full array
+          if (!Array.isArray(response.data) || response.data.length === 0) {
+            throw new Error(
+              `No quote data found for symbols: ${effectiveSymbol}`
+            );
+          }
+          data = response.data;
+        } else {
+          // Single quote: extract first element
+          if (Array.isArray(response.data) && response.data.length > 0) {
+            data = response.data[0];
+          } else {
+            throw new Error(
+              `No quote data found for symbol: ${effectiveSymbol}`
+            );
+          }
+        }
+        break;
+
       case "profile":
-        // These return arrays, extract first element
+        // Profile returns array, extract first element
         if (Array.isArray(response.data) && response.data.length > 0) {
           data = response.data[0];
         } else {
-          throw new Error(`No ${operation} data found for symbol: ${symbol}`);
+          throw new Error(
+            `No profile data found for symbol: ${effectiveSymbol}`
+          );
         }
         break;
 
@@ -244,61 +286,103 @@ module.exports = async function (params, context) {
 
     context.log("FMP API response received", {
       operation,
-      symbol,
+      symbol: effectiveSymbol,
       recordCount: Array.isArray(data) ? data.length : 1,
+      isBatchQuote,
     });
 
     /** @type {Object | null} */
     let docRef = null;
+    /** @type {string[]} */
+    const savedDocIds = [];
 
     // Optionally write to Firestore collection
     if (collectionName) {
-      const documentData = {
-        operation,
-        symbol: symbol ?? null,
-        data,
-        fetchedAt: context.firebase.FieldValue.serverTimestamp(),
-        params: {
-          from: from ?? null,
-          to: to ?? null,
-          period: period ?? null,
-          timeframe,
-          statementPeriod,
-          limit,
-        },
-      };
+      if (isBatchQuote && Array.isArray(data)) {
+        // Batch quote mode: write each quote with its symbol as document ID
+        for (const quote of data) {
+          const quoteSymbol = quote.symbol;
+          if (!quoteSymbol) {
+            context.log("Skipping quote without symbol", quote);
+            continue;
+          }
 
-      if (documentId) {
-        // Use specific document ID
-        await context.firebase
-          .collection(collectionName)
-          .doc(documentId)
-          .set(documentData, { merge: true });
+          const documentData = {
+            ...quote,
+            fetchedAt: context.firebase.FieldValue.serverTimestamp(),
+          };
 
-        docRef = { id: documentId };
-        context.log("Data saved to Firestore with specified ID", {
+          await context.firebase
+            .collection(collectionName)
+            .doc(quoteSymbol)
+            .set(documentData, { merge: true });
+
+          savedDocIds.push(quoteSymbol);
+          context.log("Quote saved to Firestore", {
+            collection: collectionName,
+            docId: quoteSymbol,
+          });
+        }
+
+        context.log("Batch quotes saved to Firestore", {
           collection: collectionName,
-          docId: documentId,
+          count: savedDocIds.length,
+          docIds: savedDocIds,
         });
       } else {
-        // Auto-generate document ID
-        docRef = await context.firebase
-          .collection(collectionName)
-          .add(documentData);
+        // Single document mode
+        const documentData = {
+          operation,
+          symbol: effectiveSymbol,
+          data,
+          fetchedAt: context.firebase.FieldValue.serverTimestamp(),
+          params: {
+            from: from ?? null,
+            to: to ?? null,
+            period: period ?? null,
+            timeframe,
+            statementPeriod,
+            limit,
+          },
+        };
 
-        context.log("Data saved to Firestore", {
-          collection: collectionName,
-          docId: docRef.id,
-        });
+        if (documentId) {
+          // Use specific document ID
+          await context.firebase
+            .collection(collectionName)
+            .doc(documentId)
+            .set(documentData, { merge: true });
+
+          docRef = { id: documentId };
+          context.log("Data saved to Firestore with specified ID", {
+            collection: collectionName,
+            docId: documentId,
+          });
+        } else {
+          // Auto-generate document ID
+          docRef = await context.firebase
+            .collection(collectionName)
+            .add(documentData);
+
+          context.log("Data saved to Firestore", {
+            collection: collectionName,
+            docId: docRef.id,
+          });
+        }
       }
     }
 
     return {
       success: true,
       operation,
-      symbol: symbol ?? null,
+      symbol: effectiveSymbol,
       data,
       recordCount: Array.isArray(data) ? data.length : 1,
+      ...(isBatchQuote &&
+        savedDocIds.length > 0 && {
+          savedDocIds,
+          collection: collectionName,
+        }),
       ...(docRef && {
         docId: docRef.id,
         collection: collectionName,

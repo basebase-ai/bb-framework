@@ -46,7 +46,12 @@ import { TaskViewer } from "./TaskViewer.jsx";
 import { getNestedValue } from "../utils/nestedData.js";
 import * as TablerIcons from "@tabler/icons-react";
 
-export function TableView({ pageId }) {
+/** @typedef {{ pageId: string; onViewAnalysis?: (ticker: string) => void }} TableViewProps */
+
+/**
+ * @param {TableViewProps} props
+ */
+export function TableView({ pageId, onViewAnalysis }) {
   const { user } = useAuth();
   const { data: page, loading: pageLoading } = useDocument(collections.pages, pageId);
   
@@ -496,23 +501,46 @@ export function TableView({ pageId }) {
                       key={record.id}
                       style={{
                         borderBottom: "1px solid var(--mantine-color-gray-2)",
+                        cursor: onViewAnalysis && record.ticker ? "pointer" : "default",
+                      }}
+                      onClick={() => {
+                        if (onViewAnalysis && record.ticker) {
+                          onViewAnalysis(record.ticker);
+                        }
                       }}
                     >
-                      {visibleFields.map((field) => (
-                        <td
-                          key={field.id}
-                          style={{
-                            padding: "10px 8px",
-                            maxWidth: field.width,
-                          }}
-                        >
-                          <TableCell
-                            value={getNestedValue(record, field.fieldName)}
-                            field={field}
-                          />
-                        </td>
-                      ))}
-                      <td style={{ padding: "10px 8px" }}>
+                      {visibleFields.map((field) => {
+                        const isTicker = field.fieldName === "ticker";
+                        return (
+                          <td
+                            key={field.id}
+                            style={{
+                              padding: "10px 8px",
+                              maxWidth: field.width,
+                            }}
+                          >
+                            {isTicker && onViewAnalysis ? (
+                              <Text
+                                size="sm"
+                                fw={600}
+                                c="blue"
+                                style={{ textDecoration: "underline", cursor: "pointer" }}
+                              >
+                                {getNestedValue(record, field.fieldName)}
+                              </Text>
+                            ) : (
+                              <TableCell
+                                value={getNestedValue(record, field.fieldName)}
+                                field={field}
+                              />
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td
+                        style={{ padding: "10px 8px" }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Menu position="bottom-end">
                           <Menu.Target>
                             <ActionIcon variant="subtle" size="sm">
@@ -520,6 +548,11 @@ export function TableView({ pageId }) {
                             </ActionIcon>
                           </Menu.Target>
                           <Menu.Dropdown>
+                            {onViewAnalysis && record.ticker && (
+                              <Menu.Item onClick={() => onViewAnalysis(record.ticker)}>
+                                View Details
+                              </Menu.Item>
+                            )}
                             <Menu.Item>Edit</Menu.Item>
                             <Menu.Item 
                               color="red"
