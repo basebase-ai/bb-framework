@@ -884,7 +884,7 @@ export default function AppPlayground() {
   };
 
   const handleViewApp = (app) => {
-    window.open(`https://apps.basebase.ai/?app=${app.id}`, '_blank');
+    window.open(`https://${app.id}.basebase.ai`, '_blank');
   };
 
   const handleEditApp = (app) => {
