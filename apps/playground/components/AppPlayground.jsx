@@ -44,6 +44,9 @@ import {
   IconEyeOff,
   IconUserPlus,
   IconX,
+  IconUpload,
+  IconLink,
+  IconCopy,
 } from "@tabler/icons-react";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
@@ -503,6 +506,8 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [collaboratorSearch, setCollaboratorSearch] = useState("");
+  const [uploadingAsset, setUploadingAsset] = useState(false);
+  const [assets, setAssets] = useState(app?.assets || []);
 
   const isOwner = user && app?.owner === user.uid;
 
@@ -572,6 +577,7 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
       setShowDeleteConfirm(false);
       setNewSecretKey("");
       setNewSecretValue("");
+      setAssets(app.assets || []);
     }
   }, [app]);
 
@@ -609,6 +615,60 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
   const handleLogoClear = async () => {
     setFormData({ ...formData, logoURL: "" });
     onUpdate(app.id, { logoURL: null });
+  };
+
+  const handleAssetUpload = async (file) => {
+    setUploadingAsset(true);
+    try {
+      const path = `app-assets/${app.id}/${Date.now()}_${file.name}`;
+      const result = await upload(file, path);
+      const newAsset = {
+        url: result.url,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+      };
+      const updatedAssets = [...assets, newAsset];
+      setAssets(updatedAssets); // Update local state immediately
+      onUpdate(app.id, { assets: updatedAssets }, { silent: true });
+      // Copy URL to clipboard
+      navigator.clipboard.writeText(result.url);
+      showNotification({
+        title: "Asset uploaded",
+        message: "Image URL copied to clipboard",
+        color: "teal",
+      });
+    } catch (err) {
+      console.error('Error uploading asset:', err);
+      showNotification({
+        title: "Error",
+        message: "Failed to upload asset. Please try again.",
+        color: "red",
+      });
+    } finally {
+      setUploadingAsset(false);
+    }
+  };
+
+  const handleRemoveAsset = (assetUrl) => {
+    const updatedAssets = assets.filter(a => a.url !== assetUrl);
+    setAssets(updatedAssets); // Update local state immediately
+    onUpdate(app.id, { assets: updatedAssets }, { silent: true });
+    showNotification({
+      title: "Asset removed",
+      message: "The asset has been removed",
+      color: "gray",
+    });
+  };
+
+  const copyAssetUrl = (url) => {
+    navigator.clipboard.writeText(url);
+    showNotification({
+      title: "Copied!",
+      message: "URL copied to clipboard",
+      color: "teal",
+    });
   };
 
   const handleAddSecret = () => {
@@ -949,6 +1009,98 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
               )}
             </>
           )}
+        </Stack>
+
+        {/* Assets Section */}
+        <Divider 
+          label={
+            <Group spacing="xs">
+              <IconPhoto size={16} />
+              <Text size="sm" weight={500}>App Assets (Images)</Text>
+            </Group>
+          }
+          labelPosition="left" 
+        />
+        
+        <Stack spacing="xs">
+          <Text size="xs" color="dimmed">
+            Upload images for sharing, meta tags, or app content. URLs are automatically copied when uploaded.
+          </Text>
+          
+          {/* Existing assets */}
+          {assets.length > 0 && (
+            <Stack spacing="xs">
+              {assets.map((asset, index) => (
+                <Group key={asset.url || index} spacing="xs" align="center" style={{
+                  padding: '8px',
+                  background: 'rgba(0, 0, 0, 0.03)',
+                  borderRadius: '6px',
+                }}>
+                  {asset.type?.startsWith('image/') && (
+                    <img 
+                      src={asset.url} 
+                      alt={asset.name}
+                      style={{ 
+                        width: 40, 
+                        height: 40, 
+                        objectFit: 'cover',
+                        borderRadius: 4,
+                      }}
+                    />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Text size="xs" weight={500} truncate>
+                      {asset.name}
+                    </Text>
+                    <Text size="xs" color="dimmed" truncate style={{ fontFamily: 'monospace' }}>
+                      {asset.url}
+                    </Text>
+                  </div>
+                  <Tooltip label="Copy URL">
+                    <ActionIcon 
+                      size="sm" 
+                      variant="subtle"
+                      color="violet"
+                      onClick={() => copyAssetUrl(asset.url)}
+                    >
+                      <IconCopy size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                  <Tooltip label="Remove">
+                    <ActionIcon 
+                      size="sm" 
+                      variant="subtle"
+                      color="red"
+                      onClick={() => handleRemoveAsset(asset.url)}
+                    >
+                      <IconTrash size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              ))}
+            </Stack>
+          )}
+          
+          {/* Upload button */}
+          <Button
+            variant="light"
+            color="violet"
+            size="xs"
+            leftSection={<IconUpload size={14} />}
+            loading={uploadingAsset}
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.onchange = (e) => {
+                const file = e.target.files?.[0];
+                if (file) handleAssetUpload(file);
+              };
+              input.click();
+            }}
+          >
+            Upload Image
+          </Button>
         </Stack>
 
         {/* Delete App Section (Owner Only) */}

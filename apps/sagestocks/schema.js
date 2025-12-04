@@ -9,7 +9,7 @@
  * - stock-analyses: Stock analysis results from SageStocks API
  */
 
-export const APP_ID = 'sagestocks';
+export const APP_ID = "sagestocks";
 
 export const collections = {
   // Global collections
