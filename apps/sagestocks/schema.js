@@ -20,6 +20,7 @@ export const collections = {
   pages: `${APP_ID}_pages`,
   holdings: `${APP_ID}_holdings`,
   quotes: `${APP_ID}_quotes`,
+  historical: `${APP_ID}_historical`,
   // Note: Other collections are referenced dynamically via getCollection()
 };
 

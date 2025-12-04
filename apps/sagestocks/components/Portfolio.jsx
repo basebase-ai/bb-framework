@@ -232,8 +232,17 @@ export function Portfolio() {
     realtime: !!user?.uid,
   });
 
-  // Function to fetch quotes from FMP API
+  // Historical collection for chart data (e.g., sagestocks_historical/AAPL)
+  const { data: historicalDocs, loading: historicalLoading } = useCollection(collections.historical, {
+    realtime: !!user?.uid,
+  });
+
+  // Function to fetch quotes and historical data from FMP API
   const { call: fetchQuotes, loading: fetchingQuotes } = useFunction("queryFMP");
+  const { call: fetchHistorical, loading: fetchingHistorical } = useFunction("queryFMP");
+
+  // Track which tickers we've fetched historical data for
+  const fetchedHistoricalRef = useRef(/** @type {Set<string>} */ (new Set()));
 
   // Get unique tickers from holdings
   const holdingTickers = useMemo(() => {
@@ -278,6 +287,84 @@ export function Portfolio() {
 
     fetchNewQuotes();
   }, [user, holdingTickers, fetchQuotes]);
+
+  // Build a map of historical data by ticker
+  const historicalMap = useMemo(() => {
+    /** @type {Map<string, Array<{ date: string; close: number }>>} */
+    const map = new Map();
+    if (!historicalDocs) return map;
+
+    historicalDocs.forEach((doc) => {
+      const ticker = doc.symbol || doc.id;
+      if (ticker && doc.data && Array.isArray(doc.data)) {
+        // FMP historical data has { date, open, high, low, close, volume, ... }
+        map.set(ticker, doc.data);
+      }
+    });
+    return map;
+  }, [historicalDocs]);
+
+  // Fetch historical data for holdings
+  // Strategy: Fetch full 2-year history if missing or stale (>24h old)
+  useEffect(() => {
+    if (!user || !holdingTickers.length) return;
+
+    const fetchHistoricalForTickers = async () => {
+      const today = new Date();
+      const todayStr = today.toISOString().split("T")[0];
+      const twoYearsAgo = new Date(today);
+      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+      const fromDate = twoYearsAgo.toISOString().split("T")[0];
+
+      for (const ticker of holdingTickers) {
+        // Skip if we've already initiated a fetch for this ticker in this session
+        if (fetchedHistoricalRef.current.has(ticker)) continue;
+
+        // Check if we already have recent historical data for this ticker
+        const existingDoc = historicalDocs?.find(
+          (d) => (d.symbol || d.id) === ticker
+        );
+
+        // Check if data is fresh (fetched within last 24 hours)
+        const fetchedAt = existingDoc?.fetchedAt?.toDate?.() || null;
+        const isStale = !fetchedAt || (today.getTime() - fetchedAt.getTime()) > 24 * 60 * 60 * 1000;
+        const hasData = existingDoc?.data && existingDoc.data.length > 0;
+
+        if (hasData && !isStale) {
+          console.log(`📊 [${ticker}] Historical data is fresh (fetched ${fetchedAt?.toLocaleDateString()})`);
+          fetchedHistoricalRef.current.add(ticker);
+          continue;
+        }
+
+        // Mark as fetching to prevent duplicate requests
+        fetchedHistoricalRef.current.add(ticker);
+
+        console.log(`📊 [${ticker}] Fetching historical data (${isStale ? 'stale' : 'missing'})`);
+
+        try {
+          const result = await fetchHistorical(
+            {
+              operation: "historical",
+              symbol: ticker,
+              from: fromDate,
+              to: todayStr,
+              collectionName: "historical",
+              documentId: ticker, // Use ticker as doc ID for easy lookup
+            },
+            { appId: APP_ID }
+          );
+
+          console.log(`✅ [${ticker}] Historical data fetched: ${result?.recordCount || 0} records`);
+        } catch (error) {
+          console.error(`❌ [${ticker}] Failed to fetch historical:`, error);
+          // Remove from set so it can be retried
+          fetchedHistoricalRef.current.delete(ticker);
+        }
+      }
+    };
+
+    fetchHistoricalForTickers();
+  }, [user, holdingTickers, historicalDocs, fetchHistorical]);
 
   // Manual refresh quotes
   const handleRefreshQuotes = async () => {
@@ -417,7 +504,7 @@ export function Portfolio() {
     };
   }, [holdings, priceMap]);
 
-  // Generate chart data based on time range
+  // Generate chart data based on time range using real historical data
   const chartData = useMemo(() => {
     if (!holdings || holdings.length === 0) return [];
 
@@ -450,23 +537,82 @@ export function Portfolio() {
         daysBack = 30;
     }
 
-    // Generate simulated historical data points
-    const points = [];
-    const numPoints = Math.min(daysBack, 50); // Cap at 50 points for performance
-    const interval = daysBack / numPoints;
+    // Check if we have historical data for all tickers
+    const hasAllHistorical = holdingTickers.every((ticker) => {
+      const data = historicalMap.get(ticker);
+      return data && data.length > 0;
+    });
 
-    const baseValue = portfolioMetrics.totalValue || 10000;
-    const volatility = 0.02; // 2% daily volatility
+    if (!hasAllHistorical) {
+      // Return empty while loading historical data
+      return [];
+    }
 
-    for (let i = numPoints; i >= 0; i--) {
-      const daysAgo = Math.floor(i * interval);
-      const date = new Date(now);
-      date.setDate(date.getDate() - daysAgo);
+    // Build a map of date -> closing price for each ticker
+    /** @type {Map<string, Map<string, number>>} */
+    const priceByDateByTicker = new Map();
 
-      // Simulate price movement (random walk with slight upward bias)
-      const randomFactor = 1 + (Math.random() - 0.48) * volatility * Math.sqrt(daysAgo);
-      const value = baseValue / randomFactor;
+    holdingTickers.forEach((ticker) => {
+      const historicalData = historicalMap.get(ticker) || [];
+      const dateMap = new Map();
+      historicalData.forEach((day) => {
+        dateMap.set(day.date, day.close);
+      });
+      priceByDateByTicker.set(ticker, dateMap);
+    });
 
+    // Generate date range
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - daysBack);
+    const startDateStr = startDate.toISOString().split("T")[0];
+
+    // Collect all unique dates in the range across all tickers
+    const allDates = new Set();
+    holdingTickers.forEach((ticker) => {
+      const historicalData = historicalMap.get(ticker) || [];
+      historicalData.forEach((day) => {
+        if (day.date >= startDateStr) {
+          allDates.add(day.date);
+        }
+      });
+    });
+
+    // Sort dates chronologically
+    const sortedDates = [...allDates].sort();
+
+    // Sample dates if too many (cap at 50 points for performance)
+    let datesToUse = sortedDates;
+    if (sortedDates.length > 50) {
+      const interval = Math.floor(sortedDates.length / 50);
+      datesToUse = sortedDates.filter((_, i) => i % interval === 0 || i === sortedDates.length - 1);
+    }
+
+    // Calculate portfolio value for each date
+    const points = datesToUse.map((dateStr) => {
+      let portfolioValue = 0;
+
+      holdings.forEach((holding) => {
+        const priceMap = priceByDateByTicker.get(holding.ticker);
+        // Find the closest available price on or before this date
+        let price = priceMap?.get(dateStr);
+        
+        if (price === undefined) {
+          // Try to find the most recent price before this date
+          const tickerData = historicalMap.get(holding.ticker) || [];
+          for (const day of tickerData) {
+            if (day.date <= dateStr) {
+              price = day.close;
+              break;
+            }
+          }
+        }
+
+        if (price !== undefined) {
+          portfolioValue += holding.units * price;
+        }
+      });
+
+      const date = new Date(dateStr);
       let label = "";
       switch (labelFormat) {
         case "weekday":
@@ -485,11 +631,11 @@ export function Portfolio() {
           label = date.toLocaleDateString();
       }
 
-      points.push({ date, value, label });
-    }
+      return { date, value: portfolioValue, label };
+    });
 
     return points;
-  }, [holdings, portfolioMetrics.totalValue, timeRange]);
+  }, [holdings, holdingTickers, historicalMap, timeRange]);
 
   // Holdings with enriched data, sorted by order
   const enrichedHoldings = useMemo(() => {
@@ -782,7 +928,18 @@ export function Portfolio() {
               ]}
             />
           </Group>
-          <PerformanceChart data={chartData} width={800} height={250} />
+          {fetchingHistorical || (holdingTickers.length > 0 && chartData.length === 0) ? (
+            <Paper withBorder p="lg" h={250}>
+              <Center h="100%">
+                <Stack align="center" gap="sm">
+                  <Loader size="sm" />
+                  <Text c="dimmed" size="sm">Loading historical data...</Text>
+                </Stack>
+              </Center>
+            </Paper>
+          ) : (
+            <PerformanceChart data={chartData} width={800} height={250} />
+          )}
         </Paper>
 
         {/* Holdings Table */}
