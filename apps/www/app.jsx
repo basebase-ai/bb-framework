@@ -13,14 +13,42 @@ import { collections } from "./schema.js";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
-// Load Google Fonts
+// Load Google Fonts via @font-face for maximum reliability
 const loadGoogleFonts = () => {
   if (typeof document !== "undefined" && !document.getElementById("google-fonts-www")) {
-    const link = document.createElement("link");
-    link.id = "google-fonts-www";
-    link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Bruno+Ace&family=DM+Sans:wght@400;500;600&display=swap";
-    document.head.appendChild(link);
+    const style = document.createElement("style");
+    style.id = "google-fonts-www";
+    style.textContent = `
+      @font-face {
+        font-family: 'Bruno Ace';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/brunoace/v5/WwkcxPa2E06x4trkOj_kMKoMWNMg.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'DM Sans';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZOIHQ.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'DM Sans';
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZOIHQ.woff2) format('woff2');
+      }
+      @font-face {
+        font-family: 'DM Sans';
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url(https://fonts.gstatic.com/s/dmsans/v15/rP2Hp2ywxg089UriCZOIHQ.woff2) format('woff2');
+      }
+    `;
+    document.head.insertBefore(style, document.head.firstChild);
   }
 };
 loadGoogleFonts();

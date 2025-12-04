@@ -24,8 +24,8 @@ app.use((req, res, next) => {
     'Content-Security-Policy',
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-eval'; " +
-    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
-    "font-src 'self' https://cdn.jsdelivr.net; " +
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
+    "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
     "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net; " +
     "img-src 'self' data: https:;"
   );
