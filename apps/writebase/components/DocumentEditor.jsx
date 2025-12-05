@@ -5,7 +5,7 @@
  * with Firestore for real-time sync
  */
 
-import React, { useEffect, useCallback, useRef } from "react";
+import React, { useEffect, useCallback, useRef, useState } from "react";
 import {
   Stack,
   Group,
@@ -233,6 +233,19 @@ export function DocumentEditor() {
   /** @type {React.MutableRefObject<Object | null>} */
   const lastContentRef = useRef(null);
 
+  // Debounced loading state - only show loader after 300ms to prevent flicker
+  const [showLoader, setShowLoader] = useState(false);
+  const isLoading = loadingMeta || loadingContent;
+  
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => setShowLoader(true), 300);
+      return () => clearTimeout(timer);
+    } else {
+      setShowLoader(false);
+    }
+  }, [isLoading]);
+
   // Check if user can edit
   const canEdit =
     docMeta?.owner === user?.uid ||
@@ -331,8 +344,8 @@ export function DocumentEditor() {
     closeDocument();
   }, [flushChanges, closeDocument]);
 
-  // Loading state
-  if (loadingMeta || loadingContent) {
+  // Loading state - only show after delay to prevent flicker
+  if (showLoader) {
     return (
       <Stack align="center" justify="center" h={400}>
         <Loader size="lg" />
@@ -341,14 +354,19 @@ export function DocumentEditor() {
     );
   }
 
-  // Document not found
-  if (!docMeta) {
+  // Document not found - only show after loading is complete
+  if (!docMeta && !isLoading) {
     return (
       <Stack align="center" justify="center" h={400}>
         <Text c="dimmed">Document not found</Text>
         <Button onClick={closeDocument}>Back to Documents</Button>
       </Stack>
     );
+  }
+  
+  // Still loading without showing loader - render nothing briefly
+  if (!docMeta || !content) {
+    return null;
   }
 
   return (

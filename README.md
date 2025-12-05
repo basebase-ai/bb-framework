@@ -587,6 +587,95 @@ await call({
 
 **See `/functions/README.md` and `/functions/example-usage.jsx` for complete examples!**
 
+## Adding New NPM Packages
+
+When you need a new npm package (e.g., a rich text editor, chart library, date picker), there are **two steps** to make it work both locally and in production.
+
+### Step 1: Install the Package (Local Development)
+
+```bash
+npm install @tiptap/react @tiptap/starter-kit
+```
+
+This is all you need for **local development** (`npm run dev`). The package will work immediately.
+
+### Step 2: Register for Production (Required!)
+
+Production uses a dynamic module loader that only knows about pre-registered packages. If you skip this step, you'll see:
+
+```
+Error: Module not found: @tiptap/react
+This looks like an external package. Register it in framework/production-entry.js...
+```
+
+**To fix this, edit `framework/production-entry.js`:**
+
+1. **Add the import** (near the top with other imports):
+
+```javascript
+// TipTap (rich text editor)
+import * as TiptapReact from "@tiptap/react";
+import TiptapStarterKit from "@tiptap/starter-kit";
+```
+
+2. **Register in `frameworkExports`** (inside the `init()` function):
+
+```javascript
+const frameworkExports = {
+  // ... existing exports ...
+
+  // TipTap (rich text editor)
+  "@tiptap/react": TiptapReact,
+  "@tiptap/starter-kit": { default: TiptapStarterKit },
+
+  // ... rest of exports ...
+};
+```
+
+**Note:** If the package uses a default export (like `import StarterKit from "@tiptap/starter-kit"`), wrap it as `{ default: PackageName }`.
+
+3. **Rebuild and deploy:**
+
+```bash
+npm run build
+git add .
+git commit -m "Add TipTap to production loader"
+git push  # Deploy to Railway
+```
+
+### Quick Reference: Already Registered Packages
+
+These packages are already available in production:
+
+| Package                         | Import Example                                            |
+| ------------------------------- | --------------------------------------------------------- |
+| `react`                         | `import React from "react"`                               |
+| `react-dom/client`              | `import ReactDOM from "react-dom/client"`                 |
+| `firebase/app`                  | `import { initializeApp } from "firebase/app"`            |
+| `firebase/auth`                 | `import { getAuth } from "firebase/auth"`                 |
+| `firebase/firestore`            | `import { collection, doc } from "firebase/firestore"`    |
+| `@mantine/core`                 | `import { Button, Stack } from "@mantine/core"`           |
+| `@mantine/hooks`                | `import { useDisclosure } from "@mantine/hooks"`          |
+| `@mantine/notifications`        | `import { notifications } from "@mantine/notifications"`  |
+| `@mantine/dates`                | `import { DatePicker } from "@mantine/dates"`             |
+| `@tabler/icons-react`           | `import { IconPlus } from "@tabler/icons-react"`          |
+| `zustand`                       | `import { create } from "zustand"`                        |
+| `marked`                        | `import { marked } from "marked"`                         |
+| `dayjs`                         | `import dayjs from "dayjs"`                               |
+| `@tiptap/react`                 | `import { useEditor } from "@tiptap/react"`               |
+| `@tiptap/starter-kit`           | `import StarterKit from "@tiptap/starter-kit"`            |
+| `@tiptap/extension-placeholder` | `import Placeholder from "@tiptap/extension-placeholder"` |
+
+### Why This Architecture?
+
+Basebase apps are stored as source code in Firestore and loaded dynamically at runtime. This enables:
+
+- Instant deployments (no server rebuild needed)
+- Per-app versioning and rollback
+- A/B testing different app versions
+
+The tradeoff is that npm packages must be pre-bundled into the framework. This keeps the production bundle optimized and secure.
+
 ## Available Commands
 
 **Development:**
@@ -626,13 +715,9 @@ await call({
 
 **"Module not found" error in production**
 
-If you get an error like "Module not found: some-package", it means you added a new npm package but it's not registered in the production loader:
+If you get an error like "Module not found: some-package", the package isn't registered for production. See **[Adding New NPM Packages](#adding-new-npm-packages)** above for the complete guide.
 
-1. The package must be in `dependencies` (not `devDependencies`) in `package.json`
-2. **Contact platform admin** to register it in `framework/production-entry.js`
-3. Wait for framework rebuild and Railway deployment
-
-**Available packages:** `react`, `react-dom`, `firebase`, `@mantine/*`, `@tabler/icons-react`, `zustand`
+**Quick fix:** Register the package in `framework/production-entry.js`, rebuild, and redeploy.
 
 **"Permission denied" when committing**
 

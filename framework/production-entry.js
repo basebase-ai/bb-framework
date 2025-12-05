@@ -58,6 +58,11 @@ import * as Zustand from "zustand";
 import { marked } from "marked";
 import dayjs from "dayjs";
 
+// TipTap (rich text editor)
+import * as TiptapReact from "@tiptap/react";
+import TiptapStarterKit from "@tiptap/starter-kit";
+import TiptapPlaceholder from "@tiptap/extension-placeholder";
+
 // Firebase
 import * as FirebaseApp from "firebase/app";
 import * as FirebaseAuth from "firebase/auth";
@@ -215,6 +220,11 @@ async function init() {
 
       // Date library
       dayjs: { default: dayjs },
+
+      // TipTap (rich text editor)
+      "@tiptap/react": TiptapReact,
+      "@tiptap/starter-kit": { default: TiptapStarterKit },
+      "@tiptap/extension-placeholder": { default: TiptapPlaceholder },
 
       // Firebase
       "firebase/app": FirebaseApp,
