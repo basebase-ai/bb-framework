@@ -60,8 +60,8 @@ import dayjs from "dayjs";
 
 // TipTap (rich text editor)
 import * as TiptapReact from "@tiptap/react";
-import TiptapStarterKit from "@tiptap/starter-kit";
-import TiptapPlaceholder from "@tiptap/extension-placeholder";
+import * as TiptapStarterKit from "@tiptap/starter-kit";
+import * as TiptapPlaceholder from "@tiptap/extension-placeholder";
 
 // Firebase
 import * as FirebaseApp from "firebase/app";
@@ -223,8 +223,8 @@ async function init() {
 
       // TipTap (rich text editor)
       "@tiptap/react": TiptapReact,
-      "@tiptap/starter-kit": { default: TiptapStarterKit },
-      "@tiptap/extension-placeholder": { default: TiptapPlaceholder },
+      "@tiptap/starter-kit": TiptapStarterKit,
+      "@tiptap/extension-placeholder": TiptapPlaceholder,
 
       // Firebase
       "firebase/app": FirebaseApp,
