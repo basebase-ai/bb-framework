@@ -6,9 +6,32 @@
  * 
  * Features:
  * - Shows sign-in/sign-up screen when unauthenticated
+ * - Supports custom landing pages for unauthenticated users
  * - Automatically creates/updates app membership records
  * - Blocks access to invite-only apps
  * - Shows loading states properly
+ * 
+ * @example
+ * // Basic usage (shows default sign-in screen)
+ * <AuthProvider>
+ *   <AppContent />
+ * </AuthProvider>
+ * 
+ * @example
+ * // With custom landing page
+ * <AuthProvider landingPage={(props) => <MyLandingPage {...props} />}>
+ *   <AppContent />
+ * </AuthProvider>
+ * 
+ * // Your landing page receives { onSignIn } prop
+ * function MyLandingPage({ onSignIn }) {
+ *   return (
+ *     <div>
+ *       <h1>Welcome to My App</h1>
+ *       <Button onClick={onSignIn}>Get Started</Button>
+ *     </div>
+ *   );
+ * }
  */
 
 import React, { useState } from "react";
@@ -24,6 +47,7 @@ import {
   Group,
   Divider,
   Alert,
+  Modal,
 } from "@mantine/core";
 import {
   createUserWithEmailAndPassword,
@@ -65,9 +89,25 @@ async function ensureUserProfile(user) {
   }
 }
 
-export function AuthProvider({ children, appId }) {
+/**
+ * @typedef {Object} LandingPageProps
+ * @property {() => void} onSignIn - Callback to trigger the sign-in modal
+ */
+
+/**
+ * @typedef {Object} AuthProviderProps
+ * @property {React.ReactNode} children - App content to render when authenticated
+ * @property {string} [appId] - Optional app ID (defaults to URL-based detection)
+ * @property {(props: LandingPageProps) => React.ReactNode} [landingPage] - Optional custom landing page component
+ */
+
+/**
+ * @param {AuthProviderProps} props
+ */
+export function AuthProvider({ children, appId, landingPage }) {
   const { user, loading: authLoading } = useAuth();
   const [profileEnsured, setProfileEnsured] = React.useState(false);
+  const [showAuthModal, setShowAuthModal] = React.useState(false);
   
   // Get appId from URL if not provided
   const effectiveAppId = appId || getAppIdFromURL();
@@ -81,6 +121,13 @@ export function AuthProvider({ children, appId }) {
       });
     }
   }, [user?.uid, authLoading, profileEnsured]);
+  
+  // Close auth modal when user signs in
+  React.useEffect(() => {
+    if (user) {
+      setShowAuthModal(false);
+    }
+  }, [user]);
   
   // Use membership hook to manage app access
   const { membership, loading: membershipLoading, error: membershipError, hasAccess } = useAppMembership(effectiveAppId);
@@ -96,6 +143,19 @@ export function AuthProvider({ children, appId }) {
 
   // Show sign-in screen if not authenticated
   if (!user) {
+    // If a custom landing page is provided, render it with auth modal support
+    if (landingPage) {
+      return (
+        <>
+          {landingPage({ onSignIn: () => setShowAuthModal(true) })}
+          <AuthModal 
+            opened={showAuthModal} 
+            onClose={() => setShowAuthModal(false)} 
+          />
+        </>
+      );
+    }
+    // Otherwise, show the default full-screen auth screen
     return <AuthScreen />;
   }
 
@@ -393,6 +453,177 @@ export function SignOutButton({ ...props }) {
     <Button onClick={handleSignOut} loading={loading} variant="subtle" {...props}>
       Sign Out
     </Button>
+  );
+}
+
+/**
+ * Auth Modal - Sign in/up dialog for use with custom landing pages
+ * @param {{ opened: boolean, onClose: () => void }} props
+ */
+function AuthModal({ opened, onClose }) {
+  const [mode, setMode] = useState("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [loading, setLoading] = useState(false);
+
+  const handleEmailAuth = async (/** @type {React.FormEvent} */ e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      /** @type {import('firebase/auth').UserCredential} */
+      let userCredential;
+      if (mode === "signup") {
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      }
+      
+      await ensureUserProfile(userCredential.user);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      await ensureUserProfile(result.user);
+      onClose();
+    } catch (err) {
+      let errorMessage = err instanceof Error ? err.message : "An error occurred";
+      
+      if (err instanceof Error && "code" in err) {
+        const code = /** @type {string} */ (err.code);
+        if (code === "auth/popup-closed-by-user") {
+          errorMessage = "Sign-in popup was closed. Please try again.";
+        } else if (code === "auth/unauthorized-domain") {
+          errorMessage = "This domain is not authorized for Google Sign-In.";
+        } else if (code === "auth/popup-blocked") {
+          errorMessage = "Popup was blocked by your browser. Please allow popups for this site.";
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reset state when modal closes
+  React.useEffect(() => {
+    if (!opened) {
+      setError(null);
+      setEmail("");
+      setPassword("");
+    }
+  }, [opened]);
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={mode === "signin" ? "Sign In" : "Create Account"}
+      centered
+      size="sm"
+    >
+      <Text c="dimmed" size="sm" ta="center" mb="md">
+        {mode === "signin"
+          ? "Welcome back! Sign in to continue."
+          : "Create an account to get started."}
+      </Text>
+
+      {error && (
+        <Alert color="red" mb="md" title="Error">
+          {error}
+        </Alert>
+      )}
+
+      <form onSubmit={handleEmailAuth}>
+        <Stack gap="md">
+          <TextInput
+            label="Email"
+            placeholder="your@email.com"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
+          />
+
+          <PasswordInput
+            label="Password"
+            placeholder="Your password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+          />
+
+          <Button type="submit" fullWidth loading={loading}>
+            {mode === "signin" ? "Sign In" : "Create Account"}
+          </Button>
+        </Stack>
+      </form>
+
+      <Divider label="or" labelPosition="center" my="lg" />
+
+      <Button
+        variant="outline"
+        fullWidth
+        onClick={handleGoogleAuth}
+        disabled={loading}
+      >
+        Continue with Google
+      </Button>
+
+      <Text size="sm" ta="center" mt="lg">
+        {mode === "signin" ? (
+          <>
+            Don't have an account?{" "}
+            <Text
+              component="button"
+              onClick={() => setMode("signup")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--mantine-color-blue-6)",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              Sign up
+            </Text>
+          </>
+        ) : (
+          <>
+            Already have an account?{" "}
+            <Text
+              component="button"
+              onClick={() => setMode("signin")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--mantine-color-blue-6)",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              Sign in
+            </Text>
+          </>
+        )}
+      </Text>
+    </Modal>
   );
 }
 

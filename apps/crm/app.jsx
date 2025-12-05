@@ -35,6 +35,7 @@ import { Activities } from "./components/Activities.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { NoOrganization } from "./components/NoOrganization.jsx";
 import { OrganizationSettings } from "./components/OrganizationSettings.jsx";
+import { LandingPage } from "./components/LandingPage.jsx";
 
 // Mantine CSS imports
 import "@mantine/core/styles.css";
@@ -233,7 +234,10 @@ function App() {
   return (
     <MantineProvider defaultColorScheme="light">
       <Notifications position="top-right" />
-      <AuthProvider appId={APP_ID}>
+      <AuthProvider 
+        appId={APP_ID}
+        landingPage={(props) => <LandingPage {...props} />}
+      >
         <AppContent />
       </AuthProvider>
     </MantineProvider>

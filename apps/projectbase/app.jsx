@@ -183,7 +183,7 @@ function AppContent() {
       <AppShell.Header>
         <Group h="100%" px="md">
           <Burger opened={sidebarOpen} onClick={toggleSidebar} hiddenFrom="sm" size="sm" />
-          <Title order={3}>Todo App</Title>
+          <Title order={3}>Projectbase</Title>
           {user && (
             <Group ml="auto" gap="md">
                 <Avatar 

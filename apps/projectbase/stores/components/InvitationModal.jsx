@@ -21,7 +21,7 @@ export function InvitationModal({ opened, onClose, projectName, inviterName, inv
   
   const invitationMessage = `Hi,
 
-${inviterName} has invited you to collaborate on the project "${projectName}" in the Todo App.
+${inviterName} has invited you to collaborate on the project "${projectName}" in Projectbase.
 
 To accept this invitation, please sign up at:
 ${invitationUrl}
@@ -29,7 +29,7 @@ ${invitationUrl}
 Once you're signed in, you'll have access to the project!
 
 Best regards,
-Todo App`;
+Projectbase`;
 
   const handleCopy = async () => {
     try {
