@@ -233,6 +233,16 @@ export function DocumentEditor() {
   /** @type {React.MutableRefObject<Object | null>} */
   const lastContentRef = useRef(null);
 
+  // Track if we've loaded initial content from Firestore
+  /** @type {React.MutableRefObject<boolean>} */
+  const hasLoadedInitialRef = useRef(false);
+
+  // Reset initial load flag when document changes
+  useEffect(() => {
+    hasLoadedInitialRef.current = false;
+    lastContentRef.current = null;
+  }, [activeDocumentId]);
+
   // Debounced loading state - only show loader after 300ms to prevent flicker
   const [showLoader, setShowLoader] = useState(false);
   const isLoading = loadingMeta || loadingContent;
@@ -295,10 +305,15 @@ export function DocumentEditor() {
   useEffect(() => {
     if (!editor || !content?.content) return;
 
-    // Don't update if this is our own save
-    if (!content._isRemoteUpdate && lastContentRef.current) {
+    // Always load on first Firestore update (initial load)
+    const isInitialLoad = !hasLoadedInitialRef.current;
+
+    // Don't update if this is our own save (but always update on initial load)
+    if (!isInitialLoad && !content._isRemoteUpdate && lastContentRef.current) {
       return;
     }
+
+    hasLoadedInitialRef.current = true;
 
     // Mark as remote update to prevent triggering save
     isRemoteUpdateRef.current = true;

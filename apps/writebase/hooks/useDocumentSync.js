@@ -8,7 +8,7 @@
  * - Conflict detection (basic)
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   doc,
   collection,
@@ -76,8 +76,14 @@ export function useDocumentSync(documentId) {
   /** @type {React.MutableRefObject<number>} */
   const operationCountRef = useRef(0);
 
-  // Get collection paths
-  const paths = documentId ? getDocSubcollections(documentId) : null;
+  /** @type {React.MutableRefObject<boolean>} */
+  const initializedRef = useRef(false);
+
+  // Get collection paths (memoized to prevent effect re-runs)
+  const paths = useMemo(
+    () => (documentId ? getDocSubcollections(documentId) : null),
+    [documentId]
+  );
 
   /**
    * Save content to Firestore
@@ -87,6 +93,11 @@ export function useDocumentSync(documentId) {
   const saveContent = useCallback(
     async (newContent, immediate = false) => {
       if (!documentId || !user || !paths) return;
+
+      // Don't save until we've loaded initial content from Firestore
+      if (!initializedRef.current) {
+        return;
+      }
 
       pendingContentRef.current = newContent;
       setHasUnsavedChanges(true);
@@ -236,6 +247,10 @@ export function useDocumentSync(documentId) {
       return;
     }
 
+    // Reset initialized flag for new document
+    initializedRef.current = false;
+    localVersionRef.current = 0;
+
     setLoading(true);
     setError(null);
 
@@ -248,6 +263,8 @@ export function useDocumentSync(documentId) {
           // Document content doesn't exist yet, initialize it
           const initialContent = await initializeDocument();
           if (initialContent) {
+            // Mark as initialized so saves are now allowed
+            initializedRef.current = true;
             // Set content immediately after initialization
             setContent({
               id: "current",
@@ -281,6 +298,17 @@ export function useDocumentSync(documentId) {
         // Update local version tracker
         localVersionRef.current = data.version;
 
+        // Skip if we already have this version (prevents unnecessary re-renders)
+        if (
+          initializedRef.current &&
+          data.version === localVersionRef.current
+        ) {
+          return;
+        }
+
+        // Mark as initialized so saves are now allowed
+        initializedRef.current = true;
+
         setContent({
           id: snapshot.id,
           version: data.version,
@@ -301,12 +329,38 @@ export function useDocumentSync(documentId) {
 
     return () => {
       unsubscribe();
-      // Flush any pending saves
+      // Flush any pending saves synchronously before unmounting
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
+      // Actually save pending content (fire-and-forget since we're unmounting)
+      if (pendingContentRef.current && documentId && user && paths) {
+        const contentRef = doc(db, paths.content, "current");
+        setDoc(contentRef, {
+          version: localVersionRef.current + 1,
+          content: pendingContentRef.current,
+          lastEditedBy: user.uid,
+          updatedAt: serverTimestamp(),
+        }).catch((err) => console.error("Failed to save on unmount:", err));
+
+        // Also update main doc metadata
+        updateDoc(doc(db, collections.documents, documentId), {
+          currentVersion: localVersionRef.current + 1,
+          updatedAt: serverTimestamp(),
+          updatedBy: user.uid,
+          wordCount: countWords(pendingContentRef.current),
+          excerpt: extractExcerpt(pendingContentRef.current),
+        }).catch((err) =>
+          console.error("Failed to update metadata on unmount:", err)
+        );
+
+        pendingContentRef.current = null;
+      }
     };
-  }, [documentId, paths, user?.uid, initializeDocument]);
+    // Note: initializeDocument is stable via useCallback, but we intentionally
+    // omit it to prevent re-subscribing when its dependencies change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId, paths, user?.uid]);
 
   // Cleanup on unmount
   useEffect(() => {
