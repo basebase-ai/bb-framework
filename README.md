@@ -278,7 +278,7 @@ When you have properly tested all of your changes and they are working locally o
 
 ```bash
 npm run app:commit news-base "Added feature"   # Publish (requires auth)
-# Visit https://apps.basebase.ai?app=news-base    # View your published app!
+# Visit https://news-base.basebase.com    # View your published app!
 ```
 
 ### Key Points

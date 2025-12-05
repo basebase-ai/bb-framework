@@ -458,7 +458,7 @@ Vite Dev Server (localhost:3000)
 ```
 User Browser
   ↓
-apps.basebase.ai?app=teg-app
+apps.basebase.com?app=teg-app
   ↓
 Railway → Express Server
   ├─ Serves static files from /dist
@@ -586,7 +586,7 @@ npm run build
 
 **Railway Settings (in Console):**
 
-1. **Domain:** `apps.basebase.ai`
+1. **Domain:** `apps.basebase.com`
 2. **Environment Variables:** None required (Firebase config is in code)
 3. **Build Command:** `npm install && npm run build`
 4. **Start Command:** `npm start`
@@ -597,14 +597,14 @@ npm run build
 
 **Current Implementation:** Query parameter
 
-- URL: `apps.basebase.ai?app=teg-app`
+- URL: `apps.basebase.com?app=teg-app`
 - Pro: Simple, works immediately
 - Con: Less clean URLs
 
 **Future Enhancement:** Subdomain routing
 
-- URL: `teg-app.basebase.ai`
-- Requires: Wildcard DNS (`*.basebase.ai → Railway`)
+- URL: `teg-app.basebase.com`
+- Requires: Wildcard DNS (`*.basebase.com → Railway`)
 - Implementation: URL parser already supports this (checks subdomain first)
 
 **Customer App Routing:**
@@ -634,7 +634,7 @@ git push origin main
 
 **Step 3: Verify deployment**
 
-- Visit: `https://apps.basebase.ai?app=teg-app`
+- Visit: `https://apps.basebase.com?app=teg-app`
 - Check console: Should see app loading from Firestore
 - Test: Sign in, navigate, etc.
 
@@ -650,8 +650,8 @@ git push origin main
 
 **After deploying:**
 
-- [ ] Health check: `https://apps.basebase.ai/__basebase/health`
-- [ ] Load test app: `https://apps.basebase.ai?app=teg-app`
+- [ ] Health check: `https://apps.basebase.com/__basebase/health`
+- [ ] Load test app: `https://apps.basebase.com?app=teg-app`
 - [ ] Check Railway logs for errors
 - [ ] Verify Firestore fetch (Network tab)
 - [ ] Test authentication flow
@@ -762,18 +762,18 @@ console.error("Error:", err);
 
 1. **Node.js hosting** with Express (Railway, Heroku, Render, etc.)
 2. **HTTPS/SSL** - Required for Firebase Auth (Railway provides free)
-3. **Custom domain** - Apps.basebase.ai (configured in Railway)
+3. **Custom domain** - Apps.basebase.com (configured in Railway)
 4. **Environment:** Node.js 18+
 5. **No database** - Firestore is the database
 
 ### Future: Subdomain Routing
 
-**To enable `teg-app.basebase.ai`:**
+**To enable `teg-app.basebase.com`:**
 
 1. **DNS Configuration:**
 
    ```
-   *.basebase.ai  A/CNAME  → Railway app
+   *.basebase.com  A/CNAME  → Railway app
    ```
 
 2. **No code changes needed:**
@@ -783,8 +783,8 @@ console.error("Error:", err);
    - Just update DNS and test
 
 3. **Both styles work:**
-   - `apps.basebase.ai?app=teg-app` (current)
-   - `teg-app.basebase.ai` (future)
+   - `apps.basebase.com?app=teg-app` (current)
+   - `teg-app.basebase.com` (future)
    - URL parser tries subdomain → query param → path
 
 ---

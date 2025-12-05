@@ -90,7 +90,7 @@ const addMetaTags = () => {
     { property: "og:title", content: "Basebase - The Future of Apps" },
     { property: "og:description", content: "Apps are dead. AI arranges our pixels instantly and at no cost. Welcome to the new era of ephemeral apps." },
     { property: "og:type", content: "website" },
-    { property: "og:url", content: "https://www.basebase.ai" },
+    { property: "og:url", content: "https://www.basebase.com" },
     { property: "og:image", content: SHARE_IMAGE_URL },
     { property: "og:image:width", content: "500" },
     { property: "og:image:height", content: "500" },

@@ -11,7 +11,7 @@
 
 // Your app's unique identifier
 // This is set automatically during app:checkout or app:init
-export const APP_ID = "todo-app";
+export const APP_ID = "projectbase";
 
 /**
  * Namespaced collection names

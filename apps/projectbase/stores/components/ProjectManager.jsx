@@ -10,14 +10,80 @@ import {
   Modal, 
   Group,
   Text,
-  Paper
+  Paper,
+  Divider
 } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconUser } from "@tabler/icons-react";
+
+// Special view ID for "Assigned to Me"
+export const ASSIGNED_TO_ME_VIEW = "__assigned_to_me__";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 
-export function ProjectManager({ onSelectProject, selectedProjectId }) {
+/**
+ * Individual project item that can receive dropped tasks
+ */
+function ProjectItem({ project, isSelected, onSelect, onMoveTask }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    try {
+      const data = e.dataTransfer.getData("application/json");
+      if (!data) return;
+      
+      const { taskId, sourceProjectId } = JSON.parse(data);
+      
+      // Don't move if dropping on the same project
+      if (sourceProjectId === project.id) return;
+      
+      onMoveTask(taskId, project.id);
+    } catch (err) {
+      console.error("Error handling drop:", err);
+    }
+  };
+
+  return (
+    <Paper
+      p="xs"
+      withBorder
+      style={{
+        cursor: "pointer",
+        backgroundColor: isDragOver 
+          ? "#e3f2fd" 
+          : isSelected 
+            ? "#f0f0f0" 
+            : "transparent",
+        border: isDragOver ? "2px dashed #1976d2" : undefined,
+        transition: "background-color 0.15s, border 0.15s",
+      }}
+      onClick={() => onSelect(project.id)}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <Text size="sm" truncate>
+        {project.name}
+      </Text>
+    </Paper>
+  );
+}
+
+export function ProjectManager({ onSelectProject, selectedProjectId, onMoveTask }) {
   const { user } = useAuth();
   const [opened, setOpened] = useState(false);
   const [projectName, setProjectName] = useState("");
@@ -78,6 +144,31 @@ export function ProjectManager({ onSelectProject, selectedProjectId }) {
   return (
     <>
       <Stack gap="md">
+        {/* Assigned to Me - prominent tab */}
+        <Paper
+          p="sm"
+          withBorder
+          style={{
+            cursor: "pointer",
+            backgroundColor: selectedProjectId === ASSIGNED_TO_ME_VIEW 
+              ? "#e3f2fd" 
+              : "transparent",
+            borderColor: selectedProjectId === ASSIGNED_TO_ME_VIEW 
+              ? "#1976d2" 
+              : undefined,
+          }}
+          onClick={() => onSelectProject(ASSIGNED_TO_ME_VIEW)}
+        >
+          <Group gap="xs">
+            <IconUser size={18} color="#1976d2" />
+            <Text size="sm" fw={600} c="#1976d2">
+              Assigned to Me
+            </Text>
+          </Group>
+        </Paper>
+
+        <Divider />
+
         <Text size="sm" fw={500}>
           Projects
         </Text>
@@ -108,20 +199,13 @@ export function ProjectManager({ onSelectProject, selectedProjectId }) {
         )}
 
         {sortedProjects.map((project) => (
-          <Paper
+          <ProjectItem
             key={project.id}
-            p="xs"
-            withBorder
-            style={{
-              cursor: "pointer",
-              backgroundColor: selectedProjectId === project.id ? "#f0f0f0" : "transparent",
-            }}
-            onClick={() => onSelectProject(project.id)}
-          >
-            <Text size="sm" truncate>
-              {project.name}
-            </Text>
-          </Paper>
+            project={project}
+            isSelected={selectedProjectId === project.id}
+            onSelect={onSelectProject}
+            onMoveTask={onMoveTask}
+          />
         ))}
       </Stack>
 

@@ -82,7 +82,7 @@ export function ImproveThisButton() {
 
           <Button
             component="a"
-            href="https://playground.basebase.ai/app/todo-app"
+            href="https://playground.basebase.com/app/todo-app"
             target="_blank"
             rel="noopener noreferrer"
             size="lg"

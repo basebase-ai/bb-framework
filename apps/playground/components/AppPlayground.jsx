@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   Container,
   Title,
@@ -511,6 +511,31 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
 
   const isOwner = user && app?.owner === user.uid;
 
+  // Debounce ref for text field autosave
+  const debounceTimerRef = useRef(null);
+
+  // Debounced autosave for text fields (name, description)
+  const debouncedSave = useCallback((field, value) => {
+    if (!app?.id) return;
+    
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    debounceTimerRef.current = setTimeout(() => {
+      onUpdate(app.id, { [field]: value }, { silent: true });
+    }, 500);
+  }, [app?.id, onUpdate]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   // Get profiles for current collaborators (for displaying with avatars)
   const { profiles: collaboratorProfiles } = useUserProfiles(formData.collaborators);
 
@@ -748,18 +773,6 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
     });
   };
 
-  const handleSubmit = () => {
-    if (!formData.name.trim()) {
-      showNotification({
-        title: "Error",
-        message: "App name is required",
-        color: "red",
-      });
-      return;
-    }
-    onUpdate(app.id, formData);
-  };
-
   if (!app) return null;
 
   return (
@@ -792,14 +805,22 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
           label="App Name"
           placeholder="My Awesome App"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) => {
+            const newName = e.target.value;
+            setFormData({ ...formData, name: newName });
+            debouncedSave('name', newName);
+          }}
           required
         />
         <Textarea
           label="Description"
           placeholder="Describe what your app does..."
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) => {
+            const newDescription = e.target.value;
+            setFormData({ ...formData, description: newDescription });
+            debouncedSave('description', newDescription);
+          }}
           minRows={3}
         />
         <Select
@@ -810,7 +831,11 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
             { value: "invite-only", label: "Invite Only - Requires membership" },
           ]}
           value={formData.accessMode}
-          onChange={(value) => setFormData({ ...formData, accessMode: value || "open" })}
+          onChange={(value) => {
+            const newAccessMode = value || "open";
+            setFormData({ ...formData, accessMode: newAccessMode });
+            onUpdate(app.id, { accessMode: newAccessMode }, { silent: true });
+          }}
         />
         <Group grow>
           <div>
@@ -818,7 +843,11 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
             <Button
               variant={formData.publicUse ? "filled" : "outline"}
               color={formData.publicUse ? "teal" : "gray"}
-              onClick={() => setFormData({ ...formData, publicUse: !formData.publicUse })}
+              onClick={() => {
+                const newPublicUse = !formData.publicUse;
+                setFormData({ ...formData, publicUse: newPublicUse });
+                onUpdate(app.id, { publicUse: newPublicUse }, { silent: true });
+              }}
               fullWidth
               size="sm"
             >
@@ -830,7 +859,11 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
             <Button
               variant={formData.publicEdit ? "filled" : "outline"}
               color={formData.publicEdit ? "teal" : "gray"}
-              onClick={() => setFormData({ ...formData, publicEdit: !formData.publicEdit })}
+              onClick={() => {
+                const newPublicEdit = !formData.publicEdit;
+                setFormData({ ...formData, publicEdit: newPublicEdit });
+                onUpdate(app.id, { publicEdit: newPublicEdit }, { silent: true });
+              }}
               fullWidth
               size="sm"
             >
@@ -1164,18 +1197,6 @@ function EditAppModal({ app, opened, onClose, onUpdate, onDelete }) {
           </>
         )}
 
-        <Group position="right" mt="md">
-          <Button variant="subtle" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="gradient"
-            gradient={{ from: "violet", to: "grape", deg: 135 }}
-            onClick={handleSubmit}
-          >
-            Update App
-          </Button>
-        </Group>
       </Stack>
     </Modal>
   );
@@ -1462,7 +1483,7 @@ export default function AppPlayground() {
   };
 
   const handleViewApp = (app) => {
-    window.open(`https://${app.id}.basebase.ai`, '_blank');
+    window.open(`https://${app.id}.basebase.com`, '_blank');
   };
 
   const handleEditApp = (app) => {
