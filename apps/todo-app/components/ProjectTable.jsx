@@ -17,7 +17,7 @@ import {
   Paper,
   Box,
 } from "@mantine/core";
-import { IconGripVertical, IconPlus, IconSettings, IconChevronRight } from "@tabler/icons-react";
+import { IconGripVertical, IconPlus, IconSettings, IconChevronRight, IconX } from "@tabler/icons-react";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
@@ -304,16 +304,224 @@ function TodoRow({ item, onUpdate, onDelete, onDragStart, onDragOver, onDrop, is
   );
 }
 
+/**
+ * SectionDropZone - Drop zone that appears between sections for reordering
+ */
+function SectionDropZone({ onDrop, isFirst }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = (e) => {
+    // Only accept section drags (not task drags)
+    if (e.dataTransfer.types.includes("application/x-section")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setIsDragOver(true);
+    }
+  };
+
+  return (
+    <Box
+      mt={isFirst ? 0 : "md"}
+      mb="md"
+      style={{
+        height: isDragOver ? 40 : 8,
+        backgroundColor: isDragOver ? "#e3f2fd" : "transparent",
+        border: isDragOver ? "2px dashed #1976d2" : "2px dashed transparent",
+        borderRadius: 4,
+        transition: "all 0.15s",
+      }}
+      onDragOver={handleDragOver}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        onDrop(e);
+      }}
+    />
+  );
+}
+
+/**
+ * SectionHeader - Renders a section with its header and tasks
+ * Supports inline editing of section name, delete on hover, and drag to reorder
+ */
+function SectionHeader({ 
+  section, 
+  activeItems, 
+  onAddTask, 
+  onDropOnSection, 
+  renderTaskTable,
+  onRename,
+  onDelete,
+  isNewSection,
+  onDragStart,
+  isDragging,
+}) {
+  const [isDragOverSection, setIsDragOverSection] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [isEditing, setIsEditing] = useState(isNewSection || false);
+  const [editName, setEditName] = useState(section.name);
+  const inputRef = useRef(null);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleSaveName = () => {
+    const trimmedName = editName.trim();
+    if (trimmedName && trimmedName !== section.name) {
+      onRename(section.id, trimmedName);
+    } else {
+      setEditName(section.name);
+    }
+    setIsEditing(false);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (confirm(`Delete section "${section.name}"? Tasks in this section will become unsectioned.`)) {
+      onDelete(section.id);
+    }
+  };
+
+  const handleSectionDragStart = (e) => {
+    // Set a custom type so drop zones can identify section drags
+    e.dataTransfer.setData("application/x-section", section.id);
+    e.dataTransfer.effectAllowed = "move";
+    onDragStart(section);
+  };
+
+  return (
+    <Box style={{ opacity: isDragging ? 0.5 : 1 }}>
+      {/* Section Header */}
+      <Paper
+        p="sm"
+        mb="xs"
+        draggable={!isEditing}
+        onDragStart={handleSectionDragStart}
+        style={{
+          backgroundColor: isDragOverSection ? "#e3f2fd" : "#f8f9fa",
+          border: isDragOverSection ? "2px dashed #1976d2" : "1px solid #dee2e6",
+          transition: "background-color 0.15s, border 0.15s",
+          cursor: isEditing ? "default" : "grab",
+        }}
+        onDragOver={(e) => {
+          // Only highlight for task drops, not section drops
+          if (!e.dataTransfer.types.includes("application/x-section")) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setIsDragOverSection(true);
+          }
+        }}
+        onDragLeave={() => setIsDragOverSection(false)}
+        onDrop={(e) => {
+          setIsDragOverSection(false);
+          // Only handle task drops here
+          if (!e.dataTransfer.types.includes("application/x-section")) {
+            onDropOnSection(e, section.id);
+          }
+        }}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        <Group justify="space-between" wrap="nowrap">
+          <Group gap="xs" style={{ flex: 1 }} wrap="nowrap">
+            <IconGripVertical 
+              size={16} 
+              style={{ 
+                cursor: "grab", 
+                flexShrink: 0,
+                opacity: isHovering ? 1 : 0.3,
+                transition: "opacity 0.15s",
+              }} 
+            />
+            {isEditing ? (
+              <TextInput
+                ref={inputRef}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={handleSaveName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveName();
+                  if (e.key === "Escape") {
+                    setEditName(section.name);
+                    setIsEditing(false);
+                  }
+                }}
+                size="sm"
+                styles={{
+                  input: {
+                    fontWeight: 600,
+                    padding: "0 8px",
+                    height: "28px",
+                    minHeight: "28px",
+                  },
+                }}
+                style={{ flex: 1, maxWidth: 300 }}
+              />
+            ) : (
+              <Text 
+                size="md" 
+                fw={600} 
+                style={{ cursor: "pointer" }}
+                onClick={() => setIsEditing(true)}
+              >
+                {section.name}
+              </Text>
+            )}
+            {isHovering && !isEditing && (
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="red"
+                onClick={handleDelete}
+                title="Delete section"
+              >
+                <IconX size={14} />
+              </ActionIcon>
+            )}
+          </Group>
+          <Button 
+            size="xs" 
+            variant="subtle" 
+            leftSection={<IconPlus size={14} />}
+            onClick={onAddTask}
+          >
+            Add
+          </Button>
+        </Group>
+      </Paper>
+      
+      {/* Section's active tasks */}
+      {activeItems.length > 0 ? (
+        renderTaskTable(activeItems, section.id)
+      ) : (
+        <Paper p="md" withBorder style={{ borderStyle: "dashed" }}>
+          <Text size="sm" c="dimmed" ta="center">
+            No tasks in this section
+          </Text>
+        </Paper>
+      )}
+    </Box>
+  );
+}
+
 export function ProjectTable({ projectId }) {
   const { user } = useAuth();
   const [draggedItem, setDraggedItem] = useState(null);
+  const [draggedSection, setDraggedSection] = useState(null);
   const [showUnicorn, setShowUnicorn] = useState(false);
   const [settingsOpened, setSettingsOpened] = useState(false);
   const [newlyCreatedItemId, setNewlyCreatedItemId] = useState(null);
+  const [newlyCreatedSectionId, setNewlyCreatedSectionId] = useState(null);
   const [detailsPanelTask, setDetailsPanelTask] = useState(null);
 
-  // Get project to access custom fields
-  const { data: project } = useDocument(collections.projects, projectId);
+  // Get project to access custom fields and sections
+  const { data: project, update: updateProject } = useDocument(collections.projects, projectId);
 
   // Memoize the where clause to prevent infinite re-renders
   const whereClause = useMemo(() => {
@@ -330,27 +538,66 @@ export function ProjectTable({ projectId }) {
     where: whereClause,
   });
 
-  // Split into active and completed, then sort each
-  const { activeTodoItems, completedTodoItems } = useMemo(() => {
+  // Get sorted sections from project
+  const sortedSections = useMemo(() => {
+    const sections = project?.sections || [];
+    return [...sections].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [project?.sections]);
+
+  // Group items by section, then split into active and completed
+  const { unsectionedActive, unsectionedCompleted, sectionedItems } = useMemo(() => {
     const active = todoItems.filter((item) => !item.completed);
     const completed = todoItems.filter((item) => item.completed);
     
-    return {
-      activeTodoItems: active.sort((a, b) => (a.order || 0) - (b.order || 0)),
-      completedTodoItems: completed.sort((a, b) => (a.order || 0) - (b.order || 0)),
-    };
+    // Items with no section (null or undefined)
+    const unsectionedActive = active
+      .filter((item) => !item.sectionId)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    const unsectionedCompleted = completed
+      .filter((item) => !item.sectionId)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    // Group sectioned items by sectionId
+    const sectionedItems = new Map();
+    for (const section of sortedSections) {
+      const sectionActive = active
+        .filter((item) => item.sectionId === section.id)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+      const sectionCompleted = completed
+        .filter((item) => item.sectionId === section.id)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+      sectionedItems.set(section.id, { active: sectionActive, completed: sectionCompleted });
+    }
+    
+    return { unsectionedActive, unsectionedCompleted, sectionedItems };
+  }, [todoItems, sortedSections]);
+
+  // Legacy: keep these for backward compatibility with existing drag logic
+  const activeTodoItems = useMemo(() => {
+    return todoItems.filter((item) => !item.completed).sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [todoItems]);
+  
+  const completedTodoItems = useMemo(() => {
+    return todoItems.filter((item) => item.completed).sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [todoItems]);
 
-  const handleAddTodo = async () => {
+  const handleAddTodo = async (sectionId = null) => {
     if (!user || !projectId) return;
 
+    // Get items in the target section to find min order
+    const targetItems = sectionId 
+      ? (sectionedItems.get(sectionId)?.active || [])
+      : unsectionedActive;
+
     // Find the minimum order value (we want new tasks at top)
-    const minOrder = activeTodoItems.length > 0
-      ? Math.min(...activeTodoItems.map((item) => item.order || 0))
+    const minOrder = targetItems.length > 0
+      ? Math.min(...targetItems.map((item) => item.order || 0))
       : 1;
 
     const newItemId = await add({
       projectId,
+      sectionId: sectionId || null,
       title: "",
       description: "",
       completed: false,
@@ -372,6 +619,11 @@ export function ProjectTable({ projectId }) {
   const handleDragStart = (e, item) => {
     setDraggedItem(item);
     e.dataTransfer.effectAllowed = "move";
+    // Set task data so it can be dropped onto projects in the sidebar
+    e.dataTransfer.setData("application/json", JSON.stringify({
+      taskId: item.id,
+      sourceProjectId: projectId,
+    }));
   };
 
   const handleDragOver = (e) => {
@@ -379,7 +631,7 @@ export function ProjectTable({ projectId }) {
     e.dataTransfer.dropEffect = "move";
   };
 
-  const handleDrop = async (e, targetItem, isCompletedSection) => {
+  const handleDrop = async (e, targetItem, targetSectionId) => {
     e.preventDefault();
     
     if (!draggedItem || draggedItem.id === targetItem.id) {
@@ -387,34 +639,160 @@ export function ProjectTable({ projectId }) {
       return;
     }
 
-    // Get the items from the appropriate section
-    const itemsInSection = isCompletedSection ? completedTodoItems : activeTodoItems;
-    
-    const draggedIndex = itemsInSection.findIndex((item) => item.id === draggedItem.id);
-    const targetIndex = itemsInSection.findIndex((item) => item.id === targetItem.id);
+    const draggedSectionId = draggedItem.sectionId || null;
+    const isMovingSection = draggedSectionId !== targetSectionId;
 
-    if (draggedIndex === -1 || targetIndex === -1) {
+    // Get items in the target section
+    const getItemsInSection = (secId, completed) => {
+      if (completed) {
+        return secId ? (sectionedItems.get(secId)?.completed || []) : unsectionedCompleted;
+      }
+      return secId ? (sectionedItems.get(secId)?.active || []) : unsectionedActive;
+    };
+
+    const targetItems = getItemsInSection(targetSectionId, targetItem.completed);
+    const targetIndex = targetItems.findIndex((item) => item.id === targetItem.id);
+
+    if (targetIndex === -1) {
       setDraggedItem(null);
       return;
     }
 
-    // Reorder items
-    const reorderedItems = [...itemsInSection];
-    const [removed] = reorderedItems.splice(draggedIndex, 1);
-    reorderedItems.splice(targetIndex, 0, removed);
+    if (isMovingSection) {
+      // Moving to a different section - update sectionId and insert at target position
+      const newOrder = targetIndex;
+      await update(draggedItem.id, { 
+        sectionId: targetSectionId, 
+        order: newOrder - 0.5 // Place just before target
+      });
+    } else {
+      // Same section - just reorder
+      const sourceItems = getItemsInSection(draggedSectionId, draggedItem.completed);
+      const draggedIndex = sourceItems.findIndex((item) => item.id === draggedItem.id);
 
-    // Update order values for all affected items
-    const updates = reorderedItems.map((item, index) => ({
-      id: item.id,
-      order: index,
-    }));
+      if (draggedIndex === -1) {
+        setDraggedItem(null);
+        return;
+      }
 
-    // Update all items with new order
-    await Promise.all(
-      updates.map((item) => update(item.id, { order: item.order }))
-    );
+      const reorderedItems = [...sourceItems];
+      const [removed] = reorderedItems.splice(draggedIndex, 1);
+      reorderedItems.splice(targetIndex, 0, removed);
+
+      const updates = reorderedItems.map((item, index) => ({
+        id: item.id,
+        order: index,
+      }));
+
+      await Promise.all(
+        updates.map((item) => update(item.id, { order: item.order }))
+      );
+    }
 
     setDraggedItem(null);
+  };
+
+  // Handle dropping on a section header (moves item to top of that section)
+  const handleDropOnSection = async (e, sectionId) => {
+    e.preventDefault();
+    
+    if (!draggedItem) return;
+    
+    const targetSectionId = sectionId || null;
+    if (draggedItem.sectionId === targetSectionId) {
+      setDraggedItem(null);
+      return;
+    }
+
+    // Move to top of the section
+    const targetItems = targetSectionId 
+      ? (sectionedItems.get(targetSectionId)?.active || [])
+      : unsectionedActive;
+    
+    const minOrder = targetItems.length > 0
+      ? Math.min(...targetItems.map((item) => item.order || 0))
+      : 1;
+
+    await update(draggedItem.id, { 
+      sectionId: targetSectionId, 
+      order: minOrder - 1 
+    });
+
+    setDraggedItem(null);
+  };
+
+  // Section management functions
+  const handleAddSection = async () => {
+    if (!project) return;
+    
+    const sections = project.sections || [];
+    const maxOrder = sections.length > 0 
+      ? Math.max(...sections.map(s => s.order || 0)) 
+      : -1;
+    
+    const newSectionId = `section_${Date.now()}`;
+    const newSection = {
+      id: newSectionId,
+      name: "New Section",
+      order: maxOrder + 1,
+    };
+    
+    await updateProject({ sections: [...sections, newSection] });
+    setNewlyCreatedSectionId(newSectionId);
+  };
+
+  const handleRenameSection = async (sectionId, newName) => {
+    if (!project) return;
+    
+    const sections = project.sections || [];
+    const updatedSections = sections.map(s => 
+      s.id === sectionId ? { ...s, name: newName } : s
+    );
+    
+    await updateProject({ sections: updatedSections });
+    setNewlyCreatedSectionId(null);
+  };
+
+  const handleDeleteSection = async (sectionId) => {
+    if (!project) return;
+    
+    const sections = project.sections || [];
+    const updatedSections = sections.filter(s => s.id !== sectionId);
+    
+    await updateProject({ sections: updatedSections });
+  };
+
+  const handleSectionDragStart = (section) => {
+    setDraggedSection(section);
+  };
+
+  const handleSectionDrop = async (targetIndex) => {
+    if (!draggedSection || !project) {
+      setDraggedSection(null);
+      return;
+    }
+
+    const sections = project.sections || [];
+    const draggedIndex = sortedSections.findIndex(s => s.id === draggedSection.id);
+    
+    if (draggedIndex === -1 || draggedIndex === targetIndex) {
+      setDraggedSection(null);
+      return;
+    }
+
+    // Reorder sections
+    const reordered = [...sortedSections];
+    const [removed] = reordered.splice(draggedIndex, 1);
+    
+    // Adjust target index if dragging from before target
+    const adjustedIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    reordered.splice(adjustedIndex, 0, removed);
+
+    // Update order values
+    const updatedSections = reordered.map((s, index) => ({ ...s, order: index }));
+    
+    await updateProject({ sections: updatedSections });
+    setDraggedSection(null);
   };
 
   if (!projectId) {
@@ -494,8 +872,15 @@ export function ProjectTable({ projectId }) {
 
       <Group justify="space-between">
         <Group gap="xs">
-          <Button leftSection={<IconPlus size={16} />} onClick={handleAddTodo}>
+          <Button leftSection={<IconPlus size={16} />} onClick={() => handleAddTodo(null)}>
             Add Task
+          </Button>
+          <Button 
+            leftSection={<IconPlus size={16} />} 
+            variant="light"
+            onClick={handleAddSection}
+          >
+            Add Section
           </Button>
           <ActionIcon
             size="lg"
@@ -508,99 +893,117 @@ export function ProjectTable({ projectId }) {
         </Group>
       </Group>
 
-      {/* Active Tasks */}
-      {activeTodoItems.length === 0 ? (
-        <Paper p="xl" withBorder>
-          <Text size="lg" c="dimmed" ta="center">
-            No tasks yet. Click "Add Task" to create one!
-          </Text>
-        </Paper>
-      ) : (
-        <Box style={{ overflowX: "auto" }}>
-          <Table striped highlightOnHover withTableBorder withColumnBorders>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th style={{ width: 30 }}></Table.Th>
-                <Table.Th style={{ width: 40 }}>Done</Table.Th>
-                <Table.Th style={{ minWidth: 250 }}>Task</Table.Th>
-                <Table.Th style={{ width: 120 }}>Status</Table.Th>
-                <Table.Th style={{ width: 120 }}>Priority</Table.Th>
-                <Table.Th style={{ width: 180 }}>Assignee</Table.Th>
-                {/* Custom Field Headers */}
-                {project?.customFields?.filter(f => f.showInTable !== false).map((field) => (
-                  <Table.Th key={field.id} style={{ width: 150 }}>
-                    {field.name}
-                  </Table.Th>
-                ))}
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {activeTodoItems.map((item) => (
-                <TodoRow
-                  key={item.id}
-                  item={item}
-                  onUpdate={update}
-                  onDelete={remove}
-                  onDragStart={handleDragStart}
-                  onDragOver={handleDragOver}
-                  onDrop={(e, target) => handleDrop(e, target, false)}
-                  isDragging={draggedItem?.id === item.id}
-                  onComplete={triggerUnicornAnimation}
-                  startInEditMode={item.id === newlyCreatedItemId}
-                  onOpenDetails={setDetailsPanelTask}
-                  customFields={project?.customFields}
-                />
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Box>
-      )}
+      {/* Helper function to render a task table */}
+      {(() => {
+        const renderTaskTable = (items, sectionId) => {
+          if (items.length === 0) return null;
+          return (
+            <Box style={{ overflowX: "auto" }}>
+              <Table striped highlightOnHover withTableBorder withColumnBorders>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th style={{ width: 30 }}></Table.Th>
+                    <Table.Th style={{ width: 40 }}>Done</Table.Th>
+                    <Table.Th style={{ minWidth: 250 }}>Task</Table.Th>
+                    <Table.Th style={{ width: 120 }}>Status</Table.Th>
+                    <Table.Th style={{ width: 120 }}>Priority</Table.Th>
+                    <Table.Th style={{ width: 180 }}>Assignee</Table.Th>
+                    {project?.customFields?.filter(f => f.showInTable !== false).map((field) => (
+                      <Table.Th key={field.id} style={{ width: 150 }}>
+                        {field.name}
+                      </Table.Th>
+                    ))}
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {items.map((item) => (
+                    <TodoRow
+                      key={item.id}
+                      item={item}
+                      onUpdate={update}
+                      onDelete={remove}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDrop={(e, target) => handleDrop(e, target, sectionId)}
+                      isDragging={draggedItem?.id === item.id}
+                      onComplete={triggerUnicornAnimation}
+                      startInEditMode={item.id === newlyCreatedItemId}
+                      onOpenDetails={setDetailsPanelTask}
+                      customFields={project?.customFields}
+                    />
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Box>
+          );
+        };
 
-      {/* Completed Tasks */}
-      {completedTodoItems.length > 0 && (
-        <>
-          <Text size="lg" fw={600} mt="xl">
-            Completed
-          </Text>
-          <Box style={{ overflowX: "auto" }}>
-            <Table striped highlightOnHover withTableBorder withColumnBorders>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th style={{ width: 30 }}></Table.Th>
-                  <Table.Th style={{ width: 40 }}>Done</Table.Th>
-                  <Table.Th style={{ minWidth: 250 }}>Task</Table.Th>
-                  <Table.Th style={{ width: 120 }}>Status</Table.Th>
-                  <Table.Th style={{ width: 120 }}>Priority</Table.Th>
-                  <Table.Th style={{ width: 180 }}>Assignee</Table.Th>
-                {/* Custom Field Headers */}
-                {project?.customFields?.filter(f => f.showInTable !== false).map((field) => (
-                  <Table.Th key={field.id} style={{ width: 150 }}>
-                    {field.name}
-                  </Table.Th>
-                ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {completedTodoItems.map((item) => (
-                  <TodoRow
-                    key={item.id}
-                    item={item}
-                    onUpdate={update}
-                    onDelete={remove}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDrop={(e, target) => handleDrop(e, target, true)}
-                    isDragging={draggedItem?.id === item.id}
-                    onComplete={triggerUnicornAnimation}
-                    onOpenDetails={setDetailsPanelTask}
-                    customFields={project?.customFields}
-                  />
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Box>
-        </>
-      )}
+        const hasTasks = activeTodoItems.length > 0;
+        const hasSections = sortedSections.length > 0;
+
+        return (
+          <>
+            {/* No tasks message */}
+            {!hasTasks && (
+              <Paper p="xl" withBorder>
+                <Text size="lg" c="dimmed" ta="center">
+                  No tasks yet. Click "Add Task" to create one!
+                </Text>
+              </Paper>
+            )}
+
+            {/* Unsectioned active tasks (shown first, no header) */}
+            {unsectionedActive.length > 0 && renderTaskTable(unsectionedActive, null)}
+
+            {/* Sections with their tasks */}
+            {sortedSections.length > 0 && (
+              <>
+                {/* Drop zone before first section */}
+                <SectionDropZone 
+                  isFirst={unsectionedActive.length === 0}
+                  onDrop={() => handleSectionDrop(0)} 
+                />
+                
+                {sortedSections.map((section, index) => {
+                  const sectionItems = sectionedItems.get(section.id);
+                  const activeItems = sectionItems?.active || [];
+
+                  return (
+                    <React.Fragment key={section.id}>
+                      <SectionHeader
+                        section={section}
+                        activeItems={activeItems}
+                        onAddTask={() => handleAddTodo(section.id)}
+                        onDropOnSection={handleDropOnSection}
+                        renderTaskTable={renderTaskTable}
+                        onRename={handleRenameSection}
+                        onDelete={handleDeleteSection}
+                        isNewSection={section.id === newlyCreatedSectionId}
+                        onDragStart={handleSectionDragStart}
+                        isDragging={draggedSection?.id === section.id}
+                      />
+                      {/* Drop zone after each section */}
+                      <SectionDropZone 
+                        onDrop={() => handleSectionDrop(index + 1)} 
+                      />
+                    </React.Fragment>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Completed Tasks (all at bottom) */}
+            {completedTodoItems.length > 0 && (
+              <Box mt="xl">
+                <Text size="lg" fw={600} mb="xs">
+                  Completed
+                </Text>
+                {renderTaskTable(completedTodoItems, null)}
+              </Box>
+            )}
+          </>
+        );
+      })()}
     </Stack>
   );
 }

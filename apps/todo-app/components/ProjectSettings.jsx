@@ -381,6 +381,7 @@ export function ProjectSettings({ projectId, opened, onClose }) {
           </>
         )}
 
+
         {/* Members List */}
         <div>
           <Text size="sm" fw={500} mb="xs">

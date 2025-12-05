@@ -2,18 +2,20 @@
  * Main app entry point
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { MantineProvider, AppShell, Burger, Group, Title, Text, Stack, Avatar } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { useAppStore } from "./stores/appStore.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
+import { useCollection } from "../../framework/hooks/useCollection.js";
 import { ProjectManager } from "./components/ProjectManager.jsx";
 import { ProjectTable } from "./components/ProjectTable.jsx";
 import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { ImproveThisButton } from "./components/ImproveThisButton.jsx";
+import { collections } from "./schema.js";
 
 // Mantine CSS imports
 import "@mantine/core/styles.css";
@@ -27,6 +29,24 @@ function AppContent() {
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = useAppStore();
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
+
+  // Get access to todoItems update function for moving tasks between projects
+  const { update: updateTodoItem } = useCollection(collections.todoItems);
+
+  // Handler for moving a task to a different project
+  const handleMoveTask = useCallback(async (taskId, targetProjectId) => {
+    if (!taskId || !targetProjectId) return;
+    
+    try {
+      // Update the task's projectId and set order to -1 to put it at the top
+      await updateTodoItem(taskId, {
+        projectId: targetProjectId,
+        order: -1,
+      });
+    } catch (error) {
+      console.error("Error moving task:", error);
+    }
+  }, [updateTodoItem]);
 
   // Load selected project from localStorage on mount
   useEffect(() => {
@@ -87,6 +107,7 @@ function AppContent() {
         <ProjectManager
           onSelectProject={handleSelectProject}
           selectedProjectId={selectedProjectId}
+          onMoveTask={handleMoveTask}
         />
       </AppShell.Navbar>
 

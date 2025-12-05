@@ -171,6 +171,7 @@ export const schema = {
       memberIds: { type: "array", items: { type: "string" }, required: true }, // Array of Firebase Auth UIDs
       owner: { type: "string", required: true }, // Firebase Auth UID of creator
       customFields: { type: "array", items: { type: "map" }, default: [] }, // Array of custom field definitions
+      sections: { type: "array", items: { type: "map" }, default: [] }, // Array of { id, name, order } for grouping tasks
       createdAt: { type: "timestamp", auto: true },
       updatedAt: { type: "timestamp", auto: true },
     },
@@ -193,6 +194,7 @@ export const schema = {
   [`${APP_ID}_todo-items`]: {
     fields: {
       projectId: { type: "string", required: true }, // Reference to project
+      sectionId: { type: "string", nullable: true }, // Reference to section within project, null = no section
       title: { type: "string", required: true },
       description: { type: "string" },
       completed: { type: "boolean", default: false },
