@@ -52,31 +52,89 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef(null);
   
+  // Title autosave refs
+  const titleSaveTimeoutRef = useRef(null);
+  const lastSavedTitleRef = useRef("");
+  const isTitleFocusedRef = useRef(false);
+  
+  // Description autosave refs
+  const descriptionSaveTimeoutRef = useRef(null);
+  const lastSavedDescriptionRef = useRef("");
+  const isDescriptionFocusedRef = useRef(false);
+  
   const { upload, uploading, progress, deleteFile: deleteStorageFile } = useStorage(APP_ID);
 
-  // Initialize form when task changes
+  // Initialize form when task changes (except title and description which have special handling)
   useEffect(() => {
     if (task) {
-      setTitle(task.title || "");
-      setDescription(task.description || "");
       setStatus(task.status || "todo");
       setPriority(task.priority || "medium");
       setAssigneeId(task.assigneeId || null);
       setCustomFieldValues(task.customFieldValues || {});
-      setAttachments(task.attachments || []);
     }
   }, [task]);
 
-  // Cleanup timeout on unmount
+  // Sync attachments from Firestore
+  useEffect(() => {
+    if (task) {
+      setAttachments(task.attachments || []);
+    }
+  }, [task?.attachments, task?.id]);
+
+  // Special handling for title - sync from Firestore only when not focused
+  useEffect(() => {
+    if (!task) return;
+    
+    const incomingTitle = task.title || "";
+    
+    if (!isTitleFocusedRef.current) {
+      setTitle(incomingTitle);
+      lastSavedTitleRef.current = incomingTitle;
+    } else if (incomingTitle !== lastSavedTitleRef.current) {
+      setTitle(incomingTitle);
+      lastSavedTitleRef.current = incomingTitle;
+    }
+  }, [task?.title, task?.id]);
+
+  // Special handling for description - sync from Firestore only when not focused
+  useEffect(() => {
+    if (!task) return;
+    
+    const incomingDescription = task.description || "";
+    
+    if (!isDescriptionFocusedRef.current) {
+      setDescription(incomingDescription);
+      lastSavedDescriptionRef.current = incomingDescription;
+    } else if (incomingDescription !== lastSavedDescriptionRef.current) {
+      setDescription(incomingDescription);
+      lastSavedDescriptionRef.current = incomingDescription;
+    }
+  }, [task?.description, task?.id]);
+
+  // Reset focus state when panel closes
+  useEffect(() => {
+    if (!opened) {
+      isTitleFocusedRef.current = false;
+      isDescriptionFocusedRef.current = false;
+    }
+  }, [opened]);
+
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
+      if (titleSaveTimeoutRef.current) {
+        clearTimeout(titleSaveTimeoutRef.current);
+      }
+      if (descriptionSaveTimeoutRef.current) {
+        clearTimeout(descriptionSaveTimeoutRef.current);
+      }
     };
   }, []);
 
-  // Debounced autosave
+  // Debounced autosave for other fields (status, priority, etc.)
   const debouncedSave = (updates) => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -93,7 +151,61 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
       } finally {
         setIsSaving(false);
       }
-    }, 500); // 500ms debounce
+    }, 500); // 500ms debounce for other fields
+  };
+
+  // Debounced autosave for title (1s debounce)
+  const debouncedSaveTitle = (newTitle) => {
+    if (titleSaveTimeoutRef.current) {
+      clearTimeout(titleSaveTimeoutRef.current);
+    }
+
+    titleSaveTimeoutRef.current = setTimeout(async () => {
+      if (!task) return;
+      
+      setIsSaving(true);
+      try {
+        await onUpdate(task.id, { title: newTitle });
+        lastSavedTitleRef.current = newTitle;
+      } catch (error) {
+        console.error("Failed to save title:", error);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 1000); // 1s debounce for title
+  };
+
+  const handleTitleChange = (e) => {
+    const newValue = e.target.value;
+    setTitle(newValue);
+    debouncedSaveTitle(newValue);
+  };
+
+  // Debounced autosave for description (1s debounce)
+  const debouncedSaveDescription = (newDescription) => {
+    if (descriptionSaveTimeoutRef.current) {
+      clearTimeout(descriptionSaveTimeoutRef.current);
+    }
+
+    descriptionSaveTimeoutRef.current = setTimeout(async () => {
+      if (!task) return;
+      
+      setIsSaving(true);
+      try {
+        await onUpdate(task.id, { description: newDescription });
+        lastSavedDescriptionRef.current = newDescription;
+      } catch (error) {
+        console.error("Failed to save description:", error);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 1000); // 1s debounce for description
+  };
+
+  const handleDescriptionChange = (e) => {
+    const newValue = e.target.value;
+    setDescription(newValue);
+    debouncedSaveDescription(newValue);
   };
 
   const handleDelete = async () => {
@@ -110,13 +222,11 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
     await onUpdate(task.id, { completed: !task.completed });
   };
 
-  // Autosave on field changes
+  // Autosave on field changes (excluding title and description which have their own handlers)
   useEffect(() => {
     if (!task) return;
     
     const updates = {};
-    if (title !== (task.title || "")) updates.title = title;
-    if (description !== (task.description || "")) updates.description = description;
     if (status !== (task.status || "todo")) updates.status = status;
     if (priority !== (task.priority || "medium")) updates.priority = priority;
     if (assigneeId !== (task.assigneeId || null)) updates.assigneeId = assigneeId;
@@ -130,7 +240,7 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
       debouncedSave(updates);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, description, status, priority, assigneeId, customFieldValues]);
+  }, [status, priority, assigneeId, customFieldValues]);
 
   const handleCustomFieldChange = (fieldId, value) => {
     setCustomFieldValues(prev => ({
@@ -157,9 +267,10 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
         uploadedAt: new Date().toISOString(),
       };
 
-      const updatedAttachments = [...(task.attachments || []), newAttachment];
-      await onUpdate(task.id, { attachments: updatedAttachments });
+      // Use local attachments state to avoid race conditions
+      const updatedAttachments = [...attachments, newAttachment];
       setAttachments(updatedAttachments);
+      await onUpdate(task.id, { attachments: updatedAttachments });
     } catch (error) {
       console.error("Failed to upload file:", error);
       alert("Failed to upload file. Please try again.");
@@ -177,10 +288,10 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
       // Delete from storage
       await deleteStorageFile(attachment.path);
 
-      // Remove from task
+      // Remove from task (set local first, then persist)
       const updatedAttachments = attachments.filter((_, i) => i !== index);
-      await onUpdate(task.id, { attachments: updatedAttachments });
       setAttachments(updatedAttachments);
+      await onUpdate(task.id, { attachments: updatedAttachments });
     } catch (error) {
       console.error("Failed to delete attachment:", error);
       alert("Failed to delete attachment. Please try again.");
@@ -245,7 +356,9 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
           </Text>
           <TextInput
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={handleTitleChange}
+            onFocus={() => { isTitleFocusedRef.current = true; }}
+            onBlur={() => { isTitleFocusedRef.current = false; }}
             placeholder="Enter task name"
             size="md"
           />
@@ -356,7 +469,9 @@ export function TaskDetailsPanel({ opened, onClose, task, onUpdate, onDelete, cu
           </Text>
           <Textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={handleDescriptionChange}
+            onFocus={() => { isDescriptionFocusedRef.current = true; }}
+            onBlur={() => { isDescriptionFocusedRef.current = false; }}
             placeholder="Add a description..."
             minRows={6}
             autosize

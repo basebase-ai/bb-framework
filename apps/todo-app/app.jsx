@@ -10,8 +10,9 @@ import { useAppStore } from "./stores/appStore.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
 import { useCollection } from "../../framework/hooks/useCollection.js";
-import { ProjectManager } from "./components/ProjectManager.jsx";
+import { ProjectManager, ASSIGNED_TO_ME_VIEW } from "./components/ProjectManager.jsx";
 import { ProjectTable } from "./components/ProjectTable.jsx";
+import { AssignedToMeView } from "./components/AssignedToMeView.jsx";
 import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { ImproveThisButton } from "./components/ImproveThisButton.jsx";
@@ -23,11 +24,54 @@ import "@mantine/notifications/styles.css";
 
 const SELECTED_PROJECT_KEY = "todo-app:selectedProjectId";
 
+/**
+ * Parse the URL path to extract route info
+ * Routes:
+ *   / or /assigned - Assigned to Me view
+ *   /project/:projectId - Project view
+ *   /project/:projectId/item/:itemId - Project view with item details open
+ */
+function parseRoute() {
+  const path = window.location.pathname;
+  
+  // Assigned to me
+  if (path === "/" || path === "/assigned") {
+    return { view: ASSIGNED_TO_ME_VIEW, projectId: null, itemId: null };
+  }
+  
+  // Project with optional item
+  const projectMatch = path.match(/^\/project\/([^/]+)(?:\/item\/([^/]+))?$/);
+  if (projectMatch) {
+    return {
+      view: "project",
+      projectId: projectMatch[1],
+      itemId: projectMatch[2] || null,
+    };
+  }
+  
+  // Default to assigned
+  return { view: ASSIGNED_TO_ME_VIEW, projectId: null, itemId: null };
+}
+
+/**
+ * Build a URL path for navigation
+ */
+function buildRoute(projectId, itemId = null) {
+  if (!projectId || projectId === ASSIGNED_TO_ME_VIEW) {
+    return "/assigned";
+  }
+  if (itemId) {
+    return `/project/${projectId}/item/${itemId}`;
+  }
+  return `/project/${projectId}`;
+}
+
 function AppContent() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = useAppStore();
   const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [selectedItemId, setSelectedItemId] = useState(null);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
 
   // Get access to todoItems update function for moving tasks between projects
@@ -48,31 +92,83 @@ function AppContent() {
     }
   }, [updateTodoItem]);
 
-  // Load selected project from localStorage on mount
+  // Parse initial route on mount
   useEffect(() => {
-    const savedProjectId = localStorage.getItem(SELECTED_PROJECT_KEY);
-    if (savedProjectId) {
-      setSelectedProjectId(savedProjectId);
+    const route = parseRoute();
+    if (route.view === ASSIGNED_TO_ME_VIEW) {
+      setSelectedProjectId(ASSIGNED_TO_ME_VIEW);
+    } else if (route.projectId) {
+      setSelectedProjectId(route.projectId);
+      if (route.itemId) {
+        setSelectedItemId(route.itemId);
+      }
+    } else {
+      // Fall back to localStorage
+      const savedProjectId = localStorage.getItem(SELECTED_PROJECT_KEY);
+      if (savedProjectId) {
+        setSelectedProjectId(savedProjectId);
+      } else {
+        setSelectedProjectId(ASSIGNED_TO_ME_VIEW);
+      }
+    }
+  }, []);
+
+  // Listen for popstate (back/forward navigation)
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parseRoute();
+      if (route.view === ASSIGNED_TO_ME_VIEW) {
+        setSelectedProjectId(ASSIGNED_TO_ME_VIEW);
+        setSelectedItemId(null);
+      } else if (route.projectId) {
+        setSelectedProjectId(route.projectId);
+        setSelectedItemId(route.itemId);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // Update URL when selection changes (but not on initial load)
+  const updateUrl = useCallback((projectId, itemId = null) => {
+    const newPath = buildRoute(projectId, itemId);
+    if (window.location.pathname !== newPath) {
+      window.history.pushState(null, "", newPath);
     }
   }, []);
 
   // Save selected project to localStorage whenever it changes
   useEffect(() => {
-    if (selectedProjectId) {
+    if (selectedProjectId && selectedProjectId !== ASSIGNED_TO_ME_VIEW) {
       localStorage.setItem(SELECTED_PROJECT_KEY, selectedProjectId);
-    } else {
-      localStorage.removeItem(SELECTED_PROJECT_KEY);
     }
   }, [selectedProjectId]);
 
   const handleSelectProject = (projectId) => {
     setSelectedProjectId(projectId);
+    setSelectedItemId(null);
+    updateUrl(projectId);
     
     // Close sidebar on mobile when project is selected
     if (window.innerWidth < 768) { // sm breakpoint
       setSidebarOpen(false);
     }
   };
+
+  const handleOpenItem = useCallback((itemId) => {
+    setSelectedItemId(itemId);
+    if (selectedProjectId && selectedProjectId !== ASSIGNED_TO_ME_VIEW) {
+      updateUrl(selectedProjectId, itemId);
+    }
+  }, [selectedProjectId, updateUrl]);
+
+  const handleCloseItem = useCallback(() => {
+    setSelectedItemId(null);
+    if (selectedProjectId && selectedProjectId !== ASSIGNED_TO_ME_VIEW) {
+      updateUrl(selectedProjectId);
+    }
+  }, [selectedProjectId, updateUrl]);
 
   return (
     <AppShell
@@ -112,7 +208,16 @@ function AppContent() {
       </AppShell.Navbar>
 
       <AppShell.Main>
-        <ProjectTable projectId={selectedProjectId} />
+        {selectedProjectId === ASSIGNED_TO_ME_VIEW ? (
+          <AssignedToMeView />
+        ) : (
+          <ProjectTable 
+            projectId={selectedProjectId} 
+            initialItemId={selectedItemId}
+            onOpenItem={handleOpenItem}
+            onCloseItem={handleCloseItem}
+          />
+        )}
       </AppShell.Main>
 
       {/* Profile Modal */}

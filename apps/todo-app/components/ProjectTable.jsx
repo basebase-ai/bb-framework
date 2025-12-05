@@ -2,7 +2,7 @@
  * ProjectTable - Dense table view with drag-to-reorder rows and inline editing
  */
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Table,
   Button,
@@ -305,6 +305,42 @@ function TodoRow({ item, onUpdate, onDelete, onDragStart, onDragOver, onDrop, is
 }
 
 /**
+ * TaskDropZone - Drop zone at bottom of task table for dropping items to the end
+ */
+function TaskDropZone({ onDrop }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = (e) => {
+    // Only accept task drags (not section drags)
+    if (!e.dataTransfer.types.includes("application/x-section")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setIsDragOver(true);
+    }
+  };
+
+  return (
+    <Box
+      style={{
+        height: isDragOver ? 24 : 2,
+        backgroundColor: isDragOver ? "#e3f2fd" : "transparent",
+        border: isDragOver ? "2px dashed #1976d2" : "none",
+        borderRadius: 2,
+        transition: "all 0.1s",
+        marginTop: 0,
+      }}
+      onDragOver={handleDragOver}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        onDrop(e);
+      }}
+    />
+  );
+}
+
+/**
  * SectionDropZone - Drop zone that appears between sections for reordering
  */
 function SectionDropZone({ onDrop, isFirst }) {
@@ -321,14 +357,13 @@ function SectionDropZone({ onDrop, isFirst }) {
 
   return (
     <Box
-      mt={isFirst ? 0 : "md"}
-      mb="md"
       style={{
-        height: isDragOver ? 40 : 8,
+        height: isDragOver ? 24 : 0,
         backgroundColor: isDragOver ? "#e3f2fd" : "transparent",
-        border: isDragOver ? "2px dashed #1976d2" : "2px dashed transparent",
-        borderRadius: 4,
-        transition: "all 0.15s",
+        border: isDragOver ? "2px dashed #1976d2" : "none",
+        borderRadius: 2,
+        transition: "height 0.1s",
+        overflow: "hidden",
       }}
       onDragOver={handleDragOver}
       onDragLeave={() => setIsDragOver(false)}
@@ -510,7 +545,7 @@ function SectionHeader({
   );
 }
 
-export function ProjectTable({ projectId }) {
+export function ProjectTable({ projectId, initialItemId, onOpenItem, onCloseItem }) {
   const { user } = useAuth();
   const [draggedItem, setDraggedItem] = useState(null);
   const [draggedSection, setDraggedSection] = useState(null);
@@ -518,7 +553,61 @@ export function ProjectTable({ projectId }) {
   const [settingsOpened, setSettingsOpened] = useState(false);
   const [newlyCreatedItemId, setNewlyCreatedItemId] = useState(null);
   const [newlyCreatedSectionId, setNewlyCreatedSectionId] = useState(null);
-  const [detailsPanelTask, setDetailsPanelTask] = useState(null);
+  const [detailsPanelTaskId, setDetailsPanelTaskId] = useState(null);
+  const scrollContainerRef = useRef(null);
+  const scrollIntervalRef = useRef(null);
+
+  // Auto-scroll when dragging near edges of viewport
+  const handleDragScroll = useCallback((e) => {
+    if (!draggedItem && !draggedSection) return;
+    
+    // Find the scrollable parent (AppShell.Main uses the main element)
+    const container = scrollContainerRef.current?.closest('main') || document.documentElement;
+    if (!container) return;
+
+    const viewportHeight = window.innerHeight;
+    const scrollZone = 80; // pixels from edge to trigger scroll
+    const scrollSpeed = 6; // pixels per frame
+
+    const mouseY = e.clientY;
+    
+    // Clear any existing scroll interval
+    if (scrollIntervalRef.current) {
+      cancelAnimationFrame(scrollIntervalRef.current);
+      scrollIntervalRef.current = null;
+    }
+
+    // Check if near top edge of viewport
+    if (mouseY < scrollZone) {
+      const intensity = 1 - mouseY / scrollZone;
+      const scroll = () => {
+        container.scrollTop -= scrollSpeed * intensity;
+        if (draggedItem || draggedSection) {
+          scrollIntervalRef.current = requestAnimationFrame(scroll);
+        }
+      };
+      scrollIntervalRef.current = requestAnimationFrame(scroll);
+    }
+    // Check if near bottom edge of viewport
+    else if (mouseY > viewportHeight - scrollZone) {
+      const intensity = 1 - (viewportHeight - mouseY) / scrollZone;
+      const scroll = () => {
+        container.scrollTop += scrollSpeed * intensity;
+        if (draggedItem || draggedSection) {
+          scrollIntervalRef.current = requestAnimationFrame(scroll);
+        }
+      };
+      scrollIntervalRef.current = requestAnimationFrame(scroll);
+    }
+  }, [draggedItem, draggedSection]);
+
+  // Clean up scroll interval when drag ends
+  useEffect(() => {
+    if (!draggedItem && !draggedSection && scrollIntervalRef.current) {
+      cancelAnimationFrame(scrollIntervalRef.current);
+      scrollIntervalRef.current = null;
+    }
+  }, [draggedItem, draggedSection]);
 
   // Get project to access custom fields and sections
   const { data: project, update: updateProject } = useDocument(collections.projects, projectId);
@@ -537,6 +626,34 @@ export function ProjectTable({ projectId }) {
   } = useCollection(collections.todoItems, {
     where: whereClause,
   });
+
+  // Get live task from todoItems for the details panel
+  const detailsPanelTask = useMemo(() => {
+    if (!detailsPanelTaskId) return null;
+    return todoItems.find(t => t.id === detailsPanelTaskId) || null;
+  }, [detailsPanelTaskId, todoItems]);
+
+  // Open item from URL on initial load
+  useEffect(() => {
+    if (initialItemId && todoItems.length > 0 && !detailsPanelTaskId) {
+      const task = todoItems.find(t => t.id === initialItemId);
+      if (task) {
+        setDetailsPanelTaskId(task.id);
+      }
+    }
+  }, [initialItemId, todoItems, detailsPanelTaskId]);
+
+  // Handle opening task details (also updates URL)
+  const handleOpenDetails = useCallback((task) => {
+    setDetailsPanelTaskId(task.id);
+    onOpenItem?.(task.id);
+  }, [onOpenItem]);
+
+  // Handle closing task details (also updates URL)
+  const handleCloseDetails = useCallback(() => {
+    setDetailsPanelTaskId(null);
+    onCloseItem?.();
+  }, [onCloseItem]);
 
   // Get sorted sections from project
   const sortedSections = useMemo(() => {
@@ -721,6 +838,35 @@ export function ProjectTable({ projectId }) {
     setDraggedItem(null);
   };
 
+  // Handle dropping at the end of a section's task list
+  const handleDropAtEnd = async (sectionId) => {
+    if (!draggedItem) return;
+    
+    const targetSectionId = sectionId || null;
+    
+    // Get items in the target section
+    const targetItems = targetSectionId 
+      ? (sectionedItems.get(targetSectionId)?.active || [])
+      : unsectionedActive;
+    
+    const maxOrder = targetItems.length > 0
+      ? Math.max(...targetItems.map((item) => item.order || 0))
+      : 0;
+
+    // If moving to same section at the end
+    if (draggedItem.sectionId === targetSectionId) {
+      await update(draggedItem.id, { order: maxOrder + 1 });
+    } else {
+      // Moving to different section
+      await update(draggedItem.id, { 
+        sectionId: targetSectionId, 
+        order: maxOrder + 1 
+      });
+    }
+
+    setDraggedItem(null);
+  };
+
   // Section management functions
   const handleAddSection = async () => {
     if (!project) return;
@@ -816,11 +962,16 @@ export function ProjectTable({ projectId }) {
   }
 
   return (
-    <Stack gap="md" style={{ position: "relative" }}>
+    <Stack 
+      gap="md" 
+      style={{ position: "relative" }}
+      ref={scrollContainerRef}
+      onDragOver={handleDragScroll}
+    >
       {/* Task Details Panel */}
       <TaskDetailsPanel
-        opened={!!detailsPanelTask}
-        onClose={() => setDetailsPanelTask(null)}
+        opened={!!detailsPanelTaskId}
+        onClose={handleCloseDetails}
         task={detailsPanelTask}
         onUpdate={update}
         onDelete={remove}
@@ -895,46 +1046,51 @@ export function ProjectTable({ projectId }) {
 
       {/* Helper function to render a task table */}
       {(() => {
-        const renderTaskTable = (items, sectionId) => {
+        const renderTaskTable = (items, sectionId, showDropZone = true) => {
           if (items.length === 0) return null;
           return (
-            <Box style={{ overflowX: "auto" }}>
-              <Table striped highlightOnHover withTableBorder withColumnBorders>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th style={{ width: 30 }}></Table.Th>
-                    <Table.Th style={{ width: 40 }}>Done</Table.Th>
-                    <Table.Th style={{ minWidth: 250 }}>Task</Table.Th>
-                    <Table.Th style={{ width: 120 }}>Status</Table.Th>
-                    <Table.Th style={{ width: 120 }}>Priority</Table.Th>
-                    <Table.Th style={{ width: 180 }}>Assignee</Table.Th>
-                    {project?.customFields?.filter(f => f.showInTable !== false).map((field) => (
-                      <Table.Th key={field.id} style={{ width: 150 }}>
-                        {field.name}
-                      </Table.Th>
+            <>
+              <Box style={{ overflowX: "auto" }}>
+                <Table striped highlightOnHover withTableBorder withColumnBorders>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th style={{ width: 30 }}></Table.Th>
+                      <Table.Th style={{ width: 40 }}>Done</Table.Th>
+                      <Table.Th style={{ minWidth: 250 }}>Task</Table.Th>
+                      <Table.Th style={{ width: 120 }}>Status</Table.Th>
+                      <Table.Th style={{ width: 120 }}>Priority</Table.Th>
+                      <Table.Th style={{ width: 180 }}>Assignee</Table.Th>
+                      {project?.customFields?.filter(f => f.showInTable !== false).map((field) => (
+                        <Table.Th key={field.id} style={{ width: 150 }}>
+                          {field.name}
+                        </Table.Th>
+                      ))}
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {items.map((item) => (
+                      <TodoRow
+                        key={item.id}
+                        item={item}
+                        onUpdate={update}
+                        onDelete={remove}
+                        onDragStart={handleDragStart}
+                        onDragOver={handleDragOver}
+                        onDrop={(e, target) => handleDrop(e, target, sectionId)}
+                        isDragging={draggedItem?.id === item.id}
+                        onComplete={triggerUnicornAnimation}
+                        startInEditMode={item.id === newlyCreatedItemId}
+                        onOpenDetails={handleOpenDetails}
+                        customFields={project?.customFields}
+                      />
                     ))}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {items.map((item) => (
-                    <TodoRow
-                      key={item.id}
-                      item={item}
-                      onUpdate={update}
-                      onDelete={remove}
-                      onDragStart={handleDragStart}
-                      onDragOver={handleDragOver}
-                      onDrop={(e, target) => handleDrop(e, target, sectionId)}
-                      isDragging={draggedItem?.id === item.id}
-                      onComplete={triggerUnicornAnimation}
-                      startInEditMode={item.id === newlyCreatedItemId}
-                      onOpenDetails={setDetailsPanelTask}
-                      customFields={project?.customFields}
-                    />
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Box>
+                  </Table.Tbody>
+                </Table>
+              </Box>
+              {showDropZone && (
+                <TaskDropZone onDrop={() => handleDropAtEnd(sectionId)} />
+              )}
+            </>
           );
         };
 
@@ -994,7 +1150,7 @@ export function ProjectTable({ projectId }) {
 
             {/* Completed Tasks (all at bottom) */}
             {completedTodoItems.length > 0 && (
-              <Box mt="xl">
+              <Box mt="md">
                 <Text size="lg" fw={600} mb="xs">
                   Completed
                 </Text>

@@ -224,10 +224,12 @@ async function init() {
       // TipTap (rich text editor)
       "@tiptap/react": TiptapReact,
       "@tiptap/starter-kit": {
+        __esModule: true,
         default: TiptapStarterKitDefault,
         StarterKit: TiptapStarterKitDefault,
       },
       "@tiptap/extension-placeholder": {
+        __esModule: true,
         default: TiptapPlaceholderDefault,
         Placeholder: TiptapPlaceholderDefault,
       },

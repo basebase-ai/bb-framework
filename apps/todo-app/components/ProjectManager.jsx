@@ -10,9 +10,13 @@ import {
   Modal, 
   Group,
   Text,
-  Paper
+  Paper,
+  Divider
 } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconUser } from "@tabler/icons-react";
+
+// Special view ID for "Assigned to Me"
+export const ASSIGNED_TO_ME_VIEW = "__assigned_to_me__";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
@@ -140,6 +144,31 @@ export function ProjectManager({ onSelectProject, selectedProjectId, onMoveTask 
   return (
     <>
       <Stack gap="md">
+        {/* Assigned to Me - prominent tab */}
+        <Paper
+          p="sm"
+          withBorder
+          style={{
+            cursor: "pointer",
+            backgroundColor: selectedProjectId === ASSIGNED_TO_ME_VIEW 
+              ? "#e3f2fd" 
+              : "transparent",
+            borderColor: selectedProjectId === ASSIGNED_TO_ME_VIEW 
+              ? "#1976d2" 
+              : undefined,
+          }}
+          onClick={() => onSelectProject(ASSIGNED_TO_ME_VIEW)}
+        >
+          <Group gap="xs">
+            <IconUser size={18} color="#1976d2" />
+            <Text size="sm" fw={600} c="#1976d2">
+              Assigned to Me
+            </Text>
+          </Group>
+        </Paper>
+
+        <Divider />
+
         <Text size="sm" fw={500}>
           Projects
         </Text>

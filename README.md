@@ -501,6 +501,85 @@ import { FileUploader } from "../../../framework/components/FileUploader.jsx";
 }
 ```
 
+## URL Routing (Path-Based)
+
+For shareable links to specific views, projects, or items, use **path-based routing** with the browser's History API. Our server is already configured to handle SPA routing, so all paths serve `index.html`.
+
+### Basic Pattern
+
+```javascript
+// Define your app's base path
+const BASE_PATH = "/apps/my-app";
+
+// Parse the current route
+function parseRoute() {
+  const path = window.location.pathname;
+  const relativePath = path.startsWith(BASE_PATH)
+    ? path.slice(BASE_PATH.length) || "/"
+    : path;
+
+  // Match routes like /project/:id or /project/:id/task/:taskId
+  const match = relativePath.match(/^\/project\/([^/]+)(?:\/task\/([^/]+))?$/);
+  if (match) {
+    return { projectId: match[1], taskId: match[2] || null };
+  }
+  return { projectId: null, taskId: null };
+}
+
+// Navigate to a new route
+function navigate(projectId, taskId = null) {
+  const path = taskId
+    ? `${BASE_PATH}/project/${projectId}/task/${taskId}`
+    : `${BASE_PATH}/project/${projectId}`;
+  window.history.pushState(null, "", path);
+}
+```
+
+### React Integration
+
+```javascript
+function App() {
+  const [projectId, setProjectId] = useState(null);
+  const [taskId, setTaskId] = useState(null);
+
+  // Parse route on mount
+  useEffect(() => {
+    const route = parseRoute();
+    setProjectId(route.projectId);
+    setTaskId(route.taskId);
+  }, []);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parseRoute();
+      setProjectId(route.projectId);
+      setTaskId(route.taskId);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // Update URL when state changes
+  const selectProject = (id) => {
+    setProjectId(id);
+    navigate(id);
+  };
+}
+```
+
+### Example Routes
+
+Since each app runs on its own subdomain (e.g., `todo-app.yourdomain.com`), paths can be simple:
+
+| URL                           | View                           |
+| ----------------------------- | ------------------------------ |
+| `/assigned`                   | "Assigned to Me" view          |
+| `/project/abc123`             | Project view                   |
+| `/project/abc123/item/xyz789` | Project with item details open |
+
+**Why path-based?** Cleaner URLs, better for sharing, and our Railway server already handles SPA fallback routing.
+
 ## Server Functions
 
 Need to run code on the server? Use server functions for AI, emails, PDFs, and more!

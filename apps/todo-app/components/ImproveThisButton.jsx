@@ -35,7 +35,7 @@ export function ImproveThisButton() {
         gradient={{ from: "violet", to: "grape", deg: 135 }}
         variant="gradient"
       >
-        Improve This!
+        Rebase
       </Button>
 
       {/* Modal */}
@@ -46,7 +46,7 @@ export function ImproveThisButton() {
           <Group gap="xs">
             <Text size="xl">✨</Text>
             <Text size="lg" fw={600}>
-              Improve this App Now!
+              Rebase This App
             </Text>
           </Group>
         }
