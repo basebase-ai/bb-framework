@@ -290,6 +290,15 @@ export function useDocumentSync(documentId) {
           updatedAt = new Date(data.updatedAt.seconds * 1000);
         }
 
+        // Skip if this is our own save echoing back (prevents unnecessary re-renders)
+        const isOurOwnSave =
+          data.lastEditedBy === user?.uid &&
+          data.version === localVersionRef.current;
+
+        if (initializedRef.current && isOurOwnSave) {
+          return;
+        }
+
         // Check if this is a remote update (not our own save)
         const isRemoteUpdate =
           data.lastEditedBy !== user?.uid &&
@@ -297,14 +306,6 @@ export function useDocumentSync(documentId) {
 
         // Update local version tracker
         localVersionRef.current = data.version;
-
-        // Skip if we already have this version (prevents unnecessary re-renders)
-        if (
-          initializedRef.current &&
-          data.version === localVersionRef.current
-        ) {
-          return;
-        }
 
         // Mark as initialized so saves are now allowed
         initializedRef.current = true;
