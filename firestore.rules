@@ -130,6 +130,15 @@ service cloud.firestore {
       
       allow write: if collection.matches('.*_.*')  // Has underscore
                    && canWriteToApp(getAppIdFromCollection(collection));
+      
+      // Subcollections of namespaced collections (e.g., writebase_documents/{docId}/content/{subDocId})
+      match /{subcollection}/{subDocId} {
+        allow read: if collection.matches('.*_.*')
+                    && canAccessApp(getAppIdFromCollection(collection));
+        
+        allow write: if collection.matches('.*_.*')
+                     && canWriteToApp(getAppIdFromCollection(collection));
+      }
     }
         
     // Catch-all rule: block everything else (security by default)
