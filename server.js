@@ -23,10 +23,10 @@ app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-eval' https://apis.google.com https://accounts.google.com; " +
+    "script-src 'self' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://www.google.com https://www.gstatic.com; " +
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
     "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
-    "frame-src https://accounts.google.com https://*.firebaseapp.com; " +
+    "frame-src https://accounts.google.com https://*.firebaseapp.com https://www.google.com; " +
     "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net wss://*.firebaseio.com; " +
     "img-src 'self' data: https:;"
   );
