@@ -48,7 +48,9 @@ async function writeModulesToDisk(appId, modules) {
   let fileCount = 0;
   
   for (const [filePath, code] of Object.entries(modules)) {
-    const fullPath = join(appDir, filePath);
+    // Normalize backslashes to forward slashes (fix for Windows-committed apps)
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const fullPath = join(appDir, normalizedPath);
     const dir = dirname(fullPath);
     
     // Create directory if needed

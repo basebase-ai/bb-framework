@@ -142,7 +142,9 @@ async function buildModules(appId) {
 
     for (const entry of entries) {
       const path = join(dir, entry.name);
-      const modulePath = join(base, entry.name);
+      // Normalize to forward slashes for cross-platform compatibility
+      // Windows uses backslashes, but we store with forward slashes universally
+      const modulePath = join(base, entry.name).replace(/\\/g, '/');
 
       if (entry.isDirectory()) {
         await scanDir(path, modulePath);
