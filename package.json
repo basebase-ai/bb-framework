@@ -8,6 +8,7 @@
     "app:init": "node scripts/app-init.js",
     "app:checkout": "node scripts/app-checkout.js",
     "app:commit": "node scripts/app-commit.js",
+    "app:debug": "node scripts/app-debug.js",
     "function:list": "node scripts/function-list.js",
     "function:checkout": "node scripts/function-checkout.js",
     "function:commit": "node scripts/function-commit.js",
