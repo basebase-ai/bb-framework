@@ -120,7 +120,7 @@ export function SignatureMap({ signatures, signerProfiles }) {
           const marker = L.marker([latitude, longitude], { icon: signatureIcon })
             .addTo(map)
             .bindPopup(`
-              <div style="min-width: 150px;">
+              <div style="min-width: 150px; max-width: 250px; word-wrap: break-word; overflow-wrap: break-word;">
                 <strong>${profile?.displayName || sig.signerName}</strong><br/>
                 <span style="color: #666; font-size: 12px;">${sig.signerEmail}</span><br/>
                 <hr style="margin: 5px 0; border: none; border-top: 1px solid #eee;"/>
@@ -128,7 +128,12 @@ export function SignatureMap({ signatures, signerProfiles }) {
                 <span style="color: #666; font-size: 11px;">📍 ${locationStr}</span><br/>
                 <span style="color: #666; font-size: 11px;">📅 ${signedDate}</span>
               </div>
-            `);
+            `, {
+              maxWidth: 250,
+              autoPanPadding: [20, 20],
+              autoPanPaddingTopLeft: [20, 20],
+              autoPanPaddingBottomRight: [20, 20],
+            });
 
           markers.push(marker);
         });
@@ -217,7 +222,7 @@ export function SignatureMap({ signatures, signerProfiles }) {
       L.marker([latitude, longitude], { icon: signatureIcon })
         .addTo(mapInstanceRef.current)
         .bindPopup(`
-          <div style="min-width: 150px;">
+          <div style="min-width: 150px; max-width: 250px; word-wrap: break-word; overflow-wrap: break-word;">
             <strong>${profile?.displayName || sig.signerName}</strong><br/>
             <span style="color: #666; font-size: 12px;">${sig.signerEmail}</span><br/>
             <hr style="margin: 5px 0; border: none; border-top: 1px solid #eee;"/>
@@ -225,7 +230,12 @@ export function SignatureMap({ signatures, signerProfiles }) {
             <span style="color: #666; font-size: 11px;">📍 ${locationStr}</span><br/>
             <span style="color: #666; font-size: 11px;">📅 ${signedDate}</span>
           </div>
-        `);
+        `, {
+          maxWidth: 250,
+          autoPanPadding: [20, 20],
+          autoPanPaddingTopLeft: [20, 20],
+          autoPanPaddingBottomRight: [20, 20],
+        });
     });
   }, [signatures, signerProfiles, loading]);
 
@@ -238,7 +248,41 @@ export function SignatureMap({ signatures, signerProfiles }) {
   }
 
   return (
-    <Paper withBorder style={{ overflow: "hidden" }}>
+    <Paper withBorder style={{ overflow: "hidden", position: "relative", zIndex: 1 }}>
+      <style>{`
+        /* Constrain Leaflet z-index to be below modals (modals use z-index 200-300) */
+        .leaflet-container {
+          z-index: 1 !important;
+        }
+        .leaflet-pane {
+          z-index: 1 !important;
+        }
+        .leaflet-top,
+        .leaflet-bottom {
+          z-index: 1 !important;
+        }
+        .leaflet-control {
+          z-index: 1 !important;
+        }
+        .leaflet-marker-pane {
+          z-index: 1 !important;
+        }
+        .leaflet-overlay-pane {
+          z-index: 1 !important;
+        }
+        .leaflet-shadow-pane {
+          z-index: 1 !important;
+        }
+        .leaflet-popup {
+          max-width: 250px !important;
+          z-index: 150 !important;
+        }
+        .leaflet-popup-content-wrapper {
+          max-width: 250px !important;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+      `}</style>
       <Group p="sm" bg="gray.0" justify="space-between">
         <Group gap="xs">
           <IconMapPin size={18} color="#228be6" />
@@ -249,7 +293,7 @@ export function SignatureMap({ signatures, signerProfiles }) {
         </Badge>
       </Group>
       
-      <div style={{ position: "relative", height: 300 }}>
+      <div className="signature-map-container" style={{ position: "relative", height: 300, overflow: "hidden" }}>
         {loading && (
           <Center style={{ position: "absolute", inset: 0, zIndex: 1000, background: "rgba(255,255,255,0.8)" }}>
             <Stack align="center" gap="xs">
@@ -264,6 +308,8 @@ export function SignatureMap({ signatures, signerProfiles }) {
             height: "100%", 
             width: "100%",
             background: "#f0f0f0",
+            position: "relative",
+            overflow: "hidden",
           }} 
         />
       </div>

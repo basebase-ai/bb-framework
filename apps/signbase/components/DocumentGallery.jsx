@@ -16,6 +16,7 @@ import {
   ThemeIcon,
   SegmentedControl,
   Box,
+  Grid,
 } from "@mantine/core";
 import {
   IconFileText,
@@ -27,11 +28,14 @@ import {
 } from "@tabler/icons-react";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useUserProfiles } from "../../../framework/hooks/useUserProfiles.js";
+import { DocumentPreview } from "./DocumentPreview.jsx";
 import { SignatureMap } from "./SignatureMap.jsx";
+import { RecentActivity } from "./RecentActivity.jsx";
 
 /**
  * @typedef {Object} DocumentGalleryProps
- * @property {Array} documents
+ * @property {Array} documents - Filtered documents for display
+ * @property {Array} allDocuments - All documents for activity feed
  * @property {Array} signatures - Current user's signatures
  * @property {Array} allSignatures - All signatures for the map
  * @property {boolean} loading
@@ -46,6 +50,7 @@ import { SignatureMap } from "./SignatureMap.jsx";
  */
 export function DocumentGallery({
   documents,
+  allDocuments,
   signatures,
   allSignatures,
   loading,
@@ -129,11 +134,22 @@ export function DocumentGallery({
     <Stack gap="md">
       <MobileFilter />
       
-      {/* Signature Locations Map */}
-      <SignatureMap 
-        signatures={allSignatures || []} 
-        signerProfiles={signerProfiles} 
-      />
+      {/* Map and Recent Activity Side by Side */}
+      <Grid gutter="md">
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <SignatureMap 
+            signatures={allSignatures || []} 
+            signerProfiles={signerProfiles} 
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <RecentActivity 
+            documents={allDocuments || []}
+            signatures={allSignatures || []}
+            limit={10}
+          />
+        </Grid.Col>
+      </Grid>
 
       {/* Document Grid */}
       <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="md">
@@ -255,11 +271,18 @@ function DocumentCard({ document, onClick, isOwner, hasSigned, needsSignature, u
       onClick={onClick}
     >
       <Card.Section p="md" bg="gray.1">
-        <Center>
-          <ThemeIcon size={60} radius="md" color="blue" variant="light">
-            <IconFileText size={32} />
-          </ThemeIcon>
-        </Center>
+        {document.fileUrl || document.filePath ? (
+          <DocumentPreview 
+            fileUrl={document.fileUrl} 
+            filePath={document.filePath} 
+          />
+        ) : (
+          <Center>
+            <ThemeIcon size={60} radius="md" color="blue" variant="light">
+              <IconFileText size={32} />
+            </ThemeIcon>
+          </Center>
+        )}
       </Card.Section>
 
       <Stack gap="xs" mt="md">

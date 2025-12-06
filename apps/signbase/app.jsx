@@ -257,6 +257,7 @@ function AppContent() {
         {route.view === "gallery" ? (
           <DocumentGallery
             documents={filteredDocuments}
+            allDocuments={documents || []}
             signatures={userSignatures || []}
             allSignatures={allSignatures || []}
             loading={isLoading}

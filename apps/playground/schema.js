@@ -24,6 +24,9 @@ export const APP_ID = "playground";
 export const collections = {
   // Global collections (no namespace needed - platform-managed)
   apps: "apps",
+  // App-specific collections (namespaced)
+  messages: "playground_messages", // For discussions and issue comments
+  reviews: "playground_reviews", // User reviews with ratings
 };
 
 /**
@@ -72,6 +75,61 @@ export const schema = {
       create: "auth != null && request.resource.data.owner == auth.uid",
       // Only owners can delete their apps
       delete: "auth != null && auth.uid == resource.data.owner",
+    },
+  },
+
+  // Messages for discussions and issue comments
+  playground_messages: {
+    fields: {
+      appId: { type: "string", required: true }, // Which app this belongs to
+      type: { type: "enum", values: ["discussion", "issue"], required: true },
+      // For discussions: threadId groups replies together (null = new thread)
+      threadId: { type: "string" },
+      // For issues: issueId links comments to an issue
+      issueId: { type: "string" },
+      title: { type: "string" }, // For thread starters / issue titles
+      content: { type: "string", required: true },
+      author: { type: "string", required: true }, // Firebase Auth UID
+      // Issue-specific fields
+      priority: { type: "enum", values: ["low", "medium", "high", "critical"] },
+      status: { type: "enum", values: ["open", "in_progress", "resolved", "closed"] },
+      issueType: { type: "enum", values: ["bug", "feature", "question", "other"] },
+      createdAt: { type: "timestamp", auto: true },
+      updatedAt: { type: "timestamp", auto: true },
+    },
+    indexes: [
+      ["appId", "type", "createdAt"],
+      ["appId", "threadId", "createdAt"],
+      ["appId", "issueId", "createdAt"],
+    ],
+    rules: {
+      read: "true",
+      create: "auth != null",
+      write: "auth != null && auth.uid == resource.data.author",
+      delete: "auth != null && auth.uid == resource.data.author",
+    },
+  },
+
+  // User reviews with ratings
+  playground_reviews: {
+    fields: {
+      appId: { type: "string", required: true },
+      author: { type: "string", required: true }, // Firebase Auth UID
+      rating: { type: "number", required: true }, // 1-5 stars
+      title: { type: "string" },
+      content: { type: "string" },
+      createdAt: { type: "timestamp", auto: true },
+      updatedAt: { type: "timestamp", auto: true },
+    },
+    indexes: [
+      ["appId", "createdAt"],
+      ["appId", "rating"],
+    ],
+    rules: {
+      read: "true",
+      create: "auth != null",
+      write: "auth != null && auth.uid == resource.data.author",
+      delete: "auth != null && auth.uid == resource.data.author",
     },
   },
 };

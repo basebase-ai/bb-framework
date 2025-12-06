@@ -76,10 +76,13 @@ module.exports = async function (params, context) {
     //   },
     // };
 
-    context.log("SageStocks API response received (DUMMY DATA)", {
+    context.log("SageStocks API response received", {
       ticker,
       success: response.data?.success,
       status: response.status,
+      hasAnalysisContent: !!response.data?.analysisContent,
+      analysisContentLength: response.data?.analysisContent?.length || 0,
+      recommendation: response.data?.scores?.recommendation,
     });
 
     if (!response.data) {

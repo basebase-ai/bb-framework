@@ -22,6 +22,7 @@ function App() {
       defaultColorScheme="dark"
       theme={{
         primaryColor: "violet",
+        scale: 0.92,
         colors: {
           dark: [
             "#C1C2C5",
@@ -37,9 +38,40 @@ function App() {
           ],
         },
         fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+        fontSizes: {
+          xs: "0.75rem",
+          sm: "0.85rem",
+          md: "0.95rem",
+          lg: "1.05rem",
+          xl: "1.15rem",
+        },
+        spacing: {
+          xs: "0.5rem",
+          sm: "0.7rem",
+          md: "0.9rem",
+          lg: "1.1rem",
+          xl: "1.4rem",
+        },
         headings: {
           fontFamily: "Inter, system-ui, -apple-system, sans-serif",
           fontWeight: 700,
+          sizes: {
+            h1: { fontSize: "1.85rem" },
+            h2: { fontSize: "1.6rem" },
+            h3: { fontSize: "1.35rem" },
+          },
+        },
+        defaultRadius: "sm",
+        components: {
+          Button: { defaultProps: { size: "xs" } },
+          TextInput: { defaultProps: { size: "sm" } },
+          Textarea: { defaultProps: { size: "sm" } },
+          Select: { defaultProps: { size: "sm" } },
+          Autocomplete: { defaultProps: { size: "sm" } },
+          Card: { defaultProps: { padding: "sm", radius: "sm" } },
+          Badge: { defaultProps: { size: "xs" } },
+          Avatar: { defaultProps: { size: "md" } },
+          ActionIcon: { defaultProps: { size: "sm" } },
         },
       }}
       withGlobalStyles

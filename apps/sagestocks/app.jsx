@@ -2,7 +2,7 @@
  * SageStocks - Stock Analysis Dashboard
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import {
   MantineProvider,
@@ -13,24 +13,20 @@ import {
   Avatar,
   Text,
   useMantineColorScheme,
-  Loader,
-  Center,
   Tabs,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { IconSun, IconMoon, IconChartLine, IconWallet } from "@tabler/icons-react";
-import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
 import { useRouter } from "../../framework/hooks/useRouter.js";
 import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
-import { TableView } from "./components/TableView.jsx";
+import { AnalysesTable } from "./components/AnalysesTable.jsx";
 import { Portfolio } from "./components/Portfolio.jsx";
 import { AnalysisDetails } from "./components/AnalysisDetails.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { LandingPage } from "./components/LandingPage.jsx";
-import { APP_ID, collections, DEFAULT_STOCK_FIELDS } from "./schema.js";
-import { db } from "../../framework/core/firebase-init.js";
+import { APP_ID } from "./schema.js";
 
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
@@ -83,8 +79,6 @@ function AppContent() {
   const { profile } = useUserProfile(user?.uid);
   const { path, navigate } = useRouter();
   const [profileModalOpened, setProfileModalOpened] = useState(false);
-  const [pageId, setPageId] = useState(/** @type {string | null} */ (null));
-  const [loading, setLoading] = useState(true);
 
   // Parse route from URL path
   const route = useMemo(() => parseRoute(path), [path]);
@@ -92,7 +86,7 @@ function AppContent() {
   // Get the active tab from the route
   const activeTab = route.view === "analysis-details" ? "analyses" : route.view;
 
-  // Handle tab change - navigate to the appropriate URL
+  // Handle tab change
   const handleTabChange = (/** @type {string | null} */ value) => {
     if (value === "portfolio") {
       navigate("/portfolio");
@@ -110,61 +104,6 @@ function AppContent() {
   const handleBackFromDetails = () => {
     navigate("/analyses");
   };
-
-  // Auto-create or find default page configuration
-  useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    const initializePage = async () => {
-      try {
-        // Check if default page exists
-        const pagesRef = collection(db, collections.pages);
-        const q = query(
-          pagesRef,
-          where("collectionName", "==", "stock-analyses")
-        );
-        const snapshot = await getDocs(q);
-
-        if (!snapshot.empty) {
-          // Use existing page
-          setPageId(snapshot.docs[0].id);
-        } else {
-          // Create default page
-          const newPage = {
-            name: "Stock Analyses",
-            description: "Track and analyze stocks with SageStocks API",
-            collectionName: "stock-analyses",
-            fields: DEFAULT_STOCK_FIELDS,
-            sortBy: "ticker",
-            sortDirection: "asc",
-            createdBy: user.uid,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-
-          const docRef = await addDoc(collection(db, collections.pages), newPage);
-          setPageId(docRef.id);
-        }
-      } catch (error) {
-        console.error("Error initializing page:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializePage();
-  }, [user]);
-
-  if (loading) {
-    return (
-      <Center style={{ height: "100vh" }}>
-        <Loader size="lg" />
-      </Center>
-    );
-  }
 
   // Hide tabs when viewing analysis details
   const showTabs = route.view !== "analysis-details";
@@ -225,8 +164,8 @@ function AppContent() {
 
       <AppShell.Main>
         {route.view === "portfolio" && <Portfolio />}
-        {route.view === "analyses" && pageId && (
-          <TableView pageId={pageId} onViewAnalysis={handleViewAnalysis} />
+        {route.view === "analyses" && (
+          <AnalysesTable onViewAnalysis={handleViewAnalysis} />
         )}
         {route.view === "analysis-details" && route.ticker && (
           <AnalysisDetails ticker={route.ticker} onBack={handleBackFromDetails} />
