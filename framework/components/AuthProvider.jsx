@@ -4,8 +4,14 @@
  * Handles authentication AND automatic membership management.
  * Every app should wrap their content with this component.
  * 
+ * SECURITY: Requires verified identity (email or phone) before granting access.
+ * - Email/password users must verify their email
+ * - Phone users are verified via SMS code
+ * - Google users are pre-verified by Google
+ * 
  * Features:
  * - Shows sign-in/sign-up screen when unauthenticated
+ * - Enforces email/phone verification before access
  * - Supports custom landing pages for unauthenticated users
  * - Automatically creates/updates app membership records
  * - Blocks access to invite-only apps
@@ -34,7 +40,7 @@
  * }
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
   Paper,
@@ -48,6 +54,8 @@ import {
   Divider,
   Alert,
   Modal,
+  PinInput,
+  Tabs,
 } from "@mantine/core";
 import {
   createUserWithEmailAndPassword,
@@ -55,6 +63,9 @@ import {
   signOut,
   GoogleAuthProvider,
   signInWithPopup,
+  sendEmailVerification,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../core/firebase-init.js";
@@ -63,8 +74,37 @@ import { useAppMembership } from "../hooks/useAppMembership.js";
 import { getAppIdFromURL } from "../loader/url-parser.js";
 
 /**
+ * Check if user is verified (email verified OR phone auth)
+ * @param {import('firebase/auth').User | null} user
+ * @returns {boolean}
+ */
+function isUserVerified(user) {
+  if (!user) {
+    console.log('🔐 [isUserVerified] No user');
+    return false;
+  }
+  
+  const hasPhone = !!user.phoneNumber;
+  const hasVerifiedEmail = user.emailVerified === true;
+  const isVerified = hasPhone || hasVerifiedEmail;
+  
+  console.log('🔐 [isUserVerified]', {
+    uid: user.uid,
+    email: user.email,
+    phoneNumber: user.phoneNumber,
+    emailVerified: user.emailVerified,
+    hasPhone,
+    hasVerifiedEmail,
+    isVerified,
+  });
+  
+  return isVerified;
+}
+
+/**
  * Helper: Ensure user profile exists in Firestore
  * Auto-creates profile if it doesn't exist
+ * @param {import('firebase/auth').User} user
  */
 async function ensureUserProfile(user) {
   if (!user) return;
@@ -74,9 +114,11 @@ async function ensureUserProfile(user) {
 
   if (!userSnap.exists()) {
     // Create new user profile
+    /** @type {Record<string, unknown>} */
     const profile = {
-      email: user.email,
-      displayName: user.displayName || user.email?.split('@')[0] || 'User',
+      email: user.email || null,
+      phoneNumber: user.phoneNumber || null,
+      displayName: user.displayName || user.email?.split('@')[0] || user.phoneNumber || 'User',
       photoURL: user.photoURL || null,
       bio: null,
       role: 'user',
@@ -85,7 +127,7 @@ async function ensureUserProfile(user) {
     };
 
     await setDoc(userRef, profile);
-    console.log('✅ Created user profile for', user.email);
+    console.log('✅ Created user profile for', user.email || user.phoneNumber);
   }
 }
 
@@ -106,31 +148,43 @@ async function ensureUserProfile(user) {
  */
 export function AuthProvider({ children, appId, landingPage }) {
   const { user, loading: authLoading } = useAuth();
-  const [profileEnsured, setProfileEnsured] = React.useState(false);
-  const [showAuthModal, setShowAuthModal] = React.useState(false);
+  const [profileEnsured, setProfileEnsured] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   
   // Get appId from URL if not provided
   const effectiveAppId = appId || getAppIdFromURL();
   
-  // Ensure user profile exists once when user is authenticated
-  React.useEffect(() => {
-    if (user && !authLoading && !profileEnsured) {
+  // Check if user is verified
+  const verified = isUserVerified(user);
+  
+  console.log('🔐 [AuthProvider] State:', { 
+    hasUser: !!user, 
+    verified, 
+    authLoading,
+    effectiveAppId,
+  });
+  
+  // Ensure user profile exists once when user is authenticated AND verified
+  useEffect(() => {
+    if (user && verified && !authLoading && !profileEnsured) {
       setProfileEnsured(true);
       ensureUserProfile(user).catch(err => {
         console.error('Failed to ensure user profile:', err);
       });
     }
-  }, [user?.uid, authLoading, profileEnsured]);
+  }, [user?.uid, verified, authLoading, profileEnsured]);
   
-  // Close auth modal when user signs in
-  React.useEffect(() => {
-    if (user) {
+  // Close auth modal when user signs in and is verified
+  useEffect(() => {
+    if (user && verified) {
       setShowAuthModal(false);
     }
-  }, [user]);
+  }, [user, verified]);
   
-  // Use membership hook to manage app access
-  const { membership, loading: membershipLoading, error: membershipError, hasAccess } = useAppMembership(effectiveAppId);
+  // Use membership hook to manage app access (only when verified)
+  const { membership, loading: membershipLoading, error: membershipError, hasAccess } = useAppMembership(
+    verified ? effectiveAppId : null
+  );
 
   // Show loading while checking auth
   if (authLoading) {
@@ -157,6 +211,11 @@ export function AuthProvider({ children, appId, landingPage }) {
     }
     // Otherwise, show the default full-screen auth screen
     return <AuthScreen />;
+  }
+
+  // User is authenticated but NOT verified - show verification screen
+  if (!verified) {
+    return <VerificationPendingScreen user={user} />;
   }
 
   // Show loading while checking membership
@@ -269,39 +328,129 @@ export function AuthProvider({ children, appId, landingPage }) {
     );
   }
 
-  // User is authenticated and has access - render the app!
+  // User is authenticated, verified, and has access - render the app!
   console.log(`✅ User has access to app "${effectiveAppId}" (role: ${membership?.role}, tier: ${membership?.tier})`);
   return <>{children}</>;
 }
 
-function AuthScreen() {
-  const [mode, setMode] = useState("signin"); // "signin" or "signup"
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+/**
+ * Verification Pending Screen - shown when user has signed up but not verified email
+ * @param {{ user: import('firebase/auth').User }} props
+ */
+function VerificationPendingScreen({ user }) {
+  const [resending, setResending] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [resent, setResent] = useState(false);
+  const [error, setError] = useState(/** @type {string | null} */ (null));
 
-  const handleEmailAuth = async (e) => {
-    e.preventDefault();
+  const handleResendVerification = async () => {
+    setResending(true);
     setError(null);
-    setLoading(true);
-
     try {
-      let userCredential;
-      if (mode === "signup") {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      } else {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-      }
-      
-      // Ensure user profile exists in Firestore
-      await ensureUserProfile(userCredential.user);
+      await sendEmailVerification(user);
+      setResent(true);
     } catch (err) {
-      setError(err.message);
+      console.error('Failed to resend verification:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send verification email');
     } finally {
-      setLoading(false);
+      setResending(false);
     }
   };
+
+  const handleRefresh = async () => {
+    setChecking(true);
+    setError(null);
+    try {
+      // Reload user data from Firebase to get updated emailVerified status
+      await user.reload();
+      // Force token refresh to update the auth token claims
+      await user.getIdToken(true);
+      
+      // Check if now verified
+      if (user.emailVerified) {
+        // Reload the page to proceed with the app
+        window.location.reload();
+      } else {
+        setError('Email not yet verified. Please check your inbox and click the verification link.');
+      }
+    } catch (err) {
+      console.error('Failed to check verification status:', err);
+      setError(err instanceof Error ? err.message : 'Failed to check verification status');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <Container size="xs" py="xl">
+      <Paper withBorder shadow="md" p="xl" radius="md">
+        <Title order={2} ta="center" mb="md">
+          Verify Your Email
+        </Title>
+
+        <Text c="dimmed" size="sm" ta="center" mb="xl">
+          We sent a verification email to <strong>{user.email}</strong>. 
+          Please check your inbox and click the verification link.
+        </Text>
+
+        {error && (
+          <Alert color="red" mb="md" title="Error">
+            {error}
+          </Alert>
+        )}
+
+        {resent && (
+          <Alert color="green" mb="md" title="Email Sent">
+            Verification email has been resent. Please check your inbox.
+          </Alert>
+        )}
+
+        <Stack gap="md">
+          <Button 
+            onClick={handleRefresh} 
+            fullWidth
+            loading={checking}
+          >
+            I've Verified My Email
+          </Button>
+
+          <Button 
+            variant="light" 
+            onClick={handleResendVerification} 
+            loading={resending}
+            disabled={checking}
+            fullWidth
+          >
+            Resend Verification Email
+          </Button>
+
+          <Divider my="sm" />
+
+          <Button 
+            variant="subtle" 
+            onClick={() => signOut(auth)} 
+            fullWidth
+            disabled={checking || resending}
+          >
+            Sign Out
+          </Button>
+        </Stack>
+
+        <Text size="xs" c="dimmed" ta="center" mt="lg">
+          Can't find the email? Check your spam folder.
+        </Text>
+      </Paper>
+    </Container>
+  );
+}
+
+/**
+ * Main Auth Screen with Email, Phone, and Google sign-in options
+ */
+function AuthScreen() {
+  const [activeTab, setActiveTab] = useState(/** @type {string | null} */ ("email"));
+  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [loading, setLoading] = useState(false);
 
   const handleGoogleAuth = async () => {
     setError(null);
@@ -313,20 +462,22 @@ function AuthScreen() {
       const result = await signInWithPopup(auth, provider);
       console.log("Google sign-in successful:", result.user);
       
-      // Ensure user profile exists in Firestore
+      // Google users are already verified, create profile immediately
       await ensureUserProfile(result.user);
     } catch (err) {
       console.error("Google sign-in error:", err);
       
-      // Provide more user-friendly error messages
-      let errorMessage = err.message;
+      let errorMessage = err instanceof Error ? err.message : 'An error occurred';
       
-      if (err.code === "auth/popup-closed-by-user") {
-        errorMessage = "Sign-in popup was closed. Please try again.";
-      } else if (err.code === "auth/unauthorized-domain") {
-        errorMessage = "This domain is not authorized for Google Sign-In. Add it in Firebase Console > Authentication > Settings > Authorized domains.";
-      } else if (err.code === "auth/popup-blocked") {
-        errorMessage = "Popup was blocked by your browser. Please allow popups for this site.";
+      if (err instanceof Error && 'code' in err) {
+        const code = /** @type {string} */ (err.code);
+        if (code === "auth/popup-closed-by-user") {
+          errorMessage = "Sign-in popup was closed. Please try again.";
+        } else if (code === "auth/unauthorized-domain") {
+          errorMessage = "This domain is not authorized for Google Sign-In. Add it in Firebase Console > Authentication > Settings > Authorized domains.";
+        } else if (code === "auth/popup-blocked") {
+          errorMessage = "Popup was blocked by your browser. Please allow popups for this site.";
+        }
       }
       
       setError(errorMessage);
@@ -339,47 +490,33 @@ function AuthScreen() {
     <Container size="xs" py="xl">
       <Paper withBorder shadow="md" p="xl" radius="md">
         <Title order={2} ta="center" mb="md">
-          {mode === "signin" ? "Sign In" : "Create Account"}
+          Welcome
         </Title>
 
         <Text c="dimmed" size="sm" ta="center" mb="xl">
-          {mode === "signin"
-            ? "Welcome back! Sign in to access your apps."
-            : "Create an account to start building apps."}
+          Sign in or create an account to continue.
         </Text>
 
         {error && (
-          <Alert color="red" mb="md" title="Error">
+          <Alert color="red" mb="md" title="Error" onClose={() => setError(null)} withCloseButton>
             {error}
           </Alert>
         )}
 
-        <form onSubmit={handleEmailAuth}>
-          <Stack gap="md">
-            <TextInput
-              label="Email"
-              placeholder="your@email.com"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-            />
+        <Tabs value={activeTab} onChange={setActiveTab}>
+          <Tabs.List grow mb="md">
+            <Tabs.Tab value="email">Email</Tabs.Tab>
+            <Tabs.Tab value="phone">Phone</Tabs.Tab>
+          </Tabs.List>
 
-            <PasswordInput
-              label="Password"
-              placeholder="Your password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-            />
+          <Tabs.Panel value="email">
+            <EmailAuthForm setError={setError} setLoading={setLoading} loading={loading} />
+          </Tabs.Panel>
 
-            <Button type="submit" fullWidth loading={loading}>
-              {mode === "signin" ? "Sign In" : "Create Account"}
-            </Button>
-          </Stack>
-        </form>
+          <Tabs.Panel value="phone">
+            <PhoneAuthForm setError={setError} setLoading={setLoading} loading={loading} />
+          </Tabs.Panel>
+        </Tabs>
 
         <Divider label="or" labelPosition="center" my="lg" />
 
@@ -391,13 +528,103 @@ function AuthScreen() {
         >
           Continue with Google
         </Button>
+      </Paper>
+    </Container>
+  );
+}
 
-        <Text size="sm" ta="center" mt="lg">
+/**
+ * Email authentication form
+ * @param {{ setError: (err: string | null) => void, setLoading: (loading: boolean) => void, loading: boolean }} props
+ */
+function EmailAuthForm({ setError, setLoading, loading }) {
+  const [mode, setMode] = useState(/** @type {"signin" | "signup"} */ ("signin"));
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleEmailAuth = async (/** @type {React.FormEvent} */ e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      /** @type {import('firebase/auth').UserCredential} */
+      let userCredential;
+      if (mode === "signup") {
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Send verification email for new accounts
+        await sendEmailVerification(userCredential.user);
+        console.log('📧 Verification email sent to', email);
+      } else {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        
+        console.log('🔐 [EmailAuth] Before reload - emailVerified:', userCredential.user.emailVerified);
+        
+        // Reload user to get latest data (including emailVerified status)
+        // and force token refresh to update the auth token claims
+        // This is critical because Firebase caches these values
+        await userCredential.user.reload();
+        
+        console.log('🔐 [EmailAuth] After reload - emailVerified:', userCredential.user.emailVerified);
+        
+        // Force token refresh
+        const token = await userCredential.user.getIdToken(true);
+        
+        // Decode token to verify claims (for debugging)
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        console.log('🔐 [EmailAuth] Token claims:', {
+          email_verified: tokenPayload.email_verified,
+          email: tokenPayload.email,
+          phone_number: tokenPayload.phone_number,
+        });
+        
+        // If existing user hasn't verified, resend verification email
+        if (!userCredential.user.emailVerified) {
+          await sendEmailVerification(userCredential.user);
+          console.log('📧 Verification email resent to', email);
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleEmailAuth}>
+      <Stack gap="md">
+        <TextInput
+          label="Email"
+          placeholder="your@email.com"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={loading}
+        />
+
+        <PasswordInput
+          label="Password"
+          placeholder="Your password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={loading}
+        />
+
+        <Button type="submit" fullWidth loading={loading}>
+          {mode === "signin" ? "Sign In" : "Create Account"}
+        </Button>
+
+        <Text size="sm" ta="center">
           {mode === "signin" ? (
             <>
               Don't have an account?{" "}
               <Text
                 component="button"
+                type="button"
                 onClick={() => setMode("signup")}
                 style={{
                   background: "none",
@@ -415,6 +642,7 @@ function AuthScreen() {
               Already have an account?{" "}
               <Text
                 component="button"
+                type="button"
                 onClick={() => setMode("signin")}
                 style={{
                   background: "none",
@@ -429,8 +657,190 @@ function AuthScreen() {
             </>
           )}
         </Text>
-      </Paper>
-    </Container>
+      </Stack>
+    </form>
+  );
+}
+
+/**
+ * Phone authentication form with SMS verification
+ * @param {{ setError: (err: string | null) => void, setLoading: (loading: boolean) => void, loading: boolean }} props
+ */
+function PhoneAuthForm({ setError, setLoading, loading }) {
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [confirmationResult, setConfirmationResult] = useState(/** @type {import('firebase/auth').ConfirmationResult | null} */ (null));
+  const [codeSent, setCodeSent] = useState(false);
+  const recaptchaContainerRef = React.useRef(/** @type {HTMLDivElement | null} */ (null));
+  const recaptchaVerifierRef = React.useRef(/** @type {RecaptchaVerifier | null} */ (null));
+
+  // Setup reCAPTCHA on mount
+  useEffect(() => {
+    return () => {
+      // Cleanup reCAPTCHA on unmount
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+      }
+    };
+  }, []);
+
+  const setupRecaptcha = useCallback(() => {
+    if (recaptchaVerifierRef.current) {
+      recaptchaVerifierRef.current.clear();
+    }
+    
+    if (recaptchaContainerRef.current) {
+      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+        size: 'invisible',
+        callback: () => {
+          console.log('reCAPTCHA verified');
+        },
+        'expired-callback': () => {
+          console.log('reCAPTCHA expired');
+          setError('reCAPTCHA expired. Please try again.');
+        }
+      });
+    }
+  }, [setError]);
+
+  const handleSendCode = async (/** @type {React.FormEvent} */ e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      // Format phone number (ensure it starts with +)
+      let formattedPhone = phoneNumber.trim();
+      if (!formattedPhone.startsWith('+')) {
+        // Assume US number if no country code
+        formattedPhone = '+1' + formattedPhone.replace(/\D/g, '');
+      }
+
+      setupRecaptcha();
+      
+      if (!recaptchaVerifierRef.current) {
+        throw new Error('reCAPTCHA not initialized');
+      }
+
+      const result = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current);
+      setConfirmationResult(result);
+      setCodeSent(true);
+      console.log('📱 SMS code sent to', formattedPhone);
+    } catch (err) {
+      console.error('Phone auth error:', err);
+      let errorMessage = err instanceof Error ? err.message : 'Failed to send verification code';
+      
+      if (err instanceof Error && 'code' in err) {
+        const code = /** @type {string} */ (err.code);
+        if (code === 'auth/invalid-phone-number') {
+          errorMessage = 'Invalid phone number. Please include country code (e.g., +1 for US).';
+        } else if (code === 'auth/too-many-requests') {
+          errorMessage = 'Too many attempts. Please try again later.';
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (/** @type {React.FormEvent} */ e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      if (!confirmationResult) {
+        throw new Error('No confirmation result. Please request a new code.');
+      }
+
+      const result = await confirmationResult.confirm(verificationCode);
+      console.log('✅ Phone verified:', result.user.phoneNumber);
+      
+      // Create user profile
+      await ensureUserProfile(result.user);
+    } catch (err) {
+      console.error('Code verification error:', err);
+      let errorMessage = err instanceof Error ? err.message : 'Failed to verify code';
+      
+      if (err instanceof Error && 'code' in err) {
+        const code = /** @type {string} */ (err.code);
+        if (code === 'auth/invalid-verification-code') {
+          errorMessage = 'Invalid verification code. Please check and try again.';
+        } else if (code === 'auth/code-expired') {
+          errorMessage = 'Verification code expired. Please request a new one.';
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (codeSent) {
+    return (
+      <form onSubmit={handleVerifyCode}>
+        <Stack gap="md">
+          <Text size="sm" c="dimmed" ta="center">
+            Enter the 6-digit code sent to {phoneNumber}
+          </Text>
+
+          <Group justify="center">
+            <PinInput
+              length={6}
+              type="number"
+              value={verificationCode}
+              onChange={setVerificationCode}
+              disabled={loading}
+              size="lg"
+            />
+          </Group>
+
+          <Button type="submit" fullWidth loading={loading} disabled={verificationCode.length !== 6}>
+            Verify Code
+          </Button>
+
+          <Button 
+            variant="subtle" 
+            fullWidth 
+            onClick={() => {
+              setCodeSent(false);
+              setVerificationCode("");
+              setConfirmationResult(null);
+            }}
+            disabled={loading}
+          >
+            Use a different number
+          </Button>
+        </Stack>
+      </form>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSendCode}>
+      <Stack gap="md">
+        <TextInput
+          label="Phone Number"
+          placeholder="+1 (555) 123-4567"
+          type="tel"
+          required
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          disabled={loading}
+          description="Include country code (e.g., +1 for US)"
+        />
+
+        <Button type="submit" fullWidth loading={loading}>
+          Send Verification Code
+        </Button>
+
+        {/* Invisible reCAPTCHA container */}
+        <div ref={recaptchaContainerRef} id="recaptcha-container"></div>
+      </Stack>
+    </form>
   );
 }
 
@@ -461,34 +871,9 @@ export function SignOutButton({ ...props }) {
  * @param {{ opened: boolean, onClose: () => void }} props
  */
 function AuthModal({ opened, onClose }) {
-  const [mode, setMode] = useState("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [activeTab, setActiveTab] = useState(/** @type {string | null} */ ("email"));
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [loading, setLoading] = useState(false);
-
-  const handleEmailAuth = async (/** @type {React.FormEvent} */ e) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      /** @type {import('firebase/auth').UserCredential} */
-      let userCredential;
-      if (mode === "signup") {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      } else {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-      }
-      
-      await ensureUserProfile(userCredential.user);
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleGoogleAuth = async () => {
     setError(null);
@@ -520,11 +905,9 @@ function AuthModal({ opened, onClose }) {
   };
 
   // Reset state when modal closes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!opened) {
       setError(null);
-      setEmail("");
-      setPassword("");
     }
   }, [opened]);
 
@@ -532,48 +915,34 @@ function AuthModal({ opened, onClose }) {
     <Modal
       opened={opened}
       onClose={onClose}
-      title={mode === "signin" ? "Sign In" : "Create Account"}
+      title="Welcome"
       centered
       size="sm"
     >
       <Text c="dimmed" size="sm" ta="center" mb="md">
-        {mode === "signin"
-          ? "Welcome back! Sign in to continue."
-          : "Create an account to get started."}
+        Sign in or create an account to continue.
       </Text>
 
       {error && (
-        <Alert color="red" mb="md" title="Error">
+        <Alert color="red" mb="md" title="Error" onClose={() => setError(null)} withCloseButton>
           {error}
         </Alert>
       )}
 
-      <form onSubmit={handleEmailAuth}>
-        <Stack gap="md">
-          <TextInput
-            label="Email"
-            placeholder="your@email.com"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
-          />
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List grow mb="md">
+          <Tabs.Tab value="email">Email</Tabs.Tab>
+          <Tabs.Tab value="phone">Phone</Tabs.Tab>
+        </Tabs.List>
 
-          <PasswordInput
-            label="Password"
-            placeholder="Your password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
-          />
+        <Tabs.Panel value="email">
+          <EmailAuthForm setError={setError} setLoading={setLoading} loading={loading} />
+        </Tabs.Panel>
 
-          <Button type="submit" fullWidth loading={loading}>
-            {mode === "signin" ? "Sign In" : "Create Account"}
-          </Button>
-        </Stack>
-      </form>
+        <Tabs.Panel value="phone">
+          <PhoneAuthForm setError={setError} setLoading={setLoading} loading={loading} />
+        </Tabs.Panel>
+      </Tabs>
 
       <Divider label="or" labelPosition="center" my="lg" />
 
@@ -585,45 +954,6 @@ function AuthModal({ opened, onClose }) {
       >
         Continue with Google
       </Button>
-
-      <Text size="sm" ta="center" mt="lg">
-        {mode === "signin" ? (
-          <>
-            Don't have an account?{" "}
-            <Text
-              component="button"
-              onClick={() => setMode("signup")}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--mantine-color-blue-6)",
-                cursor: "pointer",
-                textDecoration: "underline",
-              }}
-            >
-              Sign up
-            </Text>
-          </>
-        ) : (
-          <>
-            Already have an account?{" "}
-            <Text
-              component="button"
-              onClick={() => setMode("signin")}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--mantine-color-blue-6)",
-                cursor: "pointer",
-                textDecoration: "underline",
-              }}
-            >
-              Sign in
-            </Text>
-          </>
-        )}
-      </Text>
     </Modal>
   );
 }
-
