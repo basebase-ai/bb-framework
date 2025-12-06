@@ -34,6 +34,12 @@ export const elements = {
   28: { name: "Nickel", symbol: "Ni", mass: 58.69, type: "Metal" },
   29: { name: "Copper", symbol: "Cu", mass: 63.55, type: "Metal" },
   30: { name: "Zinc", symbol: "Zn", mass: 65.38, type: "Metal" },
+  31: { name: "Gallium", symbol: "Ga", mass: 69.72, type: "Metal" },
+  32: { name: "Germanium", symbol: "Ge", mass: 72.63, type: "Metalloid" },
+  33: { name: "Arsenic", symbol: "As", mass: 74.92, type: "Metalloid" },
+  34: { name: "Selenium", symbol: "Se", mass: 78.97, type: "Non-Metal" },
+  35: { name: "Bromine", symbol: "Br", mass: 79.90, type: "Non-Metal" },
+  36: { name: "Krypton", symbol: "Kr", mass: 83.80, type: "Noble Gas" },
 };
 
 // Get Electron Configuration (Bohr Model)
@@ -64,15 +70,11 @@ export function getElectronConfig(electronCount) {
   remaining -= s3;
   if (remaining === 0) return shells;
 
-  // Shell 4 (N)
-  const s4 = Math.min(remaining, 2); // K, Ca
+  // Shell 4 (N) - For elements up to 36, we fill 4s first then 3d then 4p
+  // Simplified: 4th shell can hold up to 8 for our purposes (2 in 4s + 6 in 4p)
+  const s4 = Math.min(remaining, 8);
   shells.push(s4);
   remaining -= s4;
-  
-  // Leftover (Transition metals backfill shell 3 in reality)
-  if (remaining > 0) {
-    shells[2] += remaining; // Dump rest into shell 3 for visual simplicity
-  }
 
   return shells;
 }

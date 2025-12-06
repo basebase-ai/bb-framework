@@ -19,8 +19,9 @@ import {
   limit as firestoreLimit,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { readFile, readdir } from "fs/promises";
+import { readFile, readdir, writeFile } from "fs/promises";
 import { join, relative } from "path";
+import readline from "readline";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { transform } from "sucrase";
@@ -67,6 +68,110 @@ function checkInteractive() {
     );
     process.exit(1);
   }
+}
+
+// Read checkout metadata file
+async function readCheckoutMetadata(appId) {
+  const metadataPath = join(appsDir, appId, ".basebase-checkout.json");
+  try {
+    const content = await readFile(metadataPath, "utf-8");
+    return JSON.parse(content);
+  } catch (error) {
+    // File doesn't exist or is invalid JSON
+    return null;
+  }
+}
+
+// Generate file hash for content
+function hashContent(content) {
+  return createHash("sha256").update(content).digest("hex").substring(0, 16);
+}
+
+// Generate file hashes for source modules
+function generateFileHashes(source) {
+  const hashes = {};
+  for (const [filePath, code] of Object.entries(source)) {
+    hashes[filePath] = hashContent(code);
+  }
+  return hashes;
+}
+
+// Write updated checkout metadata after commit
+async function writeCheckoutMetadata(appId, versionHash, source) {
+  const metadataPath = join(appsDir, appId, ".basebase-checkout.json");
+  const metadata = {
+    checkedOutVersion: versionHash,
+    checkedOutAt: new Date().toISOString(),
+    appId: appId,
+    fileHashes: generateFileHashes(source)
+  };
+  await writeFile(metadataPath, JSON.stringify(metadata, null, 2), "utf-8");
+}
+
+// Prompt user for confirmation
+function promptConfirmation(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes");
+    });
+  });
+}
+
+// Check for version conflicts
+async function checkVersionConflict(appId, serverCurrentVersion, serverAppData) {
+  const checkoutMetadata = await readCheckoutMetadata(appId);
+  
+  if (!checkoutMetadata) {
+    // No checkout metadata - this might be a new app or manual file creation
+    console.log(chalk.yellow("\n⚠️  No checkout metadata found."));
+    console.log(chalk.gray("   Cannot verify if your local files are based on the latest version."));
+    console.log(chalk.gray("   This is normal for newly created apps or manually created files.\n"));
+    
+    const shouldContinue = await promptConfirmation(
+      chalk.white("   Continue with commit? (Y/n): ")
+    );
+    
+    // Default to yes for this soft warning
+    if (shouldContinue || shouldContinue === "") {
+      return true;
+    }
+    return shouldContinue;
+  }
+  
+  const { checkedOutVersion, checkedOutAt } = checkoutMetadata;
+  
+  if (checkedOutVersion === serverCurrentVersion) {
+    // Versions match - safe to commit
+    console.log(chalk.green("✓ Your local files are based on the latest server version."));
+    return true;
+  }
+  
+  // Version conflict detected!
+  const checkoutDate = new Date(checkedOutAt);
+  const formattedDate = checkoutDate.toLocaleString();
+  
+  console.log(chalk.red("\n⚠️  WARNING: A newer version exists on the server!\n"));
+  console.log(chalk.white("   Your checkout:   ") + chalk.cyan(checkedOutVersion) + chalk.gray(` (${formattedDate})`));
+  console.log(chalk.white("   Server version:  ") + chalk.cyan(serverCurrentVersion));
+  
+  if (serverAppData.updatedBy) {
+    const updatedByEmail = serverAppData.updatedByEmail || serverAppData.updatedBy;
+    console.log(chalk.gray(`   Last updated by: ${updatedByEmail}`));
+  }
+  
+  console.log(chalk.yellow("\n   If you continue, you may overwrite changes made since your checkout."));
+  console.log(chalk.white("   Consider running: ") + chalk.cyan(`npm run app:checkout ${appId}\n`));
+  
+  const shouldContinue = await promptConfirmation(
+    chalk.white("   Continue anyway? (y/N): ")
+  );
+  
+  return shouldContinue;
 }
 
 // Transform JSX/TS to JS for production
@@ -278,6 +383,20 @@ async function commit(appId, message = "Updated via app:commit") {
       process.exit(1);
     }
 
+    // Check for version conflicts before proceeding
+    console.log(chalk.cyan("\n🔄 Checking for version conflicts..."));
+    const serverCurrentVersion = appData.currentVersion;
+    
+    if (serverCurrentVersion) {
+      const shouldContinue = await checkVersionConflict(appId, serverCurrentVersion, appData);
+      if (!shouldContinue) {
+        console.log(chalk.yellow("\n⏹️  Commit cancelled."));
+        process.exit(0);
+      }
+    } else {
+      console.log(chalk.gray("   No existing version on server (first commit)."));
+    }
+
     // Build modules from /apps/{appId} directory
     console.log(chalk.cyan(`\n📦 Building app modules from /apps/${appId}...\n`));
     const { source, compiled, totalSize } = await buildModules(appId);
@@ -335,6 +454,9 @@ async function commit(appId, message = "Updated via app:commit") {
     // Optional: Clean up old versions (keep last 10)
     // Uncomment to enable auto-cleanup
     // await cleanupOldVersions(appId, versionHash, 10);
+
+    // Update checkout metadata with new version
+    await writeCheckoutMetadata(appId, versionHash, source);
 
     console.log(chalk.green("\n✅ Commit successful!"));
     console.log(chalk.gray(`   App: ${appId}`));

@@ -10,6 +10,7 @@ import { getAuth } from "firebase/auth";
 import { writeFile, mkdir, rm } from "fs/promises";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { createHash } from "crypto";
 import chalk from "chalk";
 import { firebaseConfig } from "../config/firebase.config.js";
 import { authenticateUser } from "./lib/auth-utils.js";
@@ -34,6 +35,36 @@ function checkInteractive() {
     console.log(chalk.gray("Then you'll be prompted for your Firebase email and password."));
     process.exit(1);
   }
+}
+
+// Generate SHA-256 hash for a string
+function hashContent(content) {
+  return createHash("sha256").update(content).digest("hex").substring(0, 16);
+}
+
+// Generate file hashes for all modules
+function generateFileHashes(modules) {
+  const hashes = {};
+  for (const [filePath, code] of Object.entries(modules)) {
+    hashes[filePath] = hashContent(code);
+  }
+  return hashes;
+}
+
+// Write checkout metadata file for version tracking
+async function writeCheckoutMetadata(appId, versionHash, modules) {
+  const appDir = join(appsDir, appId);
+  const metadataPath = join(appDir, ".basebase-checkout.json");
+  
+  const metadata = {
+    checkedOutVersion: versionHash,
+    checkedOutAt: new Date().toISOString(),
+    appId: appId,
+    fileHashes: generateFileHashes(modules)
+  };
+  
+  await writeFile(metadataPath, JSON.stringify(metadata, null, 2), "utf-8");
+  console.log(chalk.gray(`  ✓ .basebase-checkout.json (version tracking)`));
 }
 
 // Write modules to disk
@@ -124,6 +155,9 @@ async function checkout(appId, versionId = "latest") {
     
     // Write modules to disk
     const fileCount = await writeModulesToDisk(appId, modules);
+    
+    // Write checkout metadata for version tracking
+    await writeCheckoutMetadata(appId, targetVersion, modules);
     
     console.log(chalk.green(`\n✅ Checkout complete!`));
     console.log(chalk.gray(`   App: ${appId}`));
