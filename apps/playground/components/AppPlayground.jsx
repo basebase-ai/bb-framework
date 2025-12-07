@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   AppShell,
@@ -15,12 +15,19 @@ import { ProfileModal } from "./ProfileModal.jsx";
 import AppGrid from "./AppGrid.jsx";
 import AppDetailsPage from "./AppDetailsPage.jsx";
 import CreateAppModal from "./CreateAppModal.jsx";
+import { APP_ID } from "../schema.js";
 
 export default function AppPlayground() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   
   const { data: allApps = [], loading, update: updateItem, remove: removeItem } = useCollection("apps");
+  
+  // Get this app's logo from the apps collection
+  const appLogo = useMemo(() => {
+    const thisApp = allApps.find(a => a.id === APP_ID);
+    return thisApp?.logoURL;
+  }, [allApps]);
   
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
@@ -88,12 +95,17 @@ export default function AppPlayground() {
       <AppShell.Header>
         <Group h="100%" px="sm" justify="space-between">
           <Group gap="xs">
-            <Avatar
-              src="/favicon.svg"
-              alt="Basebase"
-              size="sm"
-              radius="sm"
-            />
+            {appLogo && (
+              <img
+                src={appLogo}
+                alt="Playground"
+                style={{
+                  height: 28,
+                  width: 'auto',
+                  filter: 'brightness(0) invert(1)', // Makes SVG white
+                }}
+              />
+            )}
           </Group>
           {user && (
             <Group 
