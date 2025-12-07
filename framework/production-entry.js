@@ -39,7 +39,7 @@ import {
  * Already registered (from package.json dependencies):
  * - react, react-dom ✅
  * - firebase (submodules: app, auth, firestore) ✅
- * - @mantine/core, @mantine/hooks, @mantine/notifications ✅
+ * - @mantine/core, @mantine/hooks, @mantine/notifications, @mantine/dates, @mantine/carousel ✅
  * - @tabler/icons-react ✅
  * - zustand ✅
  *
@@ -53,6 +53,7 @@ import * as Mantine from "@mantine/core";
 import * as MantineNotifications from "@mantine/notifications";
 import * as MantineHooks from "@mantine/hooks";
 import * as MantineDates from "@mantine/dates";
+import * as MantineCarousel from "@mantine/carousel";
 import * as TablerIcons from "@tabler/icons-react";
 import * as Zustand from "zustand";
 import { marked } from "marked";
@@ -214,6 +215,7 @@ async function init() {
       "@mantine/notifications": MantineNotifications,
       "@mantine/hooks": MantineHooks,
       "@mantine/dates": MantineDates,
+      "@mantine/carousel": MantineCarousel,
 
       // Icons
       "@tabler/icons-react": TablerIcons,

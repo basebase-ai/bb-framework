@@ -22,6 +22,7 @@
     "analyze": "vite build --mode analyze"
   },
   "dependencies": {
+    "@mantine/carousel": "^8.3.9",
     "@mantine/core": "^7.3.0",
     "@mantine/dates": "^8.3.9",
     "@mantine/hooks": "^7.3.0",
@@ -33,6 +34,7 @@
     "@tiptap/starter-kit": "^3.12.1",
     "compression": "^1.7.4",
     "dayjs": "^1.11.19",
+    "embla-carousel-react": "^8.6.0",
     "esbuild": "^0.19.0",
     "express": "^4.18.0",
     "firebase": "^10.7.0",
