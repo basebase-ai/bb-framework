@@ -68,6 +68,9 @@ import * as FirebaseApp from "firebase/app";
 import * as FirebaseAuth from "firebase/auth";
 import * as FirebaseFirestore from "firebase/firestore";
 
+// PDF viewer
+import * as ReactPdf from "react-pdf";
+
 // Show loading screen
 function showLoading(message = "Loading...") {
   document.body.innerHTML = `
@@ -238,6 +241,9 @@ async function init() {
       "firebase/app": FirebaseApp,
       "firebase/auth": FirebaseAuth,
       "firebase/firestore": FirebaseFirestore,
+
+      // PDF viewer
+      "react-pdf": ReactPdf,
 
       // Framework hooks (with path variants - normalized, relative old styles)
       "framework/hooks/useAuth.js": { useAuth },
