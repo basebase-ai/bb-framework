@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Box,
   AppShell,
@@ -17,6 +17,15 @@ import AppDetailsPage from "./AppDetailsPage.jsx";
 import CreateAppModal from "./CreateAppModal.jsx";
 import { APP_ID } from "../schema.js";
 
+/**
+ * Get app ID from URL path (e.g., /app/my-app-id -> my-app-id)
+ */
+function getAppIdFromPath() {
+  const path = window.location.pathname;
+  const match = path.match(/^\/app\/([^/]+)/);
+  return match ? match[1] : null;
+}
+
 export default function AppPlayground() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
@@ -31,7 +40,39 @@ export default function AppPlayground() {
   
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
-  const [selectedAppDetails, setSelectedAppDetails] = useState(null);
+  const [selectedAppId, setSelectedAppId] = useState(/** @type {string | null} */ (null));
+  
+  // Derive selected app from ID and apps list
+  const selectedAppDetails = useMemo(() => {
+    if (!selectedAppId) return null;
+    return allApps.find(a => a.id === selectedAppId) || null;
+  }, [selectedAppId, allApps]);
+  
+  // Initialize from URL on mount and handle browser back/forward
+  useEffect(() => {
+    const appIdFromUrl = getAppIdFromPath();
+    if (appIdFromUrl) {
+      setSelectedAppId(appIdFromUrl);
+    }
+    
+    const handlePopState = () => {
+      const appId = getAppIdFromPath();
+      setSelectedAppId(appId);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+  
+  // Update URL when selected app changes (but not on popstate)
+  const navigateToApp = useCallback((appId) => {
+    setSelectedAppId(appId);
+    if (appId) {
+      window.history.pushState({ appId }, '', `/app/${appId}`);
+    } else {
+      window.history.pushState({}, '', '/');
+    }
+  }, []);
 
   const handleUpdateApp = async (appId, data, options = {}) => {
     const { silent = false } = options;
@@ -41,10 +82,7 @@ export default function AppPlayground() {
         updatedAt: new Date(),
       });
       
-      // Update the selectedAppDetails if we're viewing this app
-      if (selectedAppDetails?.id === appId) {
-        setSelectedAppDetails(prev => prev ? { ...prev, ...data } : null);
-      }
+      // Note: selectedAppDetails is derived from allApps, so it auto-updates
       
       if (!silent) {
         showNotification({
@@ -64,7 +102,7 @@ export default function AppPlayground() {
 
   const handleDeleteApp = async (appId) => {
     await removeItem(appId);
-    setSelectedAppDetails(null);
+    navigateToApp(null);
     showNotification({
       title: "Success",
       message: "App deleted successfully",
@@ -77,11 +115,11 @@ export default function AppPlayground() {
   };
 
   const handleShowDetails = (app) => {
-    setSelectedAppDetails(app);
+    navigateToApp(app.id);
   };
 
   const handleBackFromDetails = () => {
-    setSelectedAppDetails(null);
+    navigateToApp(null);
   };
 
   return (

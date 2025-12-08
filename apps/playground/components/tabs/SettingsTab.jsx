@@ -387,16 +387,18 @@ export default function SettingsTab({ app, onUpdate, onDelete, onClose }) {
           {formData.collaborators.length > 0 && (
             <Stack gap="xs">
               {formData.collaborators.map((userId) => {
-                const profile = collaboratorProfiles.get(userId);
+                const uid = typeof userId === 'string' ? userId : String(userId);
+                const profile = collaboratorProfiles.get(uid);
+                const displayText = profile?.displayName || profile?.email || uid;
                 return (
-                  <Group key={userId} gap="sm" style={{ padding: '6px 10px', background: 'rgba(147, 51, 234, 0.05)', borderRadius: '6px' }}>
+                  <Group key={uid} gap="sm" style={{ padding: '6px 10px', background: 'rgba(147, 51, 234, 0.05)', borderRadius: '6px' }}>
                     <Avatar src={profile?.photoURL} size="sm" radius="xl" color="violet">
-                      {(profile?.displayName || profile?.email || userId).charAt(0).toUpperCase()}
+                      {displayText.charAt(0).toUpperCase()}
                     </Avatar>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <Text size="sm" fw={500} truncate>{profile?.displayName || profile?.email || userId}</Text>
+                      <Text size="sm" fw={500} truncate>{displayText}</Text>
                     </div>
-                    <ActionIcon size="sm" color="red" variant="subtle" onClick={() => handleRemoveCollaborator(userId)}>
+                    <ActionIcon size="sm" color="red" variant="subtle" onClick={() => handleRemoveCollaborator(uid)}>
                       <IconX size={14} />
                     </ActionIcon>
                   </Group>

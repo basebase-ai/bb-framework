@@ -15,8 +15,10 @@ import {
   Group,
   Divider,
   Alert,
+  Card,
+  Badge,
 } from "@mantine/core";
-import { IconBuilding, IconMail, IconPlus } from "@tabler/icons-react";
+import { IconBuilding, IconMail, IconPlus, IconCheck } from "@tabler/icons-react";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../framework/core/firebase-init.js";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
@@ -24,14 +26,39 @@ import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 
 /**
+ * @typedef {Object} OrganizationMember
+ * @property {string} id
+ * @property {string} orgId
+ * @property {string} email
+ * @property {string | null} userId
+ * @property {'owner' | 'member'} role
+ * @property {'invited' | 'active'} status
+ */
+
+/**
+ * @typedef {Object} Organization
+ * @property {string} id
+ * @property {string} name
+ * @property {string} createdBy
+ */
+
+/**
  * @typedef {Object} NoOrganizationProps
  * @property {() => void} onOrganizationCreated - Callback when org is created
+ * @property {OrganizationMember[]} [pendingInvitations] - Pending invitations
+ * @property {Organization[]} [pendingOrganizations] - Organizations for pending invitations
+ * @property {(invitation: OrganizationMember) => void} [onAcceptInvitation] - Callback to accept invitation
  */
 
 /**
  * @param {NoOrganizationProps} props
  */
-export function NoOrganization({ onOrganizationCreated }) {
+export function NoOrganization({ 
+  onOrganizationCreated, 
+  pendingInvitations = [], 
+  pendingOrganizations = [],
+  onAcceptInvitation 
+}) {
   const { user } = useAuth();
   const { add: addOrg } = useCollection(collections.organizations);
 
@@ -100,6 +127,41 @@ export function NoOrganization({ onOrganizationCreated }) {
             You're not currently a member of any organization. Please contact your
             administrator to request an invite, or create a new organization.
           </Text>
+
+          {/* Pending Invitations Section */}
+          {pendingInvitations.length > 0 && (
+            <>
+              <Divider w="100%" label="Pending Invitations" labelPosition="center" />
+              
+              <Stack w="100%" gap="sm">
+                {pendingInvitations.map((invitation) => {
+                  const org = pendingOrganizations.find((o) => o.id === invitation.orgId);
+                  return (
+                    <Card key={invitation.id} withBorder padding="md">
+                      <Group justify="space-between" wrap="nowrap">
+                        <Group gap="sm">
+                          <IconBuilding size={24} color="var(--mantine-color-blue-6)" />
+                          <div>
+                            <Text fw={500}>{org?.name || "Unknown Organization"}</Text>
+                            <Badge size="xs" color="yellow" variant="light">
+                              Invitation pending
+                            </Badge>
+                          </div>
+                        </Group>
+                        <Button
+                          size="sm"
+                          leftSection={<IconCheck size={16} />}
+                          onClick={() => onAcceptInvitation?.(invitation)}
+                        >
+                          Accept
+                        </Button>
+                      </Group>
+                    </Card>
+                  );
+                })}
+              </Stack>
+            </>
+          )}
 
           <Divider w="100%" label="Options" labelPosition="center" />
 

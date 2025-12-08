@@ -41,20 +41,27 @@ export default function DiscussionTab({ app }) {
   const [replyContent, setReplyContent] = useState({});
   const [showNewThread, setShowNewThread] = useState(false);
   
-  // Memoize query options to prevent re-fetching on every render
+  // Simple query - filter by appId only, then filter/sort in memory to avoid composite index
   const queryOptions = useMemo(() => ({
-    where: [
-      ["appId", "==", app.id],
-      ["type", "==", "discussion"],
-    ],
-    orderBy: ["createdAt", "asc"],
+    where: [["appId", "==", app.id]],
   }), [app.id]);
   
   const { 
-    data: allMessages = [], 
+    data: rawMessages = [], 
     loading,
     add: addMessage,
   } = useCollection(collections.messages, queryOptions);
+  
+  // Filter to discussions and sort in memory
+  const allMessages = useMemo(() => {
+    return rawMessages
+      .filter(m => m.type === "discussion")
+      .sort((a, b) => {
+        const aTime = a.createdAt?.toDate?.() || new Date(0);
+        const bTime = b.createdAt?.toDate?.() || new Date(0);
+        return aTime - bTime; // asc
+      });
+  }, [rawMessages]);
   
   const authorIds = useMemo(() => {
     return [...new Set(allMessages.map(m => m.author).filter(Boolean))];

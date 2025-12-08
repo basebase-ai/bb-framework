@@ -54,21 +54,28 @@ export default function IssuesTab({ app }) {
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [commentContent, setCommentContent] = useState("");
   
-  // Memoize query options to prevent re-fetching on every render
+  // Simple query - filter by appId only, then filter/sort in memory to avoid composite index
   const queryOptions = useMemo(() => ({
-    where: [
-      ["appId", "==", app.id],
-      ["type", "==", "issue"],
-    ],
-    orderBy: ["createdAt", "desc"],
+    where: [["appId", "==", app.id]],
   }), [app.id]);
   
   const { 
-    data: allMessages = [], 
+    data: rawMessages = [], 
     loading,
     add: addMessage,
     update: updateMessage,
   } = useCollection(collections.messages, queryOptions);
+  
+  // Filter to issues and sort in memory
+  const allMessages = useMemo(() => {
+    return rawMessages
+      .filter(m => m.type === "issue")
+      .sort((a, b) => {
+        const aTime = a.createdAt?.toDate?.() || new Date(0);
+        const bTime = b.createdAt?.toDate?.() || new Date(0);
+        return bTime - aTime; // desc
+      });
+  }, [rawMessages]);
   
   const { issues, comments } = useMemo(() => {
     const issueList = allMessages.filter(m => !m.issueId);

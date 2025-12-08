@@ -29,8 +29,16 @@ export function useUserProfiles(userIds = []) {
       return;
     }
 
-    // Filter out null/undefined
-    const validUserIds = userIds.filter(Boolean);
+    // Filter out null/undefined and ensure all IDs are strings
+    // Handle case where items might be objects with an 'id' property
+    const validUserIds = userIds
+      .filter(Boolean)
+      .map((id) => {
+        if (typeof id === "string") return id;
+        if (id && typeof id === "object" && "id" in id) return String(id.id);
+        return null;
+      })
+      .filter((id) => id && typeof id === "string" && id.length > 0);
 
     if (validUserIds.length === 0) {
       setProfiles(new Map());

@@ -38,7 +38,7 @@ module.exports = async function (params, context) {
   context.log("Using user email for API authentication", { email: userEmail });
 
   // Call SageStocks API
-  const apiUrl = "https://sagestocks-rose.vercel.app/api/analyze";
+  const apiUrl = "https://sagestocks.vercel.app/api/analyze";
 
   try {
     context.log("Calling SageStocks API", { ticker, email: userEmail });

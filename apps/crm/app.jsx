@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
-import { MantineProvider, AppShell, Group, Title, Avatar, Tabs, Badge, Text, Loader, Center } from "@mantine/core";
+import { MantineProvider, AppShell, Group, Title, Avatar, Tabs, Badge, Text, Loader, Center, Menu, Button, Divider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import {
   IconLayoutDashboard,
@@ -14,7 +14,11 @@ import {
   IconTarget,
   IconChecklist,
   IconBuilding,
-  IconSettings
+  IconSettings,
+  IconChevronDown,
+  IconCheck,
+  IconPlus,
+  IconMail
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -59,6 +63,9 @@ import "@mantine/dates/styles.css";
  * @property {string} createdBy
  */
 
+/** @type {string} */
+const SELECTED_ORG_KEY = "crm_selected_org";
+
 function AppContent() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
@@ -66,8 +73,19 @@ function AppContent() {
   const [profileModalOpened, setProfileModalOpened] = useState(false);
   const [orgSettingsOpened, setOrgSettingsOpened] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Selected org ID from localStorage
+  const [selectedOrgId, setSelectedOrgId] = useState(
+    /** @type {string | null} */ (() => {
+      try {
+        return localStorage.getItem(SELECTED_ORG_KEY);
+      } catch {
+        return null;
+      }
+    })
+  );
 
-  // Query for user's membership by email (works for both active and invited)
+  // Query for ALL user's memberships by email
   const userEmail = user?.email?.toLowerCase() || "";
   const membershipQuery = useMemo(
     () => ({ where: [["email", "==", userEmail]] }),
@@ -78,46 +96,127 @@ function AppContent() {
     membershipQuery
   );
 
-  // User should only have one membership (enforced by composite doc ID: {orgId}_{email})
-  const membership = /** @type {OrganizationMember | undefined} */ (
-    memberships?.[0]
+  // Split memberships into active and pending invitations
+  const activeMemberships = useMemo(
+    () => /** @type {OrganizationMember[]} */ (
+      (memberships || []).filter((m) => m.status === "active")
+    ),
+    [memberships]
+  );
+  
+  const pendingInvitations = useMemo(
+    () => /** @type {OrganizationMember[]} */ (
+      (memberships || []).filter((m) => m.status === "invited")
+    ),
+    [memberships]
   );
 
-  // Activate membership when invited user signs in
-  useEffect(() => {
-    if (membership && membership.status === "invited" && user?.uid) {
-      const activateMembership = async () => {
-        try {
-          await setDoc(doc(db, collections.members, membership.id), {
-            userId: user.uid,
-            status: "active",
-            joinedAt: serverTimestamp(),
-          }, { merge: true });
-        } catch (err) {
-          console.error("Error activating membership:", err);
-        }
-      };
-      activateMembership();
-    }
-  }, [membership?.id, membership?.status, user?.uid]);
-
-  // Get the organization details if we have a membership
-  const { data: organization, loading: orgLoading } = useDocument(
+  // Fetch all organizations the user belongs to (active + pending)
+  const allOrgIds = useMemo(
+    () => [...new Set([
+      ...activeMemberships.map((m) => m.orgId),
+      ...((memberships || []).filter((m) => m.status === "invited").map((m) => m.orgId))
+    ])],
+    [activeMemberships, memberships]
+  );
+  
+  // Fetch organizations - only when we have IDs to fetch
+  const { data: allOrganizations, loading: orgsLoading } = useCollection(
     collections.organizations,
-    membership?.orgId || null
+    allOrgIds.length > 0 ? { where: [] } : undefined
+  );
+  
+  // Filter to only orgs the user is a member of (active)
+  const activeOrgIds = useMemo(
+    () => activeMemberships.map((m) => m.orgId),
+    [activeMemberships]
+  );
+  
+  const userOrganizations = useMemo(
+    () => /** @type {Organization[]} */ (
+      (allOrganizations || []).filter((org) => activeOrgIds.includes(org.id))
+    ),
+    [allOrganizations, activeOrgIds]
   );
 
-  const isOwner = membership?.role === "owner";
-  const orgId = membership?.orgId || null;
+  // Determine current membership and organization
+  const currentMembership = useMemo(() => {
+    if (!activeMemberships.length) return undefined;
+    // Try to find membership for selected org, fallback to first
+    const selected = activeMemberships.find((m) => m.orgId === selectedOrgId);
+    return selected || activeMemberships[0];
+  }, [activeMemberships, selectedOrgId]);
+
+  const organization = useMemo(
+    () => userOrganizations.find((org) => org.id === currentMembership?.orgId),
+    [userOrganizations, currentMembership]
+  );
+
+  // Update selectedOrgId if current selection is invalid
+  useEffect(() => {
+    if (currentMembership && currentMembership.orgId !== selectedOrgId) {
+      setSelectedOrgId(currentMembership.orgId);
+      try {
+        localStorage.setItem(SELECTED_ORG_KEY, currentMembership.orgId);
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+  }, [currentMembership, selectedOrgId]);
+
+  // Handle switching organization
+  const handleSwitchOrg = (/** @type {string} */ orgId) => {
+    setSelectedOrgId(orgId);
+    try {
+      localStorage.setItem(SELECTED_ORG_KEY, orgId);
+    } catch {
+      // Ignore localStorage errors
+    }
+    setActiveTab("dashboard"); // Reset to dashboard on switch
+  };
+
+  // Handle accepting an invitation
+  const handleAcceptInvitation = async (/** @type {OrganizationMember} */ invitation) => {
+    if (!user?.uid) return;
+    
+    try {
+      await setDoc(doc(db, collections.members, invitation.id), {
+        userId: user.uid,
+        status: "active",
+        joinedAt: serverTimestamp(),
+      }, { merge: true });
+      
+      // Switch to the newly accepted org
+      handleSwitchOrg(invitation.orgId);
+    } catch (err) {
+      console.error("Error accepting invitation:", err);
+    }
+  };
+
+  // Get pending organizations for display (already fetched in allOrganizations)
+  const pendingOrganizations = useMemo(
+    () => {
+      const pendingOrgIds = pendingInvitations.map((m) => m.orgId);
+      return /** @type {Organization[]} */ (
+        (allOrganizations || []).filter((org) => pendingOrgIds.includes(org.id))
+      );
+    },
+    [allOrganizations, pendingInvitations]
+  );
+
+  const isOwner = currentMembership?.role === "owner";
+  const orgId = currentMembership?.orgId || null;
 
   // Handle organization created
   const handleOrganizationCreated = () => {
-    // Trigger a refresh
     setRefreshKey((k) => k + 1);
   };
 
-  // Show loading while checking membership
-  if (membershipsLoading || (membership && orgLoading)) {
+  // Only show loader on INITIAL load (no data yet)
+  const isInitialLoad = membershipsLoading && !memberships;
+  const isLoadingOrgs = orgsLoading && !allOrganizations && allOrgIds.length > 0;
+  
+  if (isInitialLoad || isLoadingOrgs) {
     return (
       <Center h="100vh">
         <Loader size="lg" />
@@ -125,9 +224,17 @@ function AppContent() {
     );
   }
 
-  // Show NoOrganization if user has no membership
-  if (!membership || !organization) {
-    return <NoOrganization key={refreshKey} onOrganizationCreated={handleOrganizationCreated} />;
+  // Show NoOrganization if user has no active membership
+  if (!currentMembership || !organization) {
+    return (
+      <NoOrganization 
+        key={refreshKey} 
+        onOrganizationCreated={handleOrganizationCreated}
+        pendingInvitations={pendingInvitations}
+        pendingOrganizations={pendingOrganizations}
+        onAcceptInvitation={handleAcceptInvitation}
+      />
+    );
   }
 
   return (
@@ -136,20 +243,98 @@ function AppContent() {
         <Group h="100%" px="md" justify="space-between">
           <Group gap="md">
             <Title order={3}>Sales CRM</Title>
-            <Badge
-              size="lg"
-              variant="light"
-              color="blue"
-              leftSection={<IconBuilding size={14} />}
-              style={{ cursor: "pointer" }}
-              onClick={() => setOrgSettingsOpened(true)}
-              title="Organization Settings"
-            >
-              {organization.name}
-              {isOwner && (
-                <IconSettings size={12} style={{ marginLeft: 4 }} />
-              )}
-            </Badge>
+            
+            {/* Organization Switcher Menu */}
+            <Menu shadow="md" width={280} position="bottom-start">
+              <Menu.Target>
+                <Button
+                  variant="light"
+                  color="blue"
+                  leftSection={<IconBuilding size={14} />}
+                  rightSection={<IconChevronDown size={14} />}
+                  size="sm"
+                >
+                  {organization.name}
+                </Button>
+              </Menu.Target>
+
+              <Menu.Dropdown>
+                {/* Current org indicator */}
+                <Menu.Label>Current Organization</Menu.Label>
+                <Menu.Item
+                  leftSection={<IconCheck size={16} />}
+                  disabled
+                  style={{ opacity: 1 }}
+                >
+                  <Text size="sm" fw={500}>{organization.name}</Text>
+                  <Text size="xs" c="dimmed">{isOwner ? "Owner" : "Member"}</Text>
+                </Menu.Item>
+
+                {/* Other organizations */}
+                {userOrganizations.length > 1 && (
+                  <>
+                    <Menu.Divider />
+                    <Menu.Label>Switch Organization</Menu.Label>
+                    {userOrganizations
+                      .filter((org) => org.id !== organization.id)
+                      .map((org) => {
+                        const mem = activeMemberships.find((m) => m.orgId === org.id);
+                        return (
+                          <Menu.Item
+                            key={org.id}
+                            leftSection={<IconBuilding size={16} />}
+                            onClick={() => handleSwitchOrg(org.id)}
+                          >
+                            <Text size="sm">{org.name}</Text>
+                            <Text size="xs" c="dimmed">
+                              {mem?.role === "owner" ? "Owner" : "Member"}
+                            </Text>
+                          </Menu.Item>
+                        );
+                      })}
+                  </>
+                )}
+
+                {/* Pending invitations */}
+                {pendingInvitations.length > 0 && (
+                  <>
+                    <Menu.Divider />
+                    <Menu.Label>
+                      <Group gap={4}>
+                        <IconMail size={14} />
+                        Pending Invitations
+                      </Group>
+                    </Menu.Label>
+                    {pendingInvitations.map((invitation) => {
+                      const org = pendingOrganizations.find(
+                        (o) => o.id === invitation.orgId
+                      );
+                      return (
+                        <Menu.Item
+                          key={invitation.id}
+                          leftSection={<IconMail size={16} />}
+                          onClick={() => handleAcceptInvitation(invitation)}
+                          color="green"
+                        >
+                          <Text size="sm">{org?.name || "Unknown Org"}</Text>
+                          <Text size="xs" c="dimmed">Click to accept</Text>
+                        </Menu.Item>
+                      );
+                    })}
+                  </>
+                )}
+
+                <Menu.Divider />
+                
+                {/* Organization settings */}
+                <Menu.Item
+                  leftSection={<IconSettings size={16} />}
+                  onClick={() => setOrgSettingsOpened(true)}
+                >
+                  Organization Settings
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Group>
           {user && (
             <Avatar

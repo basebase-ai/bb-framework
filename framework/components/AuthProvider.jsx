@@ -64,6 +64,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   sendEmailVerification,
+  sendPasswordResetEmail,
   RecaptchaVerifier,
   signInWithPhoneNumber,
 } from "firebase/auth";
@@ -538,9 +539,10 @@ function AuthScreen() {
  * @param {{ setError: (err: string | null) => void, setLoading: (loading: boolean) => void, loading: boolean }} props
  */
 function EmailAuthForm({ setError, setLoading, loading }) {
-  const [mode, setMode] = useState(/** @type {"signin" | "signup"} */ ("signin"));
+  const [mode, setMode] = useState(/** @type {"signin" | "signup" | "forgot"} */ ("signin"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const handleEmailAuth = async (/** @type {React.FormEvent} */ e) => {
     e.preventDefault();
@@ -585,12 +587,123 @@ function EmailAuthForm({ setError, setLoading, loading }) {
         }
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      console.error('Email auth error:', err);
+      let errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      
+      if (err instanceof Error && 'code' in err) {
+        const code = /** @type {string} */ (err.code);
+        if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
+          errorMessage = 'Invalid email or password. Please try again.';
+        } else if (code === 'auth/wrong-password') {
+          errorMessage = 'Incorrect password. Please try again.';
+        } else if (code === 'auth/email-already-in-use') {
+          errorMessage = 'An account with this email already exists.';
+        } else if (code === 'auth/weak-password') {
+          errorMessage = 'Password is too weak. Use at least 6 characters.';
+        }
+      }
+      
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleForgotPassword = async (/** @type {React.FormEvent} */ e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetEmailSent(true);
+      console.log('📧 Password reset email sent to', email);
+    } catch (err) {
+      console.error('Password reset error:', err);
+      let errorMessage = err instanceof Error ? err.message : 'Failed to send reset email';
+      
+      if (err instanceof Error && 'code' in err) {
+        const code = /** @type {string} */ (err.code);
+        if (code === 'auth/user-not-found') {
+          errorMessage = 'No account found with this email address.';
+        } else if (code === 'auth/invalid-email') {
+          errorMessage = 'Please enter a valid email address.';
+        } else if (code === 'auth/too-many-requests') {
+          errorMessage = 'Too many attempts. Please try again later.';
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Forgot password mode
+  if (mode === "forgot") {
+    if (resetEmailSent) {
+      return (
+        <Stack gap="md">
+          <Alert color="green" title="Check your email">
+            We've sent a password reset link to <strong>{email}</strong>. 
+            Click the link in the email to reset your password.
+          </Alert>
+          <Button 
+            variant="light" 
+            fullWidth 
+            onClick={() => {
+              setMode("signin");
+              setResetEmailSent(false);
+            }}
+          >
+            Back to Sign In
+          </Button>
+        </Stack>
+      );
+    }
+
+    return (
+      <form onSubmit={handleForgotPassword}>
+        <Stack gap="md">
+          <Text size="sm" c="dimmed" ta="center">
+            Enter your email address and we'll send you a link to reset your password.
+          </Text>
+
+          <TextInput
+            label="Email"
+            placeholder="your@email.com"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
+          />
+
+          <Button type="submit" fullWidth loading={loading}>
+            Send Reset Link
+          </Button>
+
+          <Text size="sm" ta="center">
+            Remember your password?{" "}
+            <Text
+              component="button"
+              type="button"
+              onClick={() => setMode("signin")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--mantine-color-blue-6)",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              Sign in
+            </Text>
+          </Text>
+        </Stack>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={handleEmailAuth}>
@@ -613,6 +726,26 @@ function EmailAuthForm({ setError, setLoading, loading }) {
           onChange={(e) => setPassword(e.target.value)}
           disabled={loading}
         />
+
+        {mode === "signin" && (
+          <Text size="xs" ta="right" mt={-8}>
+            <Text
+              component="button"
+              type="button"
+              onClick={() => setMode("forgot")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--mantine-color-dimmed)",
+                cursor: "pointer",
+                textDecoration: "underline",
+                fontSize: "inherit",
+              }}
+            >
+              Forgot password?
+            </Text>
+          </Text>
+        )}
 
         <Button type="submit" fullWidth loading={loading}>
           {mode === "signin" ? "Sign In" : "Create Account"}

@@ -39,17 +39,25 @@ export default function ReviewsTab({ app }) {
   const [showNewReview, setShowNewReview] = useState(false);
   const [newReview, setNewReview] = useState({ rating: 5, title: "", content: "" });
   
-  // Memoize query options to prevent re-fetching on every render
+  // Simple query - filter by appId only, sort in memory to avoid composite index
   const queryOptions = useMemo(() => ({
     where: [["appId", "==", app.id]],
-    orderBy: ["createdAt", "desc"],
   }), [app.id]);
   
   const { 
-    data: reviews = [], 
+    data: rawReviews = [], 
     loading,
     add: addReview,
   } = useCollection(collections.reviews, queryOptions);
+  
+  // Sort in memory
+  const reviews = useMemo(() => {
+    return [...rawReviews].sort((a, b) => {
+      const aTime = a.createdAt?.toDate?.() || new Date(0);
+      const bTime = b.createdAt?.toDate?.() || new Date(0);
+      return bTime - aTime; // desc
+    });
+  }, [rawReviews]);
   
   const authorIds = useMemo(() => {
     return [...new Set(reviews.map(r => r.author).filter(Boolean))];
