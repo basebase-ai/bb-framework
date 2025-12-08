@@ -1,9 +1,9 @@
 /**
  * FlyShare - Private Flight Sharing App
- * Main entry point
+ * Main entry point with URL-based routing
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import {
   MantineProvider,
@@ -24,9 +24,11 @@ import {
 import { Notifications } from "@mantine/notifications";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
+import { useRouter } from "../../framework/hooks/useRouter.js";
 import { LandingPage } from "./components/LandingPage.jsx";
 import { FlightSearch } from "./components/FlightSearch.jsx";
 import { FlightDetails } from "./components/FlightDetails.jsx";
+import { PilotDashboard } from "./components/PilotDashboard.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import { APP_ID } from "./schema.js";
@@ -37,6 +39,7 @@ import {
   IconTicket,
   IconMoon,
   IconSun,
+  IconPropeller,
 } from "@tabler/icons-react";
 
 // Note: LandingPage is passed to AuthProvider which shows it for unauthenticated users
@@ -48,8 +51,41 @@ import "@mantine/dates/styles.css";
 import "@mantine/carousel/styles.css";
 
 /**
- * @typedef {'search' | 'details'} ViewType
+ * Parse URL path to get view and parameters
+ * URL patterns:
+ *   /                -> flights list
+ *   /flights         -> flights list
+ *   /flight/:id      -> flight details
+ *   /pilots          -> pilot dashboard
+ *   /pilots/flight/:id -> pilot viewing their flight
  */
+function parseRoute(path) {
+  // Remove leading slash and split
+  const segments = path.replace(/^\//, "").split("/").filter(Boolean);
+
+  // Default to flights
+  if (segments.length === 0 || segments[0] === "flights") {
+    return { view: "search", flightId: null, isPilotView: false };
+  }
+
+  // Flight details: /flight/:id
+  if (segments[0] === "flight" && segments[1]) {
+    return { view: "details", flightId: segments[1], isPilotView: false };
+  }
+
+  // Pilots section
+  if (segments[0] === "pilots") {
+    // /pilots/flight/:id - pilot viewing their own flight
+    if (segments[1] === "flight" && segments[2]) {
+      return { view: "details", flightId: segments[2], isPilotView: true };
+    }
+    // /pilots - pilot dashboard
+    return { view: "pilots", flightId: null, isPilotView: false };
+  }
+
+  // Fallback
+  return { view: "search", flightId: null, isPilotView: false };
+}
 
 function AppContent() {
   const { user, signOut } = useAuth();
@@ -57,24 +93,48 @@ function AppContent() {
   const [profileModalOpened, setProfileModalOpened] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const { path, navigate, back } = useRouter();
 
-  // Navigation state - start at search (landing page handled by AuthProvider)
-  /** @type {['search' | 'details', React.Dispatch<React.SetStateAction<'search' | 'details'>>]} */
-  const [currentView, setCurrentView] = useState("search");
-  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
-  const [selectedFlightId, setSelectedFlightId] = useState(null);
+  // Parse current route
+  const route = useMemo(() => parseRoute(path), [path]);
 
   /** @type {(flightId: string) => void} */
   const handleSelectFlight = (flightId) => {
-    setSelectedFlightId(flightId);
-    setCurrentView("details");
+    navigate(`/flight/${flightId}`);
+  };
+
+  /** @type {(flightId: string) => void} */
+  const handleSelectPilotFlight = (flightId) => {
+    navigate(`/pilots/flight/${flightId}`);
   };
 
   /** @type {() => void} */
   const handleBackToSearch = () => {
-    setSelectedFlightId(null);
-    setCurrentView("search");
+    navigate("/flights");
   };
+
+  /** @type {() => void} */
+  const handleBackToPilots = () => {
+    navigate("/pilots");
+  };
+
+  /** @type {(view: string) => void} */
+  const navigateTo = (view) => {
+    switch (view) {
+      case "search":
+        navigate("/flights");
+        break;
+      case "pilots":
+        navigate("/pilots");
+        break;
+      default:
+        navigate("/flights");
+    }
+  };
+
+  // Determine active nav based on route
+  const isFlightsActive = route.view === "search" || (route.view === "details" && !route.isPilotView);
+  const isPilotsActive = route.view === "pilots" || route.isPilotView;
 
   return (
     <AppShell
@@ -102,7 +162,7 @@ function AppContent() {
           <Group
             gap="xs"
             style={{ cursor: "pointer" }}
-            onClick={() => setCurrentView("search")}
+            onClick={() => navigateTo("search")}
           >
             <IconPlane size={28} color="#22c55e" />
             <Title order={3}>
@@ -113,10 +173,10 @@ function AppContent() {
           {/* Desktop Navigation */}
           <Group gap="md" visibleFrom="sm">
             <Button
-              variant={currentView === "search" ? "light" : "subtle"}
+              variant={isFlightsActive ? "light" : "subtle"}
               color="green"
               leftSection={<IconPlane size={16} />}
-              onClick={() => setCurrentView("search")}
+              onClick={() => navigateTo("search")}
             >
               Flights
             </Button>
@@ -129,6 +189,14 @@ function AppContent() {
               }}
             >
               My Bookings
+            </Button>
+            <Button
+              variant={isPilotsActive ? "light" : "subtle"}
+              color="orange"
+              leftSection={<IconPropeller size={16} />}
+              onClick={() => navigateTo("pilots")}
+            >
+              For Pilots
             </Button>
 
             <ActionIcon
@@ -200,7 +268,7 @@ function AppContent() {
             leftSection={<IconPlane size={18} />}
             justify="flex-start"
             onClick={() => {
-              setCurrentView("search");
+              navigateTo("search");
               setMobileMenuOpen(false);
             }}
           >
@@ -214,6 +282,19 @@ function AppContent() {
             onClick={() => setMobileMenuOpen(false)}
           >
             My Bookings
+          </Button>
+          <Button
+            variant="subtle"
+            fullWidth
+            leftSection={<IconPropeller size={18} />}
+            justify="flex-start"
+            color="orange"
+            onClick={() => {
+              navigateTo("pilots");
+              setMobileMenuOpen(false);
+            }}
+          >
+            For Pilots
           </Button>
           <Button
             variant="subtle"
@@ -245,11 +326,18 @@ function AppContent() {
       </Drawer>
 
       <AppShell.Main>
-        {currentView === "search" && (
+        {route.view === "search" && (
           <FlightSearch onSelectFlight={handleSelectFlight} />
         )}
-        {currentView === "details" && selectedFlightId && (
-          <FlightDetails flightId={selectedFlightId} onBack={handleBackToSearch} />
+        {route.view === "details" && route.flightId && (
+          <FlightDetails
+            flightId={route.flightId}
+            onBack={route.isPilotView ? handleBackToPilots : handleBackToSearch}
+            isPilotView={route.isPilotView}
+          />
+        )}
+        {route.view === "pilots" && (
+          <PilotDashboard onSelectFlight={handleSelectPilotFlight} />
         )}
       </AppShell.Main>
 
