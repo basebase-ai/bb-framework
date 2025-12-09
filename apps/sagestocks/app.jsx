@@ -34,7 +34,7 @@ import "@mantine/notifications/styles.css";
 function ThemeToggle() {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const dark = colorScheme === "dark";
-
+ 
   return (
     <ActionIcon
       variant="outline"
