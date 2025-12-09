@@ -17,6 +17,7 @@ import {
   IconBug,
   IconStar,
   IconSettings,
+  IconHistory,
 } from "@tabler/icons-react";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
@@ -27,6 +28,7 @@ import InfoTab from "./tabs/InfoTab.jsx";
 import DiscussionTab from "./tabs/DiscussionTab.jsx";
 import IssuesTab from "./tabs/IssuesTab.jsx";
 import ReviewsTab from "./tabs/ReviewsTab.jsx";
+import VersionsTab from "./tabs/VersionsTab.jsx";
 import SettingsTab from "./tabs/SettingsTab.jsx";
 
 export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
@@ -96,6 +98,7 @@ export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
           <Tabs.Tab value="discussion" leftSection={<IconMessageCircle size={14} />}>Discussion</Tabs.Tab>
           <Tabs.Tab value="issues" leftSection={<IconBug size={14} />}>Issues</Tabs.Tab>
           <Tabs.Tab value="reviews" leftSection={<IconStar size={14} />}>Reviews</Tabs.Tab>
+          <Tabs.Tab value="versions" leftSection={<IconHistory size={14} />}>Versions</Tabs.Tab>
           {(isOwner || isCollaborator) && (
             <Tabs.Tab value="settings" leftSection={<IconSettings size={14} />}>Settings</Tabs.Tab>
           )}
@@ -115,6 +118,10 @@ export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
         
         <Tabs.Panel value="reviews">
           <ReviewsTab app={app} />
+        </Tabs.Panel>
+        
+        <Tabs.Panel value="versions">
+          <VersionsTab app={app} onUpdate={onUpdate} />
         </Tabs.Panel>
         
         {(isOwner || isCollaborator) && (
