@@ -11,7 +11,7 @@
 
 // Your app's unique identifier
 // This is set automatically during app:checkout or app:init
-export const APP_ID = "starter-app";
+export const APP_ID = 'brainstorm';
 
 /**
  * Namespaced collection names
@@ -27,15 +27,12 @@ export const collections = {
   users: "users",
 
   // Your app-specific collections (automatically namespaced)
-  // Add your collections here, e.g.:
-  // items: `${APP_ID}_items`,
+  notes: `${APP_ID}_notes`,
 };
 
 /**
  * Helper function to create a namespaced collection name
  * Use this if you need to create collection names dynamically
- * @param {string} name
- * @returns {string}
  */
 export function getCollection(name) {
   return `${APP_ID}_${name}`;
@@ -124,16 +121,12 @@ export const schema = {
   },
 };
 
-/**
- * Generate Firestore rules from schema
- * @param {typeof schema} schemaObj
- * @returns {string}
- */
-export function generateRules(schemaObj) {
+// Generate Firestore rules from schema
+export function generateRules(schema) {
   let rules =
     'rules_version = "2";\nservice cloud.firestore {\n  match /databases/{database}/documents {\n';
 
-  Object.entries(schemaObj).forEach(([collectionPath, config]) => {
+  Object.entries(schema).forEach(([collectionPath, config]) => {
     // Check if it's a subcollection (contains path variables like {appId})
     if (config.subcollection) {
       rules += `\n    match /${collectionPath}/{versionDoc} {\n`;

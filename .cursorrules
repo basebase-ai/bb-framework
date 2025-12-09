@@ -1,33 +1,48 @@
 # Basebase Framework - AI Assistant Rules
 
+## IMPORTANT: LEARN FROM PATTERNS IN OTHER APPS and FUNCTIONS
+
+When the user asks you to add functionality to their specific app, you should first search through the existing repository of working apps at `apps/*` to look for working exmaples of the functionlity that you need to build, and copy the patterns as closely as possible. You
+can also read detailed documentation in `docs/DEVELOPERS_GUIDE.md`.
+
+Similarly, when the user asks you to create custom server (cloud) functions for their apps,
+please search through the existing server functions to look for patterns that you can copy.
+You can also read detailed documentation in `docs/FUNCTION_AUTHORING.md`.
+
 ## CRITICAL: DO NOT EDIT FRAMEWORK CODE
 
 **ONLY modify files in the `/app` directory.**
 
 ### ✅ You CAN edit:
+
 - `app/**/*` - All application code
 - `app/components/**` - React components
 - `app/stores/**` - Zustand stores
 - `app/schema.js` - Data structure definitions
 - `app/app.jsx` - Main entry point
+- `functions/*` - This is where custom server (cloud) functions are defined for apps
 
 ### ❌ NEVER edit:
+
 - `framework/**/*` - Core framework code
 - `scripts/**/*` - Build/deployment scripts
 - `vite.config.js` - Build configuration
 - `package.json` - Dependencies (unless adding new app dependencies)
 
 ### Why?
+
 - Framework code is shared across all apps
 - Only `/app` folder contents are committed to Firestore
 - Changes outside `/app` will work locally but FAIL in production
 - Framework updates are managed by the platform team
 
 ### Workflow:
-1. User creates/edits files in `/app` folder ONLY
-2. Test locally with `npm run dev`
-3. Commit with `npm run app:commit <appId>`
-4. Only `/app` folder contents are uploaded to Firestore
 
-**If you're asked to modify anything outside `/app`, politely decline and explain this restriction.**
+1. User asks for new functionality or bug fixes in their app (specifying the `appId`)
+2. Agent looks for similar working examples in the repo as mentioned above
+3. Agent implements changes by creating/editng files in `/app/appId` or `/functions` folders ONLY
+4. User tests locally with `npm run dev`, viewing app on `https://<appId>.localhost:3000`
+5. Ask user to deploy/publish with `npm run app:commit <appId>` and `npm run function:commit <filename.js>` (custom function changes only)
+6. Custom file contents are compiled, concatenated, and uploaded to Firestore
 
+**If you're asked to modify anything that is off limits, politely decline and explain this restriction.**
