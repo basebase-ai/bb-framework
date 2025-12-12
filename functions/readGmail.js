@@ -170,7 +170,8 @@ function extractFromParts(parts, result, context = null, depth = 0) {
 /**
  * Framework function: Read Gmail messages
  * @param {Object} params - Function parameters
- * @param {string} params.refreshToken - Gmail OAuth refresh token (long-lived, user-specific)
+ * @param {string} [params.accessToken] - Gmail OAuth access token (from Nango - preferred)
+ * @param {string} [params.refreshToken] - Gmail OAuth refresh token (legacy - will be exchanged for access token)
  * @param {string} [params.query] - Gmail search query (e.g., "is:unread", "from:example@gmail.com")
  * @param {Array<string>} [params.labels] - Gmail labels to filter by (e.g., ["INBOX"], ["CATEGORY_PERSONAL"], ["CATEGORY_SOCIAL"])
  * @param {number} [params.days=7] - Number of days of messages to fetch (1-365)
@@ -184,19 +185,20 @@ function extractFromParts(parts, result, context = null, depth = 0) {
  * @returns {Promise<Object>} Gmail messages in JSON format
  *
  * @example
- * // Get only Primary tab (inbox, not social/promotions)
- * readGmail({ refreshToken, labels: ["CATEGORY_PERSONAL"] })
+ * // Using Nango (preferred) - access token provided directly
+ * readGmail({ accessToken, labels: ["CATEGORY_PERSONAL"] })
  *
  * @example
- * // Get inbox messages (all tabs)
+ * // Legacy - using refresh token
  * readGmail({ refreshToken, labels: ["INBOX"] })
  *
  * @example
  * // Get social tab only
- * readGmail({ refreshToken, labels: ["CATEGORY_SOCIAL"] })
+ * readGmail({ accessToken, labels: ["CATEGORY_SOCIAL"] })
  */
 module.exports = async function (params, context) {
   const {
+    accessToken: providedAccessToken,
     refreshToken,
     query = "",
     labels,
@@ -209,10 +211,10 @@ module.exports = async function (params, context) {
     excludeBodies = false,
   } = params;
 
-  // Validate required parameters
-  if (!refreshToken) {
+  // Validate required parameters - need either accessToken or refreshToken
+  if (!providedAccessToken && !refreshToken) {
     throw new Error(
-      "refreshToken parameter is required (user's Gmail OAuth refresh token)"
+      "Either accessToken (from Nango) or refreshToken parameter is required"
     );
   }
 
@@ -246,14 +248,19 @@ module.exports = async function (params, context) {
     days: messageDays,
     maxResults: messageLimit,
     saveToCollection: saveToCollection || "none",
+    tokenSource: providedAccessToken ? "nango" : "refresh",
   });
 
   try {
-    // Get fresh access token from refresh token
-    const accessToken = await getAccessTokenFromRefreshToken(
-      refreshToken,
-      context
-    );
+    // Use provided access token (from Nango) or exchange refresh token
+    /** @type {string} */
+    let accessToken;
+    if (providedAccessToken) {
+      accessToken = providedAccessToken;
+      context.log("Using provided access token (from Nango)");
+    } else {
+      accessToken = await getAccessTokenFromRefreshToken(refreshToken, context);
+    }
 
     const result = await fetchGmailMessages(
       accessToken,

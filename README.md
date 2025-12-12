@@ -17,7 +17,41 @@ Basebase is a collaborative web application development and deployment framework
 
 ## Quick Start (2 minutes)
 
-### 1. Clone and Install
+### 0. Choose Your IDE & Coding Assistant
+
+Basebase works with any IDE and AI coding assistant. Pick one of the following setups:
+
+#### Cursor
+
+1. Download from [cursor.com](https://cursor.com)
+2. Open the `bb-framework` folder in Cursor
+3. Use Cmd+K (Mac) or Ctrl+K (Windows) for inline AI edits
+4. Use Cmd+L / Ctrl+L for chat with codebase context
+
+#### Antigravity
+
+1. Sign up at [antigravity.dev](https://antigravity.dev)
+2. Connect your GitHub repo or open locally
+3. Use the AI assistant panel to describe changes
+4. Antigravity will edit files directly in your project
+
+#### VSCode + Claude Code
+
+1. Install [VS Code](https://code.visualstudio.com)
+2. Install the **Claude Code** extension from the marketplace
+3. Open `bb-framework` folder in VS Code
+4. Use the Claude sidebar or `/claude` commands in the terminal
+
+#### Codex (OpenAI CLI)
+
+1. Install: `npm install -g @openai/codex`
+2. Authenticate: `codex auth`
+3. Navigate to project: `cd bb-framework`
+4. Run: `codex` to start an interactive session with your codebase
+
+---
+
+### 1. Clone and Installdo we expose any secrets in this repo?
 
 Run
 
@@ -40,11 +74,10 @@ npm run dev
 
 This starts the dev server. Then visit any of these example apps:
 
-- **http://localhost:3000?app=starter-app** - Simple sticky notes board
-- **http://localhost:3000?app=playground** - App marketplace browser
-- **http://localhost:3000?app=basepedia** - Wiki with pages and rich content
-- **http://localhost:3000?app=crm** - Customer relationship manager
-- **http://localhost:3000?app=basetable** - Spreadsheet-style data manager
+- **http://brainstorm.localhost:3000** - Simple sticky notes board
+- **http://projectbase.localhost:3000** - Full-featured task list manager
+- **http://crm.localhost:3000** - Customer relationship manager
+- **http://basepedia.localhost:3000** - Wiki with pages and rich content
 
 **Switch between apps** by changing the `?app=` parameter in the URL!
 

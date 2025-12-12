@@ -2,7 +2,7 @@
  * Scan Gmail for important new messages using AI
  *
  * This function:
- * 1. Fetches new Gmail messages for the user since last check
+ * 1. Fetches new Gmail messages for the user since last check (using Nango for OAuth)
  * 2. Sends message summaries to LLM to determine which need responses
  * 3. Stores important messages in Firestore
  *
@@ -14,41 +14,120 @@
 module.exports = async function (params, context) {
   const { userId } = params;
 
-  // Inline OAuth utility functions (can't require local files in function execution)
-  async function getRefreshToken(userId, provider, context) {
-    // Use context.firestore() for system collections like user-secrets
-    const db = context.firestore();
-    const secretDoc = await db.collection("user-secrets").doc(userId).get();
+  // Nango OAuth utility functions
+  // Integration ID for Gmail in Nango
+  const GMAIL_INTEGRATION_ID = "google-mail";
 
-    if (!secretDoc.exists) {
-      throw new Error(`No OAuth tokens found for user ${userId}`);
+  /**
+   * Get OAuth access token from Nango (handles refresh automatically)
+   * Uses REST API with endUserId lookup (new Connect session model)
+   * @param {string} userId - User ID (used as endUserId in Nango)
+   * @param {string} integrationId - Nango integration ID
+   * @param {Object} context - Function context
+   * @returns {Promise<string>} Access token
+   */
+  async function getNangoAccessToken(userId, integrationId, context) {
+    const secretKey = await context.getSecret("NANGO_SECRET_KEY");
+    if (!secretKey) {
+      throw new Error("NANGO_SECRET_KEY not configured");
     }
 
-    const providerData = secretDoc.data().services?.[provider];
-    if (!providerData) {
-      throw new Error(`Provider ${provider} not connected for user ${userId}`);
-    }
-
-    if (!providerData.refreshToken) {
-      throw new Error(
-        `No refresh token found for ${provider} for user ${userId}`
+    try {
+      // First, find the connection by endUserId
+      // API: GET /connections?endUserId=<id>&integrationId=<id>
+      const listResponse = await context.http.get(
+        "https://api.nango.dev/connections",
+        {
+          params: {
+            endUserId: userId,
+            integrationId: integrationId,
+          },
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+          },
+          timeout: 10000,
+        }
       );
-    }
 
-    return providerData.refreshToken;
+      const connections = listResponse.data?.connections || [];
+      if (connections.length === 0) {
+        throw new Error(
+          `User has not connected ${integrationId}. Please connect first.`
+        );
+      }
+
+      const connectionId = connections[0].connection_id;
+
+      // Get connection with credentials (Nango auto-refreshes if expired)
+      // API: GET /connections/{connectionId}?provider_config_key=<id>
+      const connResponse = await context.http.get(
+        `https://api.nango.dev/connections/${connectionId}`,
+        {
+          params: {
+            provider_config_key: integrationId,
+          },
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+          },
+          timeout: 10000,
+        }
+      );
+
+      const connection = connResponse.data;
+      if (!connection.credentials?.access_token) {
+        throw new Error(`No access token found for ${integrationId}`);
+      }
+
+      return connection.credentials.access_token;
+    } catch (error) {
+      if (
+        error.response?.status === 404 ||
+        error.message?.includes("not found") ||
+        error.message?.includes("No ")
+      ) {
+        throw new Error(
+          `User has not connected ${integrationId}. Please connect first.`
+        );
+      }
+      throw error;
+    }
   }
 
-  async function isOAuthConnected(userId, provider, context) {
-    // Use context.firestore() for system collections like user-secrets
-    const db = context.firestore();
-    const secretDoc = await db.collection("user-secrets").doc(userId).get();
-
-    if (!secretDoc.exists) {
+  /**
+   * Check if user has connected an integration via Nango
+   * Uses REST API with endUserId lookup
+   * @param {string} userId - User ID
+   * @param {string} integrationId - Nango integration ID
+   * @param {Object} context - Function context
+   * @returns {Promise<boolean>} True if connected
+   */
+  async function isNangoConnected(userId, integrationId, context) {
+    const secretKey = await context.getSecret("NANGO_SECRET_KEY");
+    if (!secretKey) {
       return false;
     }
 
-    const providerData = secretDoc.data().services?.[provider];
-    return providerData?.accessToken ? true : false;
+    try {
+      // API: GET /connections?endUserId=<id>&integrationId=<id>
+      const response = await context.http.get(
+        "https://api.nango.dev/connections",
+        {
+          params: {
+            endUserId: userId,
+            integrationId: integrationId,
+          },
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+          },
+          timeout: 10000,
+        }
+      );
+
+      const connections = response.data?.connections || [];
+      return connections.length > 0;
+    } catch {
+      return false;
+    }
   }
 
   try {
@@ -117,23 +196,23 @@ module.exports = async function (params, context) {
       try {
         context.log(`Processing user: ${config.userId}`);
 
-        // Check if user has Gmail OAuth connected
-        const hasGmail = await isOAuthConnected(
+        // Check if user has Gmail connected via Nango
+        const hasGmail = await isNangoConnected(
           config.userId,
-          "google",
+          GMAIL_INTEGRATION_ID,
           context
         );
         if (!hasGmail) {
           context.log(
-            `User ${config.userId} doesn't have Gmail connected, skipping`
+            `User ${config.userId} doesn't have Gmail connected via Nango, skipping`
           );
           continue;
         }
 
-        // Get refresh token from user-secrets
-        const refreshToken = await getRefreshToken(
+        // Get access token from Nango (handles refresh automatically)
+        const accessToken = await getNangoAccessToken(
           config.userId,
-          "google",
+          GMAIL_INTEGRATION_ID,
           context
         );
 
@@ -148,10 +227,10 @@ module.exports = async function (params, context) {
           );
         }
 
-        // Fetch Gmail messages using readGmail function
+        // Fetch Gmail messages using readGmail function with Nango access token
         // Use excludeBodies to avoid hitting Firestore 1MB document limit
         const gmailResult = await context.callFunction("readGmail", {
-          refreshToken: refreshToken,
+          accessToken: accessToken, // Use Nango access token (handles refresh automatically)
           query: "is:unread", // Only unread messages
           days: Math.min(daysSinceLastCheck, 7), // Max 7 days lookback
           maxResults: 50,
@@ -393,5 +472,5 @@ Return scores for ALL ${messageSummaries.length} emails in the same order.`;
   }
 }
 
-// Token refresh is now handled automatically by getOAuthToken() in oauth-utils.js
-// No need for custom refresh logic in this function
+// Token refresh is now handled automatically by Nango
+// No need for custom refresh logic - just call getNangoAccessToken() and get a valid token

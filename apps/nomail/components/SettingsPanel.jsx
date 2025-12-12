@@ -1,5 +1,5 @@
 /**
- * Settings Panel - Configure Gmail OAuth and phone number
+ * Settings Panel - Configure Gmail OAuth (via Nango) and phone number
  */
 
 import React, { useState, useEffect, useRef } from "react";
@@ -13,14 +13,13 @@ import {
   Switch,
   Alert,
   Group,
-  Loader,
   Badge,
   Divider,
 } from "@mantine/core";
 import { IconBrandGmail, IconPhone, IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
-import { useOAuth, OAuthScopes } from "../../../framework/hooks/useOAuth.js";
+import { useNangoOAuth, NangoIntegrations } from "../../../framework/hooks/useNangoOAuth.js";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
 import { collections } from "../schema.js";
 
@@ -29,19 +28,21 @@ export function SettingsPanel() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [enabled, setEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
+  /** @type {React.MutableRefObject<boolean>} */
   const configCreatedRef = useRef(false);
 
-  // Use centralized OAuth hook
+  // Use Nango OAuth hook for Gmail (google-mail integration)
   const {
     isConnected: isGmailConnected,
     loading: oauthLoading,
-    initiateOAuth,
+    connect,
     disconnect,
-    tokens,
-  } = useOAuth("google");
+    connection,
+    error: oauthError,
+  } = useNangoOAuth(NangoIntegrations.googleMail);
 
   // Use useDocument instead of useCollection since we know the doc ID (userId)
-  const { data: userConfig, loading, set, update } = useDocument(
+  const { data: userConfig, loading, set } = useDocument(
     collections.userConfigs,
     user?.uid
   );
@@ -54,20 +55,20 @@ export function SettingsPanel() {
     }
   }, [userConfig]);
 
-  const handleGmailOAuth = async () => {
+  const handleGmailConnect = async () => {
     try {
-      initiateOAuth({
-        scopes: [
-          OAuthScopes.google.gmail.readonly,
-          OAuthScopes.google.gmail.modify,
-        ],
-        redirectUri: window.location.origin,
+      await connect();
+      notifications.show({
+        title: "Gmail Connected",
+        message: "Successfully connected to Gmail via Nango",
+        color: "green",
+        icon: <IconCheck size={16} />,
       });
     } catch (error) {
-      console.error("OAuth initiation failed:", error);
+      console.error("OAuth connection failed:", error);
       notifications.show({
         title: "Connection Failed",
-        message: error.message || "Could not initiate Gmail connection",
+        message: error instanceof Error ? error.message : "Could not connect to Gmail",
         color: "red",
       });
     }
@@ -151,16 +152,6 @@ export function SettingsPanel() {
     }
   };
 
-  // Don't show loading spinner - just render the UI
-  // if (oauthLoading) {
-  //   return (
-  //     <Stack align="center" p="xl">
-  //       <Loader size="lg" />
-  //       <Text c="dimmed">Loading settings...</Text>
-  //     </Stack>
-  //   );
-  // }
-
   return (
     <Stack gap="lg" style={{ maxWidth: 800 }}>
       <Paper shadow="sm" p="xl" withBorder>
@@ -186,11 +177,18 @@ export function SettingsPanel() {
             </Alert>
           )}
 
+          {oauthError && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red">
+              {oauthError.message}
+            </Alert>
+          )}
+
           <Group>
             <Button
               leftSection={<IconBrandGmail size={20} />}
-              onClick={handleGmailOAuth}
+              onClick={handleGmailConnect}
               variant={isGmailConnected ? "light" : "filled"}
+              loading={oauthLoading}
             >
               {isGmailConnected ? "Reconnect Gmail" : "Connect Gmail"}
             </Button>
@@ -200,17 +198,18 @@ export function SettingsPanel() {
                 variant="subtle"
                 color="gray"
                 onClick={handleDisconnectGmail}
+                loading={oauthLoading}
               >
                 Disconnect
               </Button>
             )}
           </Group>
 
-          {isGmailConnected && tokens && (
+          {isGmailConnected && connection && (
             <Text size="sm" c="dimmed">
               Connected:{" "}
-              {tokens.grantedAt
-                ? new Date(tokens.grantedAt.toDate ? tokens.grantedAt.toDate() : tokens.grantedAt).toLocaleString()
+              {connection.createdAt
+                ? new Date(connection.createdAt).toLocaleString()
                 : "Recently"}
             </Text>
           )}
@@ -281,4 +280,3 @@ export function SettingsPanel() {
     </Stack>
   );
 }
-
