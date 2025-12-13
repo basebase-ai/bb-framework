@@ -24,7 +24,7 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
-import { useOAuth } from "../../../framework/hooks/useOAuth.js";
+import { useNangoOAuth, NangoIntegrations } from "../../../framework/hooks/useNangoOAuth.js";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useFunction } from "../../../framework/hooks/useFunction.js";
 import { collections, APP_ID } from "../schema.js";
@@ -34,8 +34,8 @@ export function EmailList() {
   const { user } = useAuth();
   const [selectedEmailId, setSelectedEmailId] = useState(null);
 
-  // Check if Gmail is connected using centralized OAuth
-  const { isConnected: isGmailConnected } = useOAuth("google");
+  // Check if Gmail is connected using Nango OAuth
+  const { isConnected: isGmailConnected } = useNangoOAuth(NangoIntegrations.googleMail);
 
   // Memoize query options to prevent infinite re-renders
   const configQuery = useMemo(() => ({

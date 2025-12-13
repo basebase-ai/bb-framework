@@ -18,7 +18,7 @@ import { useUserProfile } from "./hooks/useUserProfile.js";
 import { useUserProfiles } from "./hooks/useUserProfiles.js";
 import { useRouter } from "./hooks/useRouter.js";
 import { useFunction } from "./hooks/useFunction.js";
-import { useOAuth, OAuthScopes } from "./hooks/useOAuth.js";
+import { useNangoOAuth, NangoIntegrations } from "./hooks/useNangoOAuth.js";
 import { useStorage } from "./hooks/useStorage.js";
 import { AuthProvider, SignOutButton } from "./components/AuthProvider.jsx";
 import { FileUploader } from "./components/FileUploader.jsx";
@@ -272,9 +272,15 @@ async function init() {
       "framework/hooks/useFunction.js": { useFunction },
       "../framework/hooks/useFunction.js": { useFunction },
       "../../framework/hooks/useFunction.js": { useFunction },
-      "framework/hooks/useOAuth.js": { useOAuth, OAuthScopes },
-      "../framework/hooks/useOAuth.js": { useOAuth, OAuthScopes },
-      "../../framework/hooks/useOAuth.js": { useOAuth, OAuthScopes },
+      "framework/hooks/useNangoOAuth.js": { useNangoOAuth, NangoIntegrations },
+      "../framework/hooks/useNangoOAuth.js": {
+        useNangoOAuth,
+        NangoIntegrations,
+      },
+      "../../framework/hooks/useNangoOAuth.js": {
+        useNangoOAuth,
+        NangoIntegrations,
+      },
       "framework/hooks/useStorage.js": { useStorage },
       "../framework/hooks/useStorage.js": { useStorage },
       "../../framework/hooks/useStorage.js": { useStorage },
