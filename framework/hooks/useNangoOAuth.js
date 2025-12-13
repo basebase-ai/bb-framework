@@ -312,6 +312,9 @@ export const NangoIntegrations = {
   mixpanel: "mixpanel",
   amplitude: "amplitude",
   segment: "segment",
+
+  // ===== Database/No-Code =====
+  airtable: "airtable",
 };
 
 export default useNangoOAuth;

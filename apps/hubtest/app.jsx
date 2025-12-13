@@ -43,6 +43,7 @@ import {
   IconMailOpened,
   IconTable,
   IconFileSpreadsheet,
+  IconDatabase,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -98,6 +99,20 @@ import "@mantine/notifications/styles.css";
  * @property {string} [url]
  */
 
+/**
+ * @typedef {Object} AirtableBase
+ * @property {string} id
+ * @property {string} name
+ * @property {string} [permissionLevel]
+ */
+
+/**
+ * @typedef {Object} AirtableTable
+ * @property {string} id
+ * @property {string} name
+ * @property {string} [description]
+ */
+
 function AppContent() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
@@ -141,6 +156,15 @@ function AppContent() {
     error: sheetsOauthError,
   } = useNangoOAuth(NangoIntegrations.googleSheets);
 
+  // Airtable OAuth via Nango
+  const {
+    isConnected: airtableConnected,
+    connect: connectAirtable,
+    disconnect: disconnectAirtable,
+    loading: airtableOauthLoading,
+    error: airtableOauthError,
+  } = useNangoOAuth(NangoIntegrations.airtable);
+
   // Gmail functions
   const { call: scanGmail, loading: scanningGmail } = useFunction("scanGmail");
 
@@ -159,6 +183,14 @@ function AppContent() {
     useFunction("listGoogleSheets");
   const { call: fetchSheet, loading: fetchingSheet } =
     useFunction("fetchGoogleSheet");
+
+  // Airtable functions
+  const { call: listBases, loading: listingBases } =
+    useFunction("listAirtableBases");
+  const { call: listTables, loading: listingTables } =
+    useFunction("listAirtableTables");
+  const { call: fetchRecords, loading: fetchingRecords } =
+    useFunction("fetchAirtableRecords");
 
   // Gmail state
   /** @type {[number | null, React.Dispatch<React.SetStateAction<number | null>>]} */
@@ -194,6 +226,22 @@ function AppContent() {
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
   const [sheetsError, setSheetsError] = useState(null);
 
+  // Airtable state
+  /** @type {[AirtableBase[], React.Dispatch<React.SetStateAction<AirtableBase[]>>]} */
+  const [bases, setBases] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [selectedBase, setSelectedBase] = useState(null);
+  /** @type {[AirtableTable[], React.Dispatch<React.SetStateAction<AirtableTable[]>>]} */
+  const [tables, setTables] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [selectedTable, setSelectedTable] = useState(null);
+  /** @type {[string[], React.Dispatch<React.SetStateAction<string[]>>]} */
+  const [airtableFields, setAirtableFields] = useState([]);
+  /** @type {[Record<string, unknown>[], React.Dispatch<React.SetStateAction<Record<string, unknown>[]>>]} */
+  const [airtableRecords, setAirtableRecords] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [airtableError, setAirtableError] = useState(null);
+
   // Integration config for sidebar
   const integrations = [
     {
@@ -223,6 +271,13 @@ function AppContent() {
       icon: IconFileSpreadsheet,
       color: "#0F9D58",
       connected: sheetsConnected,
+    },
+    {
+      id: "airtable",
+      label: "Airtable",
+      icon: IconDatabase,
+      color: "#18BFFF",
+      connected: airtableConnected,
     },
   ];
 
@@ -564,6 +619,148 @@ function AppContent() {
       const message =
         err instanceof Error ? err.message : "Failed to fetch sheet data";
       setSheetsError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // Airtable handlers
+  const handleConnectAirtable = async () => {
+    try {
+      await connectAirtable();
+      notifications.show({
+        title: "Connected!",
+        message: "Airtable connected successfully",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Connection Failed",
+        message: err instanceof Error ? err.message : "Failed to connect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleDisconnectAirtable = async () => {
+    try {
+      await disconnectAirtable();
+      setBases([]);
+      setSelectedBase(null);
+      setTables([]);
+      setSelectedTable(null);
+      setAirtableFields([]);
+      setAirtableRecords([]);
+      notifications.show({
+        title: "Disconnected",
+        message: "Airtable has been disconnected",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleListBases = async () => {
+    try {
+      setAirtableError(null);
+      const result = await listBases({});
+
+      if (result.success && result.bases) {
+        setBases(result.bases);
+        notifications.show({
+          title: "Bases Loaded",
+          message: `Found ${result.bases.length} bases`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to list bases");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to list bases";
+      setAirtableError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleSelectBase = async (baseId) => {
+    setSelectedBase(baseId);
+    setTables([]);
+    setSelectedTable(null);
+    setAirtableFields([]);
+    setAirtableRecords([]);
+
+    if (!baseId) return;
+
+    try {
+      setAirtableError(null);
+      const result = await listTables({ baseId });
+
+      if (result.success && result.tables) {
+        setTables(result.tables);
+      } else {
+        throw new Error(result.error || "Failed to list tables");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to list tables";
+      setAirtableError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchRecords = async () => {
+    if (!selectedBase || !selectedTable) {
+      notifications.show({
+        title: "Select Base and Table",
+        message: "Please select a base and table first",
+        color: "yellow",
+      });
+      return;
+    }
+
+    try {
+      setAirtableError(null);
+      setAirtableFields([]);
+      setAirtableRecords([]);
+
+      const result = await fetchRecords({
+        baseId: selectedBase,
+        tableId: selectedTable,
+      });
+
+      if (result.success) {
+        setAirtableFields(result.fields || []);
+        setAirtableRecords(result.records || []);
+        notifications.show({
+          title: "Records Loaded",
+          message: `Loaded ${result.totalRecords || 0} records`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to fetch records");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch records";
+      setAirtableError(message);
       notifications.show({
         title: "Error",
         message,
@@ -1092,6 +1289,192 @@ function AppContent() {
                       {sheetData.length > 50 && (
                         <Text size="sm" c="dimmed" ta="center" py="sm">
                           Showing 50 of {sheetData.length} rows
+                        </Text>
+                      )}
+                    </Card>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      case "airtable":
+        return (
+          <Stack gap="lg">
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconDatabase size={40} color="#18BFFF" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      Airtable Connection
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect to read data from your Airtable bases
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group gap="sm">
+                  {airtableConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  <Button
+                    onClick={
+                      airtableConnected
+                        ? handleDisconnectAirtable
+                        : handleConnectAirtable
+                    }
+                    loading={airtableOauthLoading}
+                    color={airtableConnected ? "gray" : "cyan"}
+                    variant={airtableConnected ? "light" : "filled"}
+                  >
+                    {airtableConnected ? "Disconnect" : "Connect Airtable"}
+                  </Button>
+                </Group>
+              </Group>
+
+              {airtableOauthError && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  mt="md"
+                >
+                  {airtableOauthError.message}
+                </Alert>
+              )}
+            </Paper>
+
+            {airtableConnected && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Title order={4}>Airtable Browser</Title>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={handleListBases}
+                      loading={listingBases}
+                      variant="light"
+                    >
+                      {bases.length > 0 ? "Refresh" : "Load Bases"}
+                    </Button>
+                  </Group>
+
+                  {airtableError && (
+                    <Alert icon={<IconAlertCircle size={16} />} color="red">
+                      {airtableError}
+                    </Alert>
+                  )}
+
+                  {bases.length > 0 && (
+                    <>
+                      <Select
+                        label="Select a base"
+                        placeholder="Choose a base..."
+                        data={bases.map((base) => ({
+                          value: base.id,
+                          label: base.name,
+                        }))}
+                        value={selectedBase}
+                        onChange={handleSelectBase}
+                        searchable
+                        leftSection={<IconDatabase size={16} />}
+                      />
+
+                      {listingTables && (
+                        <Center py="md">
+                          <Loader size="sm" />
+                        </Center>
+                      )}
+
+                      {tables.length > 0 && (
+                        <>
+                          <Select
+                            label="Select a table"
+                            placeholder="Choose a table..."
+                            data={tables.map((table) => ({
+                              value: table.id,
+                              label: table.name,
+                            }))}
+                            value={selectedTable}
+                            onChange={setSelectedTable}
+                            searchable
+                            leftSection={<IconTable size={16} />}
+                          />
+
+                          <Button
+                            onClick={handleFetchRecords}
+                            loading={fetchingRecords}
+                            disabled={!selectedTable}
+                            leftSection={<IconTable size={16} />}
+                            color="cyan"
+                          >
+                            Load Records
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {listingBases && (
+                    <Center py="xl">
+                      <Loader size="lg" />
+                    </Center>
+                  )}
+
+                  {!listingBases && bases.length === 0 && (
+                    <Text c="dimmed" ta="center" py="md">
+                      Click "Load Bases" to see your Airtable bases
+                    </Text>
+                  )}
+
+                  {fetchingRecords && (
+                    <Card withBorder>
+                      <Center py="xl">
+                        <Stack align="center" gap="sm">
+                          <Loader size="md" />
+                          <Text size="sm" c="dimmed">
+                            Loading records...
+                          </Text>
+                        </Stack>
+                      </Center>
+                    </Card>
+                  )}
+
+                  {airtableRecords.length > 0 && !fetchingRecords && (
+                    <Card withBorder p={0}>
+                      <ScrollArea>
+                        <Table striped highlightOnHover>
+                          <Table.Thead>
+                            <Table.Tr>
+                              {airtableFields.map((field, idx) => (
+                                <Table.Th key={idx}>{field}</Table.Th>
+                              ))}
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {airtableRecords.slice(0, 50).map((record, rowIdx) => (
+                              <Table.Tr key={record.id || rowIdx}>
+                                {airtableFields.map((field, colIdx) => (
+                                  <Table.Td key={colIdx}>
+                                    {String(record[field] ?? "-")}
+                                  </Table.Td>
+                                ))}
+                              </Table.Tr>
+                            ))}
+                          </Table.Tbody>
+                        </Table>
+                      </ScrollArea>
+                      {airtableRecords.length > 50 && (
+                        <Text size="sm" c="dimmed" ta="center" py="sm">
+                          Showing 50 of {airtableRecords.length} records
                         </Text>
                       )}
                     </Card>
