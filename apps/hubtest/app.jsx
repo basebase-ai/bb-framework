@@ -27,6 +27,8 @@ import {
   NavLink,
   ScrollArea,
   Box,
+  TextInput,
+  PasswordInput,
 } from "@mantine/core";
 import { Notifications, notifications } from "@mantine/notifications";
 import {
@@ -44,6 +46,9 @@ import {
   IconTable,
   IconFileSpreadsheet,
   IconDatabase,
+  IconBrandSupabase,
+  IconLink,
+  IconKey,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -192,6 +197,18 @@ function AppContent() {
   const { call: fetchRecords, loading: fetchingRecords } =
     useFunction("fetchAirtableRecords");
 
+  // Supabase functions
+  const { call: saveSupabaseCreds, loading: savingSupabaseCreds } =
+    useFunction("saveSupabaseCredentials");
+  const { call: getSupabaseCreds, loading: gettingSupabaseCreds } =
+    useFunction("getSupabaseCredentials");
+  const { call: deleteSupabaseCreds, loading: deletingSupabaseCreds } =
+    useFunction("deleteSupabaseCredentials");
+  const { call: listSupabaseTables, loading: listingSupabaseTables } =
+    useFunction("listSupabaseTables");
+  const { call: fetchSupabaseData, loading: fetchingSupabaseData } =
+    useFunction("fetchSupabaseData");
+
   // Gmail state
   /** @type {[number | null, React.Dispatch<React.SetStateAction<number | null>>]} */
   const [gmailCount, setGmailCount] = useState(null);
@@ -242,6 +259,42 @@ function AppContent() {
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
   const [airtableError, setAirtableError] = useState(null);
 
+  // Supabase state
+  /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
+  const [supabaseConnected, setSupabaseConnected] = useState(false);
+  /** @type {[string, React.Dispatch<React.SetStateAction<string>>]} */
+  const [supabaseUrl, setSupabaseUrl] = useState("");
+  /** @type {[string, React.Dispatch<React.SetStateAction<string>>]} */
+  const [supabaseKey, setSupabaseKey] = useState("");
+  /** @type {[{name: string}[], React.Dispatch<React.SetStateAction<{name: string}[]>>]} */
+  const [supabaseTables, setSupabaseTables] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [selectedSupabaseTable, setSelectedSupabaseTable] = useState(null);
+  /** @type {[string[], React.Dispatch<React.SetStateAction<string[]>>]} */
+  const [supabaseColumns, setSupabaseColumns] = useState([]);
+  /** @type {[Record<string, unknown>[], React.Dispatch<React.SetStateAction<Record<string, unknown>[]>>]} */
+  const [supabaseData, setSupabaseData] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [supabaseError, setSupabaseError] = useState(null);
+
+  // Check Supabase connection on mount
+  React.useEffect(() => {
+    const checkSupabaseConnection = async () => {
+      try {
+        const result = await getSupabaseCreds({});
+        if (result.success && result.hasCredentials) {
+          setSupabaseConnected(true);
+          setSupabaseUrl(result.projectUrl || "");
+        }
+      } catch (err) {
+        // No credentials saved - that's OK
+      }
+    };
+    if (user) {
+      checkSupabaseConnection();
+    }
+  }, [user]);
+
   // Integration config for sidebar
   const integrations = [
     {
@@ -278,6 +331,13 @@ function AppContent() {
       icon: IconDatabase,
       color: "#18BFFF",
       connected: airtableConnected,
+    },
+    {
+      id: "supabase",
+      label: "Supabase",
+      icon: IconBrandSupabase,
+      color: "#3ECF8E",
+      connected: supabaseConnected,
     },
   ];
 
@@ -761,6 +821,141 @@ function AppContent() {
       const message =
         err instanceof Error ? err.message : "Failed to fetch records";
       setAirtableError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // Supabase handlers
+  const handleConnectSupabase = async () => {
+    if (!supabaseUrl || !supabaseKey) {
+      notifications.show({
+        title: "Missing Credentials",
+        message: "Please enter both Project URL and API Key",
+        color: "yellow",
+      });
+      return;
+    }
+
+    try {
+      setSupabaseError(null);
+      const result = await saveSupabaseCreds({
+        projectUrl: supabaseUrl,
+        apiKey: supabaseKey,
+      });
+
+      if (result.success) {
+        setSupabaseConnected(true);
+        setSupabaseKey(""); // Clear key from state for security
+        notifications.show({
+          title: "Connected!",
+          message: "Supabase credentials saved successfully",
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
+      } else {
+        throw new Error(result.error || "Failed to save credentials");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to connect";
+      setSupabaseError(message);
+      notifications.show({
+        title: "Connection Failed",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleDisconnectSupabase = async () => {
+    try {
+      await deleteSupabaseCreds({});
+      setSupabaseConnected(false);
+      setSupabaseUrl("");
+      setSupabaseKey("");
+      setSupabaseTables([]);
+      setSelectedSupabaseTable(null);
+      setSupabaseColumns([]);
+      setSupabaseData([]);
+      notifications.show({
+        title: "Disconnected",
+        message: "Supabase credentials removed",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleListSupabaseTables = async () => {
+    try {
+      setSupabaseError(null);
+      const result = await listSupabaseTables({});
+
+      if (result.success && result.tables) {
+        setSupabaseTables(result.tables);
+        notifications.show({
+          title: "Tables Loaded",
+          message: `Found ${result.tables.length} tables`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to list tables");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to list tables";
+      setSupabaseError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchSupabaseData = async () => {
+    if (!selectedSupabaseTable) {
+      notifications.show({
+        title: "Select a Table",
+        message: "Please select a table first",
+        color: "yellow",
+      });
+      return;
+    }
+
+    try {
+      setSupabaseError(null);
+      setSupabaseColumns([]);
+      setSupabaseData([]);
+
+      const result = await fetchSupabaseData({
+        tableName: selectedSupabaseTable,
+      });
+
+      if (result.success) {
+        setSupabaseColumns(result.columns || []);
+        setSupabaseData(result.data || []);
+        notifications.show({
+          title: "Data Loaded",
+          message: `Loaded ${result.fetchedCount || 0} of ${result.totalCount || 0} records`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to fetch data");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch data";
+      setSupabaseError(message);
       notifications.show({
         title: "Error",
         message,
@@ -1475,6 +1670,186 @@ function AppContent() {
                       {airtableRecords.length > 50 && (
                         <Text size="sm" c="dimmed" ta="center" py="sm">
                           Showing 50 of {airtableRecords.length} records
+                        </Text>
+                      )}
+                    </Card>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      case "supabase":
+        return (
+          <Stack gap="lg">
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconBrandSupabase size={40} color="#3ECF8E" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      Supabase Connection
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect to your Supabase PostgreSQL database
+                    </Text>
+                  </div>
+                </Group>
+
+                {supabaseConnected && (
+                  <Group gap="sm">
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                    <Button
+                      onClick={handleDisconnectSupabase}
+                      loading={deletingSupabaseCreds}
+                      color="gray"
+                      variant="light"
+                    >
+                      Disconnect
+                    </Button>
+                  </Group>
+                )}
+              </Group>
+
+              {!supabaseConnected && (
+                <Stack gap="md" mt="lg">
+                  <TextInput
+                    label="Project URL"
+                    placeholder="https://your-project.supabase.co"
+                    value={supabaseUrl}
+                    onChange={(e) => setSupabaseUrl(e.target.value)}
+                    leftSection={<IconLink size={16} />}
+                  />
+                  <PasswordInput
+                    label="API Key"
+                    placeholder="Your Supabase anon or service role key"
+                    value={supabaseKey}
+                    onChange={(e) => setSupabaseKey(e.target.value)}
+                    leftSection={<IconKey size={16} />}
+                  />
+                  <Button
+                    onClick={handleConnectSupabase}
+                    loading={savingSupabaseCreds}
+                    color="green"
+                    leftSection={<IconBrandSupabase size={16} />}
+                  >
+                    Connect Supabase
+                  </Button>
+                </Stack>
+              )}
+
+              {supabaseError && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  mt="md"
+                >
+                  {supabaseError}
+                </Alert>
+              )}
+            </Paper>
+
+            {supabaseConnected && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Title order={4}>Database Browser</Title>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={handleListSupabaseTables}
+                      loading={listingSupabaseTables}
+                      variant="light"
+                    >
+                      {supabaseTables.length > 0 ? "Refresh" : "Load Tables"}
+                    </Button>
+                  </Group>
+
+                  {supabaseTables.length > 0 && (
+                    <>
+                      <Select
+                        label="Select a table"
+                        placeholder="Choose a table..."
+                        data={supabaseTables.map((table) => ({
+                          value: table.name,
+                          label: table.name,
+                        }))}
+                        value={selectedSupabaseTable}
+                        onChange={setSelectedSupabaseTable}
+                        searchable
+                        leftSection={<IconTable size={16} />}
+                      />
+
+                      <Button
+                        onClick={handleFetchSupabaseData}
+                        loading={fetchingSupabaseData}
+                        disabled={!selectedSupabaseTable}
+                        leftSection={<IconTable size={16} />}
+                        color="green"
+                      >
+                        Load Data
+                      </Button>
+                    </>
+                  )}
+
+                  {listingSupabaseTables && (
+                    <Center py="xl">
+                      <Loader size="lg" />
+                    </Center>
+                  )}
+
+                  {!listingSupabaseTables && supabaseTables.length === 0 && (
+                    <Text c="dimmed" ta="center" py="md">
+                      Click "Load Tables" to see your Supabase tables
+                    </Text>
+                  )}
+
+                  {fetchingSupabaseData && (
+                    <Card withBorder>
+                      <Center py="xl">
+                        <Stack align="center" gap="sm">
+                          <Loader size="md" />
+                          <Text size="sm" c="dimmed">
+                            Loading data...
+                          </Text>
+                        </Stack>
+                      </Center>
+                    </Card>
+                  )}
+
+                  {supabaseData.length > 0 && !fetchingSupabaseData && (
+                    <Card withBorder p={0}>
+                      <ScrollArea>
+                        <Table striped highlightOnHover>
+                          <Table.Thead>
+                            <Table.Tr>
+                              {supabaseColumns.map((col, idx) => (
+                                <Table.Th key={idx}>{col}</Table.Th>
+                              ))}
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {supabaseData.slice(0, 50).map((row, rowIdx) => (
+                              <Table.Tr key={rowIdx}>
+                                {supabaseColumns.map((col, colIdx) => (
+                                  <Table.Td key={colIdx}>
+                                    {String(row[col] ?? "-")}
+                                  </Table.Td>
+                                ))}
+                              </Table.Tr>
+                            ))}
+                          </Table.Tbody>
+                        </Table>
+                      </ScrollArea>
+                      {supabaseData.length > 50 && (
+                        <Text size="sm" c="dimmed" ta="center" py="sm">
+                          Showing 50 of {supabaseData.length} records
                         </Text>
                       )}
                     </Card>
