@@ -1,5 +1,6 @@
 /**
- * HubSpot Test App - Display HubSpot contacts in a table
+ * OAuth Integration Test App
+ * Test various OAuth integrations via Nango
  */
 
 import React, { useState } from "react";
@@ -13,13 +14,19 @@ import {
   Avatar,
   Button,
   Stack,
-  Container,
   Table,
   Paper,
   Badge,
   Alert,
   Loader,
   Center,
+  Tabs,
+  Select,
+  Textarea,
+  Card,
+  NavLink,
+  ScrollArea,
+  Box,
 } from "@mantine/core";
 import { Notifications, notifications } from "@mantine/notifications";
 import {
@@ -27,6 +34,15 @@ import {
   IconRefresh,
   IconCheck,
   IconAlertCircle,
+  IconBrandSlack,
+  IconMessage,
+  IconSparkles,
+  IconPlugConnected,
+  IconBrandGmail,
+  IconMail,
+  IconMailOpened,
+  IconTable,
+  IconFileSpreadsheet,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -54,32 +70,229 @@ import "@mantine/notifications/styles.css";
  * @property {string} createdAt
  */
 
+/**
+ * @typedef {Object} SlackChannel
+ * @property {string} id
+ * @property {string} name
+ * @property {boolean} isPrivate
+ * @property {number} memberCount
+ * @property {string} [topic]
+ * @property {string} [purpose]
+ */
+
+/**
+ * @typedef {Object} GmailMessage
+ * @property {string} id
+ * @property {string} subject
+ * @property {string} from
+ * @property {string} snippet
+ * @property {string} date
+ */
+
+/**
+ * @typedef {Object} GoogleSheet
+ * @property {string} id
+ * @property {string} name
+ * @property {string} [createdAt]
+ * @property {string} [modifiedAt]
+ * @property {string} [url]
+ */
+
 function AppContent() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
+  /** @type {[string, React.Dispatch<React.SetStateAction<string>>]} */
+  const [activeTab, setActiveTab] = useState("gmail");
+
+  // Gmail OAuth via Nango
+  const {
+    isConnected: gmailConnected,
+    connect: connectGmail,
+    disconnect: disconnectGmail,
+    loading: gmailOauthLoading,
+    error: gmailOauthError,
+  } = useNangoOAuth(NangoIntegrations.googleMail);
 
   // HubSpot OAuth via Nango
   const {
-    isConnected,
-    connect,
-    disconnect,
-    loading: oauthLoading,
-    error: oauthError,
+    isConnected: hubspotConnected,
+    connect: connectHubspot,
+    disconnect: disconnectHubspot,
+    loading: hubspotOauthLoading,
+    error: hubspotOauthError,
   } = useNangoOAuth(NangoIntegrations.hubspot);
 
-  // Fetch contacts function
+  // Slack OAuth via Nango
+  const {
+    isConnected: slackConnected,
+    connect: connectSlack,
+    disconnect: disconnectSlack,
+    loading: slackOauthLoading,
+    error: slackOauthError,
+  } = useNangoOAuth(NangoIntegrations.slack);
+
+  // Google Sheets OAuth via Nango
+  const {
+    isConnected: sheetsConnected,
+    connect: connectSheets,
+    disconnect: disconnectSheets,
+    loading: sheetsOauthLoading,
+    error: sheetsOauthError,
+  } = useNangoOAuth(NangoIntegrations.googleSheets);
+
+  // Gmail functions
+  const { call: scanGmail, loading: scanningGmail } = useFunction("scanGmail");
+
+  // HubSpot functions
   const { call: fetchContacts, loading: fetchingContacts } =
     useFunction("fetchHubspotContacts");
 
+  // Slack functions
+  const { call: fetchChannels, loading: fetchingChannels } =
+    useFunction("fetchSlackChannels");
+  const { call: summarizeChannel, loading: summarizing } =
+    useFunction("summarizeSlackChannel");
+
+  // Google Sheets functions
+  const { call: listSheets, loading: listingSheets } =
+    useFunction("listGoogleSheets");
+  const { call: fetchSheet, loading: fetchingSheet } =
+    useFunction("fetchGoogleSheet");
+
+  // Gmail state
+  /** @type {[number | null, React.Dispatch<React.SetStateAction<number | null>>]} */
+  const [gmailCount, setGmailCount] = useState(null);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [gmailError, setGmailError] = useState(null);
+
+  // HubSpot state
   /** @type {[HubSpotContact[], React.Dispatch<React.SetStateAction<HubSpotContact[]>>]} */
   const [contacts, setContacts] = useState([]);
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
-  const [fetchError, setFetchError] = useState(null);
+  const [hubspotError, setHubspotError] = useState(null);
 
-  const handleConnect = async () => {
+  // Slack state
+  /** @type {[SlackChannel[], React.Dispatch<React.SetStateAction<SlackChannel[]>>]} */
+  const [channels, setChannels] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [selectedChannel, setSelectedChannel] = useState(null);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [summary, setSummary] = useState(null);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [slackError, setSlackError] = useState(null);
+
+  // Google Sheets state
+  /** @type {[GoogleSheet[], React.Dispatch<React.SetStateAction<GoogleSheet[]>>]} */
+  const [sheets, setSheets] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [selectedSheet, setSelectedSheet] = useState(null);
+  /** @type {[string[], React.Dispatch<React.SetStateAction<string[]>>]} */
+  const [sheetHeaders, setSheetHeaders] = useState([]);
+  /** @type {[Record<string, string>[], React.Dispatch<React.SetStateAction<Record<string, string>[]>>]} */
+  const [sheetData, setSheetData] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [sheetsError, setSheetsError] = useState(null);
+
+  // Integration config for sidebar
+  const integrations = [
+    {
+      id: "gmail",
+      label: "Gmail",
+      icon: IconBrandGmail,
+      color: "#EA4335",
+      connected: gmailConnected,
+    },
+    {
+      id: "hubspot",
+      label: "HubSpot",
+      icon: IconAddressBook,
+      color: "#ff7a59",
+      connected: hubspotConnected,
+    },
+    {
+      id: "slack",
+      label: "Slack",
+      icon: IconBrandSlack,
+      color: "#4A154B",
+      connected: slackConnected,
+    },
+    {
+      id: "sheets",
+      label: "Google Sheets",
+      icon: IconFileSpreadsheet,
+      color: "#0F9D58",
+      connected: sheetsConnected,
+    },
+  ];
+
+  // Gmail handlers
+  const handleConnectGmail = async () => {
     try {
-      await connect();
+      await connectGmail();
+      notifications.show({
+        title: "Connected!",
+        message: "Gmail connected successfully",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Connection Failed",
+        message: err instanceof Error ? err.message : "Failed to connect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleDisconnectGmail = async () => {
+    try {
+      await disconnectGmail();
+      setGmailCount(null);
+      notifications.show({
+        title: "Disconnected",
+        message: "Gmail has been disconnected",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleScanGmail = async () => {
+    try {
+      setGmailError(null);
+      const result = await scanGmail({ userId: user?.uid });
+
+      if (result.success) {
+        setGmailCount(result.importantCount || 0);
+        notifications.show({
+          title: "Scan Complete",
+          message: `Found ${result.importantCount || 0} important emails`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to scan");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to scan Gmail";
+      setGmailError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // HubSpot handlers
+  const handleConnectHubspot = async () => {
+    try {
+      await connectHubspot();
       notifications.show({
         title: "Connected!",
         message: "HubSpot connected successfully",
@@ -95,9 +308,9 @@ function AppContent() {
     }
   };
 
-  const handleDisconnect = async () => {
+  const handleDisconnectHubspot = async () => {
     try {
-      await disconnect();
+      await disconnectHubspot();
       setContacts([]);
       notifications.show({
         title: "Disconnected",
@@ -115,7 +328,7 @@ function AppContent() {
 
   const handleFetchContacts = async () => {
     try {
-      setFetchError(null);
+      setHubspotError(null);
       const result = await fetchContacts({});
 
       if (result.success && result.contacts) {
@@ -129,8 +342,9 @@ function AppContent() {
         throw new Error(result.error || "Failed to fetch contacts");
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to fetch contacts";
-      setFetchError(message);
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch contacts";
+      setHubspotError(message);
       notifications.show({
         title: "Error",
         message,
@@ -139,42 +353,328 @@ function AppContent() {
     }
   };
 
-  return (
-    <AppShell header={{ height: 60 }} padding="md">
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group gap="sm">
-            <IconAddressBook size={28} color="#ff7a59" />
-            <Title order={3}>HubSpot Test</Title>
-          </Group>
-          {user && (
-            <Group
-              gap="xs"
-              style={{ cursor: "pointer" }}
-              onClick={() => setProfileModalOpened(true)}
-            >
-              <Text size="sm" c="dimmed">
-                {profile?.displayName || user.email}
-              </Text>
-              <Avatar
-                src={profile?.photoURL}
-                alt={profile?.displayName || user.email || "User"}
-                size="sm"
-                radius="xl"
-              >
-                {(profile?.displayName || user.email || "U")
-                  .charAt(0)
-                  .toUpperCase()}
-              </Avatar>
-            </Group>
-          )}
-        </Group>
-      </AppShell.Header>
+  // Slack handlers
+  const handleConnectSlack = async () => {
+    try {
+      await connectSlack();
+      notifications.show({
+        title: "Connected!",
+        message: "Slack connected successfully",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Connection Failed",
+        message: err instanceof Error ? err.message : "Failed to connect",
+        color: "red",
+      });
+    }
+  };
 
-      <AppShell.Main>
-        <Container size="lg">
+  const handleDisconnectSlack = async () => {
+    try {
+      await disconnectSlack();
+      setChannels([]);
+      setSelectedChannel(null);
+      setSummary(null);
+      notifications.show({
+        title: "Disconnected",
+        message: "Slack has been disconnected",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchChannels = async () => {
+    try {
+      setSlackError(null);
+      const result = await fetchChannels({});
+
+      if (result.success && result.channels) {
+        setChannels(result.channels);
+        notifications.show({
+          title: "Channels Loaded",
+          message: `Found ${result.channels.length} channels`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to fetch channels");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch channels";
+      setSlackError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleSummarize = async () => {
+    if (!selectedChannel) {
+      notifications.show({
+        title: "Select a Channel",
+        message: "Please select a channel first",
+        color: "yellow",
+      });
+      return;
+    }
+
+    try {
+      setSlackError(null);
+      setSummary(null);
+
+      const channel = channels.find((c) => c.id === selectedChannel);
+      const result = await summarizeChannel({
+        channelId: selectedChannel,
+        channelName: channel?.name || selectedChannel,
+        messageLimit: 50,
+      });
+
+      if (result.success && result.summary) {
+        setSummary(result.summary);
+        notifications.show({
+          title: "Summary Generated",
+          message: `Analyzed ${result.messageCount} messages`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to summarize");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to summarize channel";
+      setSlackError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // Google Sheets handlers
+  const handleConnectSheets = async () => {
+    try {
+      await connectSheets();
+      notifications.show({
+        title: "Connected!",
+        message: "Google Sheets connected successfully",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Connection Failed",
+        message: err instanceof Error ? err.message : "Failed to connect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleDisconnectSheets = async () => {
+    try {
+      await disconnectSheets();
+      setSheets([]);
+      setSelectedSheet(null);
+      setSheetHeaders([]);
+      setSheetData([]);
+      notifications.show({
+        title: "Disconnected",
+        message: "Google Sheets has been disconnected",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleListSheets = async () => {
+    try {
+      setSheetsError(null);
+      const result = await listSheets({});
+
+      if (result.success && result.sheets) {
+        setSheets(result.sheets);
+        notifications.show({
+          title: "Sheets Loaded",
+          message: `Found ${result.sheets.length} spreadsheets`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to list sheets");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to list sheets";
+      setSheetsError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchSheet = async () => {
+    if (!selectedSheet) {
+      notifications.show({
+        title: "Select a Sheet",
+        message: "Please select a spreadsheet first",
+        color: "yellow",
+      });
+      return;
+    }
+
+    try {
+      setSheetsError(null);
+      setSheetHeaders([]);
+      setSheetData([]);
+
+      const result = await fetchSheet({
+        spreadsheetId: selectedSheet,
+        range: "Sheet1",
+      });
+
+      if (result.success) {
+        setSheetHeaders(result.headers || []);
+        setSheetData(result.data || []);
+        notifications.show({
+          title: "Data Loaded",
+          message: `Loaded ${result.totalRows || 0} rows`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to fetch sheet data");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch sheet data";
+      setSheetsError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // Render content based on active tab
+  const renderContent = () => {
+    switch (activeTab) {
+      case "gmail":
+        return (
           <Stack gap="lg">
-            {/* Connection Status */}
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconBrandGmail size={40} color="#EA4335" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      Gmail Connection
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect Gmail to scan your inbox
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group gap="sm">
+                  {gmailConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  <Button
+                    onClick={gmailConnected ? handleDisconnectGmail : handleConnectGmail}
+                    loading={gmailOauthLoading}
+                    color={gmailConnected ? "gray" : "red"}
+                    variant={gmailConnected ? "light" : "filled"}
+                  >
+                    {gmailConnected ? "Disconnect" : "Connect Gmail"}
+                  </Button>
+                </Group>
+              </Group>
+
+              {gmailOauthError && (
+                <Alert icon={<IconAlertCircle size={16} />} color="red" mt="md">
+                  {gmailOauthError.message}
+                </Alert>
+              )}
+            </Paper>
+
+            {gmailConnected && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Title order={4}>Inbox Scanner</Title>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={handleScanGmail}
+                      loading={scanningGmail}
+                    >
+                      Scan Inbox
+                    </Button>
+                  </Group>
+
+                  {gmailError && (
+                    <Alert icon={<IconAlertCircle size={16} />} color="red">
+                      {gmailError}
+                    </Alert>
+                  )}
+
+                  {scanningGmail ? (
+                    <Center py="xl">
+                      <Stack align="center" gap="sm">
+                        <Loader size="lg" />
+                        <Text size="sm" c="dimmed">Scanning inbox...</Text>
+                      </Stack>
+                    </Center>
+                  ) : gmailCount !== null ? (
+                    <Card withBorder>
+                      <Center py="lg">
+                        <Stack align="center" gap="sm">
+                          <IconMailOpened size={48} color="#EA4335" />
+                          <Text size="xl" fw={600}>
+                            {gmailCount} important emails
+                          </Text>
+                          <Text size="sm" c="dimmed">
+                            Found in your inbox
+                          </Text>
+                        </Stack>
+                      </Center>
+                    </Card>
+                  ) : (
+                    <Text c="dimmed" ta="center" py="xl">
+                      Click "Scan Inbox" to check for important emails
+                    </Text>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      case "hubspot":
+        return (
+          <Stack gap="lg">
             <Paper shadow="sm" p="lg" withBorder>
               <Group justify="space-between" align="center">
                 <Group gap="md">
@@ -190,35 +690,42 @@ function AppContent() {
                 </Group>
 
                 <Group gap="sm">
-                  {isConnected && (
-                    <Badge color="green" size="lg" leftSection={<IconCheck size={14} />}>
+                  {hubspotConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
                       Connected
                     </Badge>
                   )}
                   <Button
-                    onClick={isConnected ? handleDisconnect : handleConnect}
-                    loading={oauthLoading}
-                    color={isConnected ? "gray" : "orange"}
-                    variant={isConnected ? "light" : "filled"}
+                    onClick={
+                      hubspotConnected
+                        ? handleDisconnectHubspot
+                        : handleConnectHubspot
+                    }
+                    loading={hubspotOauthLoading}
+                    color={hubspotConnected ? "gray" : "orange"}
+                    variant={hubspotConnected ? "light" : "filled"}
                   >
-                    {isConnected ? "Disconnect" : "Connect HubSpot"}
+                    {hubspotConnected ? "Disconnect" : "Connect HubSpot"}
                   </Button>
                 </Group>
               </Group>
 
-              {oauthError && (
+              {hubspotOauthError && (
                 <Alert
                   icon={<IconAlertCircle size={16} />}
                   color="red"
                   mt="md"
                 >
-                  {oauthError.message}
+                  {hubspotOauthError.message}
                 </Alert>
               )}
             </Paper>
 
-            {/* Contacts Section */}
-            {isConnected && (
+            {hubspotConnected && (
               <Paper shadow="sm" p="lg" withBorder>
                 <Group justify="space-between" mb="md">
                   <Title order={4}>Contacts</Title>
@@ -231,13 +738,13 @@ function AppContent() {
                   </Button>
                 </Group>
 
-                {fetchError && (
+                {hubspotError && (
                   <Alert
                     icon={<IconAlertCircle size={16} />}
                     color="red"
                     mb="md"
                   >
-                    {fetchError}
+                    {hubspotError}
                   </Alert>
                 )}
 
@@ -279,7 +786,390 @@ function AppContent() {
               </Paper>
             )}
           </Stack>
-        </Container>
+        );
+
+      case "slack":
+        return (
+          <Stack gap="lg">
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconBrandSlack size={40} color="#4A154B" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      Slack Connection
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect Slack to summarize channel conversations
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group gap="sm">
+                  {slackConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  <Button
+                    onClick={
+                      slackConnected ? handleDisconnectSlack : handleConnectSlack
+                    }
+                    loading={slackOauthLoading}
+                    color={slackConnected ? "gray" : "violet"}
+                    variant={slackConnected ? "light" : "filled"}
+                  >
+                    {slackConnected ? "Disconnect" : "Connect Slack"}
+                  </Button>
+                </Group>
+              </Group>
+
+              {slackOauthError && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  mt="md"
+                >
+                  {slackOauthError.message}
+                </Alert>
+              )}
+            </Paper>
+
+            {slackConnected && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Title order={4}>Channel Summarizer</Title>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={handleFetchChannels}
+                      loading={fetchingChannels}
+                      variant="light"
+                    >
+                      {channels.length > 0 ? "Refresh" : "Load Channels"}
+                    </Button>
+                  </Group>
+
+                  {slackError && (
+                    <Alert icon={<IconAlertCircle size={16} />} color="red">
+                      {slackError}
+                    </Alert>
+                  )}
+
+                  {channels.length > 0 && (
+                    <>
+                      <Select
+                        label="Select a channel to summarize"
+                        placeholder="Choose a channel..."
+                        data={channels.map((ch) => ({
+                          value: ch.id,
+                          label: `#${ch.name}${ch.isPrivate ? " 🔒" : ""} (${ch.memberCount} members)`,
+                        }))}
+                        value={selectedChannel}
+                        onChange={setSelectedChannel}
+                        searchable
+                        leftSection={<IconMessage size={16} />}
+                      />
+
+                      <Button
+                        onClick={handleSummarize}
+                        loading={summarizing}
+                        disabled={!selectedChannel}
+                        leftSection={<IconSparkles size={16} />}
+                        color="violet"
+                      >
+                        Generate Summary
+                      </Button>
+                    </>
+                  )}
+
+                  {fetchingChannels && (
+                    <Center py="xl">
+                      <Loader size="lg" />
+                    </Center>
+                  )}
+
+                  {!fetchingChannels && channels.length === 0 && (
+                    <Text c="dimmed" ta="center" py="md">
+                      Click "Load Channels" to see your Slack channels
+                    </Text>
+                  )}
+
+                  {summarizing && (
+                    <Card withBorder>
+                      <Center py="xl">
+                        <Stack align="center" gap="sm">
+                          <Loader size="md" />
+                          <Text size="sm" c="dimmed">
+                            Analyzing messages and generating summary...
+                          </Text>
+                        </Stack>
+                      </Center>
+                    </Card>
+                  )}
+
+                  {summary && !summarizing && (
+                    <Card withBorder>
+                      <Stack gap="sm">
+                        <Group gap="xs">
+                          <IconSparkles size={18} color="#7c3aed" />
+                          <Text fw={500}>Channel Summary</Text>
+                        </Group>
+                        <Textarea
+                          value={summary}
+                          readOnly
+                          autosize
+                          minRows={4}
+                          maxRows={15}
+                          styles={{
+                            input: {
+                              backgroundColor: "#f8f9fa",
+                              border: "none",
+                            },
+                          }}
+                        />
+                      </Stack>
+                    </Card>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      case "sheets":
+        return (
+          <Stack gap="lg">
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconFileSpreadsheet size={40} color="#0F9D58" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      Google Sheets Connection
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect to read data from your spreadsheets
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group gap="sm">
+                  {sheetsConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  <Button
+                    onClick={
+                      sheetsConnected ? handleDisconnectSheets : handleConnectSheets
+                    }
+                    loading={sheetsOauthLoading}
+                    color={sheetsConnected ? "gray" : "green"}
+                    variant={sheetsConnected ? "light" : "filled"}
+                  >
+                    {sheetsConnected ? "Disconnect" : "Connect Google Sheets"}
+                  </Button>
+                </Group>
+              </Group>
+
+              {sheetsOauthError && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  mt="md"
+                >
+                  {sheetsOauthError.message}
+                </Alert>
+              )}
+            </Paper>
+
+            {sheetsConnected && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Title order={4}>Spreadsheet Viewer</Title>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={handleListSheets}
+                      loading={listingSheets}
+                      variant="light"
+                    >
+                      {sheets.length > 0 ? "Refresh" : "Load Spreadsheets"}
+                    </Button>
+                  </Group>
+
+                  {sheetsError && (
+                    <Alert icon={<IconAlertCircle size={16} />} color="red">
+                      {sheetsError}
+                    </Alert>
+                  )}
+
+                  {sheets.length > 0 && (
+                    <>
+                      <Select
+                        label="Select a spreadsheet"
+                        placeholder="Choose a spreadsheet..."
+                        data={sheets.map((sheet) => ({
+                          value: sheet.id,
+                          label: sheet.name,
+                        }))}
+                        value={selectedSheet}
+                        onChange={setSelectedSheet}
+                        searchable
+                        leftSection={<IconTable size={16} />}
+                      />
+
+                      <Button
+                        onClick={handleFetchSheet}
+                        loading={fetchingSheet}
+                        disabled={!selectedSheet}
+                        leftSection={<IconTable size={16} />}
+                        color="green"
+                      >
+                        Load Data
+                      </Button>
+                    </>
+                  )}
+
+                  {listingSheets && (
+                    <Center py="xl">
+                      <Loader size="lg" />
+                    </Center>
+                  )}
+
+                  {!listingSheets && sheets.length === 0 && (
+                    <Text c="dimmed" ta="center" py="md">
+                      Click "Load Spreadsheets" to see your Google Sheets
+                    </Text>
+                  )}
+
+                  {fetchingSheet && (
+                    <Card withBorder>
+                      <Center py="xl">
+                        <Stack align="center" gap="sm">
+                          <Loader size="md" />
+                          <Text size="sm" c="dimmed">
+                            Loading spreadsheet data...
+                          </Text>
+                        </Stack>
+                      </Center>
+                    </Card>
+                  )}
+
+                  {sheetData.length > 0 && !fetchingSheet && (
+                    <Card withBorder p={0}>
+                      <ScrollArea>
+                        <Table striped highlightOnHover>
+                          <Table.Thead>
+                            <Table.Tr>
+                              {sheetHeaders.map((header, idx) => (
+                                <Table.Th key={idx}>{header}</Table.Th>
+                              ))}
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {sheetData.slice(0, 50).map((row, rowIdx) => (
+                              <Table.Tr key={rowIdx}>
+                                {sheetHeaders.map((header, colIdx) => (
+                                  <Table.Td key={colIdx}>
+                                    {row[header] || "-"}
+                                  </Table.Td>
+                                ))}
+                              </Table.Tr>
+                            ))}
+                          </Table.Tbody>
+                        </Table>
+                      </ScrollArea>
+                      {sheetData.length > 50 && (
+                        <Text size="sm" c="dimmed" ta="center" py="sm">
+                          Showing 50 of {sheetData.length} rows
+                        </Text>
+                      )}
+                    </Card>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <AppShell
+      header={{ height: 60 }}
+      navbar={{ width: 220, breakpoint: "sm" }}
+      padding="md"
+    >
+      <AppShell.Header>
+        <Group h="100%" px="md" justify="space-between">
+          <Group gap="sm">
+            <IconPlugConnected size={28} color="#228be6" />
+            <Title order={3}>OAuth Test</Title>
+          </Group>
+          {user && (
+            <Group
+              gap="xs"
+              style={{ cursor: "pointer" }}
+              onClick={() => setProfileModalOpened(true)}
+            >
+              <Text size="sm" c="dimmed">
+                {profile?.displayName || user.email}
+              </Text>
+              <Avatar
+                src={profile?.photoURL}
+                alt={profile?.displayName || user.email || "User"}
+                size="sm"
+                radius="xl"
+              >
+                {(profile?.displayName || user.email || "U")
+                  .charAt(0)
+                  .toUpperCase()}
+              </Avatar>
+            </Group>
+          )}
+        </Group>
+      </AppShell.Header>
+
+      <AppShell.Navbar p="xs">
+        <AppShell.Section grow component={ScrollArea}>
+          <Text size="xs" fw={500} c="dimmed" mb="xs" px="sm">
+            INTEGRATIONS
+          </Text>
+          {integrations.map((item) => (
+            <NavLink
+              key={item.id}
+              active={activeTab === item.id}
+              label={item.label}
+              leftSection={<item.icon size={20} color={item.color} />}
+              rightSection={
+                item.connected ? (
+                  <Badge size="xs" color="green" variant="filled">
+                    ✓
+                  </Badge>
+                ) : null
+              }
+              onClick={() => setActiveTab(item.id)}
+              style={{ borderRadius: 8 }}
+            />
+          ))}
+        </AppShell.Section>
+      </AppShell.Navbar>
+
+      <AppShell.Main>
+        <Box maw={900}>{renderContent()}</Box>
       </AppShell.Main>
 
       {user && (

@@ -209,7 +209,7 @@ export const NangoIntegrations = {
   googleMail: "google-mail",
   googleCalendar: "google-calendar",
   googleDrive: "google-drive",
-  googleSheets: "google-sheets",
+  googleSheets: "google-sheet",
   googleContacts: "google-contacts",
   googleAnalytics: "google-analytics",
   googleAds: "google-ads",
