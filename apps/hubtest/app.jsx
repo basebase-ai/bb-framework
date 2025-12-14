@@ -55,6 +55,11 @@ import {
   IconStar,
   IconGitFork,
   IconLock,
+  IconBrandNotion,
+  IconFile,
+  IconLayoutGrid,
+  IconCalendar,
+  IconCalendarEvent,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -173,6 +178,36 @@ import "@mantine/notifications/styles.css";
  * @property {number} following
  */
 
+/**
+ * @typedef {Object} NotionPage
+ * @property {string} id
+ * @property {string} title
+ * @property {string} url
+ * @property {string} [icon]
+ * @property {string} [lastEdited]
+ */
+
+/**
+ * @typedef {Object} NotionDatabase
+ * @property {string} id
+ * @property {string} title
+ * @property {string} url
+ * @property {string} [icon]
+ * @property {string} [lastEdited]
+ */
+
+/**
+ * @typedef {Object} CalendarEvent
+ * @property {string} id
+ * @property {string} summary
+ * @property {string} [description]
+ * @property {string} [location]
+ * @property {string} start
+ * @property {string} end
+ * @property {boolean} allDay
+ * @property {string} [htmlLink]
+ */
+
 function AppContent() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
@@ -243,6 +278,24 @@ function AppContent() {
     error: githubOauthError,
   } = useNangoOAuth(NangoIntegrations.github);
 
+  // Notion OAuth via Nango
+  const {
+    isConnected: notionConnected,
+    connect: connectNotion,
+    disconnect: disconnectNotion,
+    loading: notionOauthLoading,
+    error: notionOauthError,
+  } = useNangoOAuth(NangoIntegrations.notion);
+
+  // Google Calendar OAuth via Nango
+  const {
+    isConnected: calendarConnected,
+    connect: connectCalendar,
+    disconnect: disconnectCalendar,
+    loading: calendarOauthLoading,
+    error: calendarOauthError,
+  } = useNangoOAuth(NangoIntegrations.googleCalendar);
+
   // Gmail functions
   const { call: scanGmail, loading: scanningGmail } = useFunction("scanGmail");
 
@@ -279,6 +332,14 @@ function AppContent() {
   // GitHub functions
   const { call: fetchGithubRepos, loading: fetchingGithubRepos } =
     useFunction("fetchGithubRepos");
+
+  // Notion functions
+  const { call: fetchNotionPages, loading: fetchingNotionPages } =
+    useFunction("fetchNotionPages");
+
+  // Google Calendar functions
+  const { call: fetchCalendarEvents, loading: fetchingCalendarEvents } =
+    useFunction("fetchGoogleCalendarEvents");
 
   // Supabase functions
   const { call: saveSupabaseCreds, loading: savingSupabaseCreds } =
@@ -359,6 +420,20 @@ function AppContent() {
   const [githubRepos, setGithubRepos] = useState([]);
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
   const [githubError, setGithubError] = useState(null);
+
+  // Notion state
+  /** @type {[NotionPage[], React.Dispatch<React.SetStateAction<NotionPage[]>>]} */
+  const [notionPages, setNotionPages] = useState([]);
+  /** @type {[NotionDatabase[], React.Dispatch<React.SetStateAction<NotionDatabase[]>>]} */
+  const [notionDatabases, setNotionDatabases] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [notionError, setNotionError] = useState(null);
+
+  // Google Calendar state
+  /** @type {[CalendarEvent[], React.Dispatch<React.SetStateAction<CalendarEvent[]>>]} */
+  const [calendarEvents, setCalendarEvents] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [calendarError, setCalendarError] = useState(null);
 
   // Supabase state
   /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
@@ -453,6 +528,20 @@ function AppContent() {
       icon: IconBrandGithub,
       color: "#333",
       connected: githubConnected,
+    },
+    {
+      id: "notion",
+      label: "Notion",
+      icon: IconBrandNotion,
+      color: "#000",
+      connected: notionConnected,
+    },
+    {
+      id: "calendar",
+      label: "Google Calendar",
+      icon: IconCalendar,
+      color: "#4285F4",
+      connected: calendarConnected,
     },
   ];
 
@@ -1094,6 +1183,136 @@ function AppContent() {
       const message =
         err instanceof Error ? err.message : "Failed to fetch repos";
       setGithubError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // Notion handlers
+  const handleConnectNotion = async () => {
+    try {
+      await connectNotion();
+      notifications.show({
+        title: "Connected!",
+        message: "Notion connected successfully",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Connection Failed",
+        message: err instanceof Error ? err.message : "Failed to connect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleDisconnectNotion = async () => {
+    try {
+      await disconnectNotion();
+      setNotionPages([]);
+      setNotionDatabases([]);
+      notifications.show({
+        title: "Disconnected",
+        message: "Notion has been disconnected",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchNotionContent = async () => {
+    try {
+      setNotionError(null);
+      const result = await fetchNotionPages({});
+
+      if (result.success) {
+        setNotionPages(result.pages || []);
+        setNotionDatabases(result.databases || []);
+        notifications.show({
+          title: "Content Loaded",
+          message: `Found ${result.pages?.length || 0} pages and ${result.databases?.length || 0} databases`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to fetch content");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch content";
+      setNotionError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // Google Calendar handlers
+  const handleConnectCalendar = async () => {
+    try {
+      await connectCalendar();
+      notifications.show({
+        title: "Connected!",
+        message: "Google Calendar connected successfully",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Connection Failed",
+        message: err instanceof Error ? err.message : "Failed to connect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleDisconnectCalendar = async () => {
+    try {
+      await disconnectCalendar();
+      setCalendarEvents([]);
+      notifications.show({
+        title: "Disconnected",
+        message: "Google Calendar has been disconnected",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchCalendarEvents = async () => {
+    try {
+      setCalendarError(null);
+      const result = await fetchCalendarEvents({});
+
+      if (result.success) {
+        setCalendarEvents(result.events || []);
+        notifications.show({
+          title: "Events Loaded",
+          message: `Found ${result.events?.length || 0} upcoming events`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to fetch events");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch events";
+      setCalendarError(message);
       notifications.show({
         title: "Error",
         message,
@@ -2503,6 +2722,314 @@ function AppContent() {
                     <Text c="dimmed" ta="center" py="xl">
                       No repositories loaded. Click "Load Repos" to fetch from
                       GitHub.
+                    </Text>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      case "notion":
+        return (
+          <Stack gap="lg">
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconBrandNotion size={40} color="#000" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      Notion Connection
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect your Notion workspace to view pages and databases
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group gap="sm">
+                  {notionConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  <Button
+                    onClick={
+                      notionConnected
+                        ? handleDisconnectNotion
+                        : handleConnectNotion
+                    }
+                    loading={notionOauthLoading}
+                    color={notionConnected ? "gray" : "dark"}
+                    variant={notionConnected ? "light" : "filled"}
+                  >
+                    {notionConnected ? "Disconnect" : "Connect Notion"}
+                  </Button>
+                </Group>
+              </Group>
+
+              {notionOauthError && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  mt="md"
+                >
+                  {notionOauthError.message}
+                </Alert>
+              )}
+            </Paper>
+
+            {notionConnected && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Title order={4}>Workspace Content</Title>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={handleFetchNotionContent}
+                      loading={fetchingNotionPages}
+                    >
+                      {notionPages.length > 0 || notionDatabases.length > 0
+                        ? "Refresh"
+                        : "Load Content"}
+                    </Button>
+                  </Group>
+
+                  {notionError && (
+                    <Alert icon={<IconAlertCircle size={16} />} color="red">
+                      {notionError}
+                    </Alert>
+                  )}
+
+                  {fetchingNotionPages ? (
+                    <Center py="xl">
+                      <Loader size="lg" />
+                    </Center>
+                  ) : notionPages.length > 0 || notionDatabases.length > 0 ? (
+                    <Stack gap="lg">
+                      {notionDatabases.length > 0 && (
+                        <>
+                          <Group gap="xs">
+                            <IconLayoutGrid size={20} />
+                            <Text fw={500}>
+                              Databases ({notionDatabases.length})
+                            </Text>
+                          </Group>
+                          <Table striped highlightOnHover>
+                            <Table.Thead>
+                              <Table.Tr>
+                                <Table.Th>Name</Table.Th>
+                                <Table.Th>Last Edited</Table.Th>
+                              </Table.Tr>
+                            </Table.Thead>
+                            <Table.Tbody>
+                              {notionDatabases.map((db) => (
+                                <Table.Tr key={db.id}>
+                                  <Table.Td>
+                                    <Group gap="xs">
+                                      {db.icon && <span>{db.icon}</span>}
+                                      <a
+                                        href={db.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: "inherit" }}
+                                      >
+                                        {db.title}
+                                      </a>
+                                    </Group>
+                                  </Table.Td>
+                                  <Table.Td>
+                                    {db.lastEdited
+                                      ? new Date(db.lastEdited).toLocaleDateString()
+                                      : "-"}
+                                  </Table.Td>
+                                </Table.Tr>
+                              ))}
+                            </Table.Tbody>
+                          </Table>
+                        </>
+                      )}
+
+                      {notionPages.length > 0 && (
+                        <>
+                          <Group gap="xs">
+                            <IconFile size={20} />
+                            <Text fw={500}>Pages ({notionPages.length})</Text>
+                          </Group>
+                          <Table striped highlightOnHover>
+                            <Table.Thead>
+                              <Table.Tr>
+                                <Table.Th>Title</Table.Th>
+                                <Table.Th>Last Edited</Table.Th>
+                              </Table.Tr>
+                            </Table.Thead>
+                            <Table.Tbody>
+                              {notionPages.map((page) => (
+                                <Table.Tr key={page.id}>
+                                  <Table.Td>
+                                    <Group gap="xs">
+                                      {page.icon && <span>{page.icon}</span>}
+                                      <a
+                                        href={page.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: "inherit" }}
+                                      >
+                                        {page.title}
+                                      </a>
+                                    </Group>
+                                  </Table.Td>
+                                  <Table.Td>
+                                    {page.lastEdited
+                                      ? new Date(page.lastEdited).toLocaleDateString()
+                                      : "-"}
+                                  </Table.Td>
+                                </Table.Tr>
+                              ))}
+                            </Table.Tbody>
+                          </Table>
+                        </>
+                      )}
+                    </Stack>
+                  ) : (
+                    <Text c="dimmed" ta="center" py="xl">
+                      No content loaded. Click "Load Content" to fetch from
+                      Notion.
+                    </Text>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      case "calendar":
+        return (
+          <Stack gap="lg">
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconCalendar size={40} color="#4285F4" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      Google Calendar Connection
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect your Google Calendar to view upcoming events
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group gap="sm">
+                  {calendarConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  <Button
+                    onClick={
+                      calendarConnected
+                        ? handleDisconnectCalendar
+                        : handleConnectCalendar
+                    }
+                    loading={calendarOauthLoading}
+                    color={calendarConnected ? "gray" : "blue"}
+                    variant={calendarConnected ? "light" : "filled"}
+                  >
+                    {calendarConnected ? "Disconnect" : "Connect Calendar"}
+                  </Button>
+                </Group>
+              </Group>
+
+              {calendarOauthError && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  mt="md"
+                >
+                  {calendarOauthError.message}
+                </Alert>
+              )}
+            </Paper>
+
+            {calendarConnected && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Title order={4}>Upcoming Events (Next 30 Days)</Title>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={handleFetchCalendarEvents}
+                      loading={fetchingCalendarEvents}
+                    >
+                      {calendarEvents.length > 0 ? "Refresh" : "Load Events"}
+                    </Button>
+                  </Group>
+
+                  {calendarError && (
+                    <Alert icon={<IconAlertCircle size={16} />} color="red">
+                      {calendarError}
+                    </Alert>
+                  )}
+
+                  {fetchingCalendarEvents ? (
+                    <Center py="xl">
+                      <Loader size="lg" />
+                    </Center>
+                  ) : calendarEvents.length > 0 ? (
+                    <Table striped highlightOnHover>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Event</Table.Th>
+                          <Table.Th>Date</Table.Th>
+                          <Table.Th>Time</Table.Th>
+                          <Table.Th>Location</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {calendarEvents.map((event) => (
+                          <Table.Tr key={event.id}>
+                            <Table.Td>
+                              <Group gap="xs">
+                                <IconCalendarEvent size={16} color="#4285F4" />
+                                <a
+                                  href={event.htmlLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: "inherit" }}
+                                >
+                                  {event.summary}
+                                </a>
+                              </Group>
+                            </Table.Td>
+                            <Table.Td>
+                              {new Date(event.start).toLocaleDateString()}
+                            </Table.Td>
+                            <Table.Td>
+                              {event.allDay
+                                ? "All day"
+                                : new Date(event.start).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                            </Table.Td>
+                            <Table.Td>{event.location || "-"}</Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  ) : (
+                    <Text c="dimmed" ta="center" py="xl">
+                      No events loaded. Click "Load Events" to fetch from
+                      Google Calendar.
                     </Text>
                   )}
                 </Stack>
