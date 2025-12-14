@@ -49,6 +49,8 @@ import {
   IconBrandSupabase,
   IconLink,
   IconKey,
+  IconCloud,
+  IconBuilding,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -118,6 +120,31 @@ import "@mantine/notifications/styles.css";
  * @property {string} [description]
  */
 
+/**
+ * @typedef {Object} SalesforceContact
+ * @property {string} id
+ * @property {string} [firstName]
+ * @property {string} [lastName]
+ * @property {string} [email]
+ * @property {string} [phone]
+ * @property {string} [accountName]
+ * @property {string} [title]
+ * @property {string} [createdAt]
+ */
+
+/**
+ * @typedef {Object} SalesforceAccount
+ * @property {string} id
+ * @property {string} [name]
+ * @property {string} [industry]
+ * @property {string} [type]
+ * @property {string} [phone]
+ * @property {string} [website]
+ * @property {string} [billingCity]
+ * @property {string} [billingState]
+ * @property {string} [createdAt]
+ */
+
 function AppContent() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
@@ -170,6 +197,15 @@ function AppContent() {
     error: airtableOauthError,
   } = useNangoOAuth(NangoIntegrations.airtable);
 
+  // Salesforce OAuth via Nango
+  const {
+    isConnected: salesforceConnected,
+    connect: connectSalesforce,
+    disconnect: disconnectSalesforce,
+    loading: salesforceOauthLoading,
+    error: salesforceOauthError,
+  } = useNangoOAuth(NangoIntegrations.salesforce);
+
   // Gmail functions
   const { call: scanGmail, loading: scanningGmail } = useFunction("scanGmail");
 
@@ -196,6 +232,12 @@ function AppContent() {
     useFunction("listAirtableTables");
   const { call: fetchRecords, loading: fetchingRecords } =
     useFunction("fetchAirtableRecords");
+
+  // Salesforce functions
+  const { call: fetchSalesforceContacts, loading: fetchingSalesforceContacts } =
+    useFunction("fetchSalesforceContacts");
+  const { call: fetchSalesforceAccounts, loading: fetchingSalesforceAccounts } =
+    useFunction("fetchSalesforceAccounts");
 
   // Supabase functions
   const { call: saveSupabaseCreds, loading: savingSupabaseCreds } =
@@ -258,6 +300,16 @@ function AppContent() {
   const [airtableRecords, setAirtableRecords] = useState([]);
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
   const [airtableError, setAirtableError] = useState(null);
+
+  // Salesforce state
+  /** @type {[SalesforceContact[], React.Dispatch<React.SetStateAction<SalesforceContact[]>>]} */
+  const [salesforceContacts, setSalesforceContacts] = useState([]);
+  /** @type {[SalesforceAccount[], React.Dispatch<React.SetStateAction<SalesforceAccount[]>>]} */
+  const [salesforceAccounts, setSalesforceAccounts] = useState([]);
+  /** @type {["contacts" | "accounts", React.Dispatch<React.SetStateAction<"contacts" | "accounts">>]} */
+  const [salesforceView, setSalesforceView] = useState("contacts");
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [salesforceError, setSalesforceError] = useState(null);
 
   // Supabase state
   /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
@@ -338,6 +390,13 @@ function AppContent() {
       icon: IconBrandSupabase,
       color: "#3ECF8E",
       connected: supabaseConnected,
+    },
+    {
+      id: "salesforce",
+      label: "Salesforce",
+      icon: IconCloud,
+      color: "#00A1E0",
+      connected: salesforceConnected,
     },
   ];
 
@@ -821,6 +880,98 @@ function AppContent() {
       const message =
         err instanceof Error ? err.message : "Failed to fetch records";
       setAirtableError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // Salesforce handlers
+  const handleConnectSalesforce = async () => {
+    try {
+      await connectSalesforce();
+      notifications.show({
+        title: "Connected!",
+        message: "Salesforce connected successfully",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Connection Failed",
+        message: err instanceof Error ? err.message : "Failed to connect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleDisconnectSalesforce = async () => {
+    try {
+      await disconnectSalesforce();
+      setSalesforceContacts([]);
+      setSalesforceAccounts([]);
+      notifications.show({
+        title: "Disconnected",
+        message: "Salesforce has been disconnected",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchSalesforceContacts = async () => {
+    try {
+      setSalesforceError(null);
+      const result = await fetchSalesforceContacts({});
+
+      if (result.success && result.contacts) {
+        setSalesforceContacts(result.contacts);
+        notifications.show({
+          title: "Contacts Loaded",
+          message: `Loaded ${result.contacts.length} contacts from Salesforce`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to fetch contacts");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch contacts";
+      setSalesforceError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchSalesforceAccounts = async () => {
+    try {
+      setSalesforceError(null);
+      const result = await fetchSalesforceAccounts({});
+
+      if (result.success && result.accounts) {
+        setSalesforceAccounts(result.accounts);
+        notifications.show({
+          title: "Accounts Loaded",
+          message: `Loaded ${result.accounts.length} accounts from Salesforce`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to fetch accounts");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch accounts";
+      setSalesforceError(message);
       notifications.show({
         title: "Error",
         message,
@@ -1853,6 +2004,207 @@ function AppContent() {
                         </Text>
                       )}
                     </Card>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      case "salesforce":
+        return (
+          <Stack gap="lg">
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconCloud size={40} color="#00A1E0" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      Salesforce Connection
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect your Salesforce account to view CRM data
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group gap="sm">
+                  {salesforceConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  <Button
+                    onClick={
+                      salesforceConnected
+                        ? handleDisconnectSalesforce
+                        : handleConnectSalesforce
+                    }
+                    loading={salesforceOauthLoading}
+                    color={salesforceConnected ? "gray" : "blue"}
+                    variant={salesforceConnected ? "light" : "filled"}
+                  >
+                    {salesforceConnected ? "Disconnect" : "Connect Salesforce"}
+                  </Button>
+                </Group>
+              </Group>
+
+              {salesforceOauthError && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  mt="md"
+                >
+                  {salesforceOauthError.message}
+                </Alert>
+              )}
+            </Paper>
+
+            {salesforceConnected && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Tabs
+                      value={salesforceView}
+                      onChange={(v) => setSalesforceView(v || "contacts")}
+                    >
+                      <Tabs.List>
+                        <Tabs.Tab
+                          value="contacts"
+                          leftSection={<IconAddressBook size={16} />}
+                        >
+                          Contacts
+                        </Tabs.Tab>
+                        <Tabs.Tab
+                          value="accounts"
+                          leftSection={<IconBuilding size={16} />}
+                        >
+                          Accounts
+                        </Tabs.Tab>
+                      </Tabs.List>
+                    </Tabs>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={
+                        salesforceView === "contacts"
+                          ? handleFetchSalesforceContacts
+                          : handleFetchSalesforceAccounts
+                      }
+                      loading={
+                        salesforceView === "contacts"
+                          ? fetchingSalesforceContacts
+                          : fetchingSalesforceAccounts
+                      }
+                    >
+                      {salesforceView === "contacts"
+                        ? salesforceContacts.length > 0
+                          ? "Refresh"
+                          : "Load Contacts"
+                        : salesforceAccounts.length > 0
+                          ? "Refresh"
+                          : "Load Accounts"}
+                    </Button>
+                  </Group>
+
+                  {salesforceError && (
+                    <Alert
+                      icon={<IconAlertCircle size={16} />}
+                      color="red"
+                    >
+                      {salesforceError}
+                    </Alert>
+                  )}
+
+                  {salesforceView === "contacts" ? (
+                    fetchingSalesforceContacts ? (
+                      <Center py="xl">
+                        <Loader size="lg" />
+                      </Center>
+                    ) : salesforceContacts.length > 0 ? (
+                      <Table striped highlightOnHover>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>Name</Table.Th>
+                            <Table.Th>Email</Table.Th>
+                            <Table.Th>Account</Table.Th>
+                            <Table.Th>Title</Table.Th>
+                            <Table.Th>Phone</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {salesforceContacts.map((contact) => (
+                            <Table.Tr key={contact.id}>
+                              <Table.Td>
+                                {[contact.firstName, contact.lastName]
+                                  .filter(Boolean)
+                                  .join(" ") || "-"}
+                              </Table.Td>
+                              <Table.Td>{contact.email || "-"}</Table.Td>
+                              <Table.Td>{contact.accountName || "-"}</Table.Td>
+                              <Table.Td>{contact.title || "-"}</Table.Td>
+                              <Table.Td>{contact.phone || "-"}</Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    ) : (
+                      <Text c="dimmed" ta="center" py="xl">
+                        No contacts loaded. Click "Load Contacts" to fetch from
+                        Salesforce.
+                      </Text>
+                    )
+                  ) : fetchingSalesforceAccounts ? (
+                    <Center py="xl">
+                      <Loader size="lg" />
+                    </Center>
+                  ) : salesforceAccounts.length > 0 ? (
+                    <Table striped highlightOnHover>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Name</Table.Th>
+                          <Table.Th>Industry</Table.Th>
+                          <Table.Th>Type</Table.Th>
+                          <Table.Th>Location</Table.Th>
+                          <Table.Th>Website</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {salesforceAccounts.map((account) => (
+                          <Table.Tr key={account.id}>
+                            <Table.Td>{account.name || "-"}</Table.Td>
+                            <Table.Td>{account.industry || "-"}</Table.Td>
+                            <Table.Td>{account.type || "-"}</Table.Td>
+                            <Table.Td>
+                              {[account.billingCity, account.billingState]
+                                .filter(Boolean)
+                                .join(", ") || "-"}
+                            </Table.Td>
+                            <Table.Td>
+                              {account.website ? (
+                                <a
+                                  href={account.website}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  {account.website}
+                                </a>
+                              ) : (
+                                "-"
+                              )}
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  ) : (
+                    <Text c="dimmed" ta="center" py="xl">
+                      No accounts loaded. Click "Load Accounts" to fetch from
+                      Salesforce.
+                    </Text>
                   )}
                 </Stack>
               </Paper>
