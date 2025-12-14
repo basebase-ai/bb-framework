@@ -51,6 +51,10 @@ import {
   IconKey,
   IconCloud,
   IconBuilding,
+  IconBrandGithub,
+  IconStar,
+  IconGitFork,
+  IconLock,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -145,6 +149,30 @@ import "@mantine/notifications/styles.css";
  * @property {string} [createdAt]
  */
 
+/**
+ * @typedef {Object} GithubRepo
+ * @property {number} id
+ * @property {string} name
+ * @property {string} fullName
+ * @property {string} [description]
+ * @property {boolean} private
+ * @property {string} htmlUrl
+ * @property {string} [language]
+ * @property {number} stargazersCount
+ * @property {number} forksCount
+ * @property {string} [updatedAt]
+ */
+
+/**
+ * @typedef {Object} GithubUser
+ * @property {string} login
+ * @property {string} [name]
+ * @property {string} [avatarUrl]
+ * @property {number} publicRepos
+ * @property {number} followers
+ * @property {number} following
+ */
+
 function AppContent() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
@@ -206,6 +234,15 @@ function AppContent() {
     error: salesforceOauthError,
   } = useNangoOAuth(NangoIntegrations.salesforce);
 
+  // GitHub OAuth via Nango
+  const {
+    isConnected: githubConnected,
+    connect: connectGithub,
+    disconnect: disconnectGithub,
+    loading: githubOauthLoading,
+    error: githubOauthError,
+  } = useNangoOAuth(NangoIntegrations.github);
+
   // Gmail functions
   const { call: scanGmail, loading: scanningGmail } = useFunction("scanGmail");
 
@@ -238,6 +275,10 @@ function AppContent() {
     useFunction("fetchSalesforceContacts");
   const { call: fetchSalesforceAccounts, loading: fetchingSalesforceAccounts } =
     useFunction("fetchSalesforceAccounts");
+
+  // GitHub functions
+  const { call: fetchGithubRepos, loading: fetchingGithubRepos } =
+    useFunction("fetchGithubRepos");
 
   // Supabase functions
   const { call: saveSupabaseCreds, loading: savingSupabaseCreds } =
@@ -310,6 +351,14 @@ function AppContent() {
   const [salesforceView, setSalesforceView] = useState("contacts");
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
   const [salesforceError, setSalesforceError] = useState(null);
+
+  // GitHub state
+  /** @type {[GithubUser | null, React.Dispatch<React.SetStateAction<GithubUser | null>>]} */
+  const [githubUser, setGithubUser] = useState(null);
+  /** @type {[GithubRepo[], React.Dispatch<React.SetStateAction<GithubRepo[]>>]} */
+  const [githubRepos, setGithubRepos] = useState([]);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [githubError, setGithubError] = useState(null);
 
   // Supabase state
   /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
@@ -397,6 +446,13 @@ function AppContent() {
       icon: IconCloud,
       color: "#00A1E0",
       connected: salesforceConnected,
+    },
+    {
+      id: "github",
+      label: "GitHub",
+      icon: IconBrandGithub,
+      color: "#333",
+      connected: githubConnected,
     },
   ];
 
@@ -972,6 +1028,72 @@ function AppContent() {
       const message =
         err instanceof Error ? err.message : "Failed to fetch accounts";
       setSalesforceError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // GitHub handlers
+  const handleConnectGithub = async () => {
+    try {
+      await connectGithub();
+      notifications.show({
+        title: "Connected!",
+        message: "GitHub connected successfully",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Connection Failed",
+        message: err instanceof Error ? err.message : "Failed to connect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleDisconnectGithub = async () => {
+    try {
+      await disconnectGithub();
+      setGithubUser(null);
+      setGithubRepos([]);
+      notifications.show({
+        title: "Disconnected",
+        message: "GitHub has been disconnected",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchGithubRepos = async () => {
+    try {
+      setGithubError(null);
+      const result = await fetchGithubRepos({});
+
+      if (result.success) {
+        setGithubUser(result.user || null);
+        setGithubRepos(result.repos || []);
+        notifications.show({
+          title: "Repos Loaded",
+          message: `Loaded ${result.repos?.length || 0} repositories`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to fetch repos");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch repos";
+      setGithubError(message);
       notifications.show({
         title: "Error",
         message,
@@ -2204,6 +2326,183 @@ function AppContent() {
                     <Text c="dimmed" ta="center" py="xl">
                       No accounts loaded. Click "Load Accounts" to fetch from
                       Salesforce.
+                    </Text>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      case "github":
+        return (
+          <Stack gap="lg">
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconBrandGithub size={40} color="#333" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      GitHub Connection
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect your GitHub account to view repositories
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group gap="sm">
+                  {githubConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  <Button
+                    onClick={
+                      githubConnected
+                        ? handleDisconnectGithub
+                        : handleConnectGithub
+                    }
+                    loading={githubOauthLoading}
+                    color={githubConnected ? "gray" : "dark"}
+                    variant={githubConnected ? "light" : "filled"}
+                  >
+                    {githubConnected ? "Disconnect" : "Connect GitHub"}
+                  </Button>
+                </Group>
+              </Group>
+
+              {githubOauthError && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  mt="md"
+                >
+                  {githubOauthError.message}
+                </Alert>
+              )}
+            </Paper>
+
+            {githubConnected && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Group gap="md">
+                      {githubUser && (
+                        <>
+                          <Avatar src={githubUser.avatarUrl} size="md" />
+                          <div>
+                            <Text fw={500}>{githubUser.name || githubUser.login}</Text>
+                            <Text size="sm" c="dimmed">@{githubUser.login}</Text>
+                          </div>
+                        </>
+                      )}
+                    </Group>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={handleFetchGithubRepos}
+                      loading={fetchingGithubRepos}
+                    >
+                      {githubRepos.length > 0 ? "Refresh" : "Load Repos"}
+                    </Button>
+                  </Group>
+
+                  {githubUser && (
+                    <Group gap="lg">
+                      <Text size="sm">
+                        <strong>{githubUser.publicRepos}</strong> repos
+                      </Text>
+                      <Text size="sm">
+                        <strong>{githubUser.followers}</strong> followers
+                      </Text>
+                      <Text size="sm">
+                        <strong>{githubUser.following}</strong> following
+                      </Text>
+                    </Group>
+                  )}
+
+                  {githubError && (
+                    <Alert icon={<IconAlertCircle size={16} />} color="red">
+                      {githubError}
+                    </Alert>
+                  )}
+
+                  {fetchingGithubRepos ? (
+                    <Center py="xl">
+                      <Loader size="lg" />
+                    </Center>
+                  ) : githubRepos.length > 0 ? (
+                    <Table striped highlightOnHover>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Repository</Table.Th>
+                          <Table.Th>Language</Table.Th>
+                          <Table.Th>Stars</Table.Th>
+                          <Table.Th>Forks</Table.Th>
+                          <Table.Th>Updated</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {githubRepos.map((repo) => (
+                          <Table.Tr key={repo.id}>
+                            <Table.Td>
+                              <Group gap="xs">
+                                {repo.private && (
+                                  <IconLock size={14} color="gray" />
+                                )}
+                                <a
+                                  href={repo.htmlUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: "inherit" }}
+                                >
+                                  {repo.name}
+                                </a>
+                              </Group>
+                              {repo.description && (
+                                <Text size="xs" c="dimmed" lineClamp={1}>
+                                  {repo.description}
+                                </Text>
+                              )}
+                            </Table.Td>
+                            <Table.Td>
+                              {repo.language ? (
+                                <Badge size="sm" variant="light">
+                                  {repo.language}
+                                </Badge>
+                              ) : (
+                                "-"
+                              )}
+                            </Table.Td>
+                            <Table.Td>
+                              <Group gap={4}>
+                                <IconStar size={14} />
+                                {repo.stargazersCount}
+                              </Group>
+                            </Table.Td>
+                            <Table.Td>
+                              <Group gap={4}>
+                                <IconGitFork size={14} />
+                                {repo.forksCount}
+                              </Group>
+                            </Table.Td>
+                            <Table.Td>
+                              {repo.updatedAt
+                                ? new Date(repo.updatedAt).toLocaleDateString()
+                                : "-"}
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  ) : (
+                    <Text c="dimmed" ta="center" py="xl">
+                      No repositories loaded. Click "Load Repos" to fetch from
+                      GitHub.
                     </Text>
                   )}
                 </Stack>

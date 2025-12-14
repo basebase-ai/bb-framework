@@ -275,7 +275,7 @@ export const NangoIntegrations = {
   invision: "invision",
 
   // ===== Developer =====
-  github: "github",
+  github: "github-getting-started",
   gitlab: "gitlab",
   bitbucket: "bitbucket",
   atlassian: "atlassian",
