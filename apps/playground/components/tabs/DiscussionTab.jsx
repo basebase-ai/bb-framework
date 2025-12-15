@@ -180,7 +180,7 @@ export default function DiscussionTab({ app }) {
               <Stack gap="sm">
                 <Group justify="space-between">
                   <Group gap="xs">
-                    <Avatar src={starterProfile?.photoURL} size="sm" radius="xl" color="violet">
+                    <Avatar src={starterProfile?.photoURL} size="sm" radius="xl" color="gray">
                       {(starterProfile?.displayName || "?").charAt(0).toUpperCase()}
                     </Avatar>
                     <div>
@@ -194,12 +194,12 @@ export default function DiscussionTab({ app }) {
                 <Text size="sm">{thread.starter.content}</Text>
                 
                 {thread.replies.length > 0 && (
-                  <Stack gap="xs" pl="md" style={{ borderLeft: "2px solid var(--mantine-color-violet-3)" }}>
+                  <Stack gap="xs" pl="md" style={{ borderLeft: "2px solid #D2D2D7" }}>
                     {thread.replies.map(reply => {
                       const replyProfile = authorProfiles.get(reply.author);
                       return (
                         <Group key={reply.id} gap="xs" align="flex-start">
-                          <Avatar src={replyProfile?.photoURL} size="xs" radius="xl" color="violet">
+                          <Avatar src={replyProfile?.photoURL} size="xs" radius="xl" color="gray">
                             {(replyProfile?.displayName || "?").charAt(0).toUpperCase()}
                           </Avatar>
                           <div style={{ flex: 1 }}>
@@ -226,7 +226,7 @@ export default function DiscussionTab({ app }) {
                     />
                     <ActionIcon 
                       variant="filled" 
-                      color="violet"
+                      color="dark"
                       size="sm"
                       onClick={() => handleReply(thread.id)}
                       disabled={!replyContent[thread.id]?.trim()}

@@ -15,14 +15,25 @@ import { ProfileModal } from "./ProfileModal.jsx";
 import AppGrid from "./AppGrid.jsx";
 import AppDetailsPage from "./AppDetailsPage.jsx";
 import CreateAppModal from "./CreateAppModal.jsx";
+import PublicHomepage from "./PublicHomepage.jsx";
 import { APP_ID } from "../schema.js";
 
 /**
- * Get app ID from URL path (e.g., /app/my-app-id -> my-app-id)
+ * Check if current path is the playground section
+ * @returns {boolean}
+ */
+function isPlaygroundPath() {
+  const path = window.location.pathname;
+  return path === "/playground" || path.startsWith("/playground/");
+}
+
+/**
+ * Get app ID from URL path (e.g., /playground/app/my-app-id -> my-app-id)
+ * @returns {string | null}
  */
 function getAppIdFromPath() {
   const path = window.location.pathname;
-  const match = path.match(/^\/app\/([^/]+)/);
+  const match = path.match(/^\/playground\/app\/([^/]+)/);
   return match ? match[1] : null;
 }
 
@@ -31,6 +42,10 @@ export default function AppPlayground() {
   const { profile } = useUserProfile(user?.uid);
   
   const { data: allApps = [], loading, update: updateItem, remove: removeItem } = useCollection("apps");
+  
+  // Track current view (homepage or playground)
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const isOnPlayground = isPlaygroundPath();
   
   // Get this app's logo from the apps collection
   const appLogo = useMemo(() => {
@@ -56,6 +71,7 @@ export default function AppPlayground() {
     }
     
     const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
       const appId = getAppIdFromPath();
       setSelectedAppId(appId);
     };
@@ -64,25 +80,38 @@ export default function AppPlayground() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
   
+  // Navigate to playground
+  const navigateToPlayground = useCallback(() => {
+    setCurrentPath('/playground');
+    window.history.pushState({}, '', '/playground');
+  }, []);
+  
+  // Navigate to homepage
+  const navigateToHome = useCallback(() => {
+    setCurrentPath('/');
+    setSelectedAppId(null);
+    window.history.pushState({}, '', '/');
+  }, []);
+  
   // Update URL when selected app changes (but not on popstate)
-  const navigateToApp = useCallback((appId) => {
+  const navigateToApp = useCallback((/** @type {string | null} */ appId) => {
     setSelectedAppId(appId);
     if (appId) {
-      window.history.pushState({ appId }, '', `/app/${appId}`);
+      setCurrentPath(`/playground/app/${appId}`);
+      window.history.pushState({ appId }, '', `/playground/app/${appId}`);
     } else {
-      window.history.pushState({}, '', '/');
+      setCurrentPath('/playground');
+      window.history.pushState({}, '', '/playground');
     }
   }, []);
 
-  const handleUpdateApp = async (appId, data, options = {}) => {
+  const handleUpdateApp = async (/** @type {string} */ appId, /** @type {Record<string, unknown>} */ data, /** @type {{ silent?: boolean }} */ options = {}) => {
     const { silent = false } = options;
     try {
       await updateItem(appId, {
         ...data,
         updatedAt: new Date(),
       });
-      
-      // Note: selectedAppDetails is derived from allApps, so it auto-updates
       
       if (!silent) {
         showNotification({
@@ -94,13 +123,13 @@ export default function AppPlayground() {
     } catch (error) {
       showNotification({
         title: "Error",
-        message: error.message,
+        message: error instanceof Error ? error.message : "Unknown error",
         color: "red",
       });
     }
   };
 
-  const handleDeleteApp = async (appId) => {
+  const handleDeleteApp = async (/** @type {string} */ appId) => {
     await removeItem(appId);
     navigateToApp(null);
     showNotification({
@@ -110,11 +139,11 @@ export default function AppPlayground() {
     });
   };
 
-  const handleOpenApp = (app) => {
+  const handleOpenApp = (/** @type {{ id: string }} */ app) => {
     window.open(`https://${app.id}.basebase.com`, '_blank');
   };
 
-  const handleShowDetails = (app) => {
+  const handleShowDetails = (/** @type {{ id: string }} */ app) => {
     navigateToApp(app.id);
   };
 
@@ -122,28 +151,36 @@ export default function AppPlayground() {
     navigateToApp(null);
   };
 
+  // Show homepage for root path (for all users)
+  if (!isOnPlayground) {
+    return (
+      <PublicHomepage 
+        onSignIn={navigateToPlayground}
+        isAuthenticated={!!user}
+      />
+    );
+  }
+
+  // Playground content (only for authenticated users - AuthProvider handles this)
   return (
     <AppShell
       header={{ height: 48 }}
       padding="xs"
       style={{
-        background: "linear-gradient(180deg, rgba(147, 51, 234, 0.05) 0%, rgba(0, 0, 0, 0) 50%)",
+        background: "#faf9f7",
       }}
     >
-      <AppShell.Header>
+      <AppShell.Header style={{ borderBottom: '1px solid #f5f3eb', background: '#FFFFFF' }}>
         <Group h="100%" px="sm" justify="space-between">
           <Group gap="xs">
-            {appLogo && (
-              <img
-                src={appLogo}
-                alt="Playground"
-                style={{
-                  height: 28,
-                  width: 'auto',
-                  filter: 'brightness(0) invert(1)', // Makes SVG white
-                }}
-              />
-            )}
+            <Text 
+              fw={700} 
+              size="md" 
+              style={{ color: "#416165", cursor: "pointer" }}
+              onClick={navigateToHome}
+            >
+              Basebase
+            </Text>
           </Group>
           {user && (
             <Group 
@@ -156,9 +193,9 @@ export default function AppPlayground() {
                 alt={profile?.displayName || user.email}
                 size="sm"
                 radius="xl"
-                color="violet"
+                color="coral"
               />
-              <Text size="sm" c="dimmed">
+              <Text size="sm" style={{ color: "#5a7a7e" }}>
                 {profile?.displayName || user.email}
               </Text>
             </Group>

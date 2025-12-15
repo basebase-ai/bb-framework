@@ -38,14 +38,15 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        borderColor: "rgba(147, 51, 234, 0.2)",
+        borderColor: "#f5f3eb",
         transition: "all 0.2s ease",
+        background: "#FFFFFF",
       }}
       sx={(theme) => ({
         "&:hover": {
-          borderColor: theme.colors.violet[6],
+          borderColor: "#ff715b",
           transform: "translateY(-2px)",
-          boxShadow: `0 4px 16px rgba(147, 51, 234, 0.15)`,
+          boxShadow: `0 4px 16px rgba(255, 113, 91, 0.12)`,
         },
       })}
     >
@@ -54,7 +55,8 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
         inheritPadding
         py="xs"
         style={{
-          background: "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(79, 70, 229, 0.1) 100%)",
+          background: "#faf9f7",
+          borderColor: "#f5f3eb",
         }}
       >
         <Group position="apart" align="flex-start" wrap="nowrap" gap="xs">
@@ -64,9 +66,7 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
               alt={app.name}
               radius="sm"
               size="md"
-              color="violet"
-              variant="gradient"
-              gradient={{ from: "violet", to: "grape", deg: 135 }}
+              color="coral"
               style={{ flexShrink: 0 }}
             >
               {app.name?.charAt(0)?.toUpperCase() || "A"}
@@ -81,7 +81,7 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
             </div>
           </Group>
           {app.category && (
-            <Badge color="violet" variant="light" style={{ flexShrink: 0 }}>
+            <Badge color="gray" variant="light" style={{ flexShrink: 0 }}>
               {app.category}
             </Badge>
           )}
@@ -96,7 +96,7 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
         {app.tags && app.tags.length > 0 && (
           <Group gap={3} mt={2}>
             {app.tags.slice(0, 2).map((tag, idx) => (
-              <Badge key={idx} variant="dot" color="violet" style={{ textTransform: "none" }}>
+              <Badge key={idx} variant="dot" color="dark" style={{ textTransform: "none" }}>
                 {tag}
               </Badge>
             ))}
@@ -119,22 +119,22 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
       </Stack>
 
       {/* Owner */}
-      <Group gap={6} mt="xs" pt="xs" style={{ borderTop: "1px solid rgba(147, 51, 234, 0.1)" }}>
+      <Group gap={6} mt="xs" pt="xs" style={{ borderTop: "1px solid #f5f3eb" }}>
         <Avatar
           src={ownerProfile?.photoURL || null}
           alt={ownerProfile?.displayName || "Owner"}
           size="sm"
           radius="xl"
-          color="violet"
+          color="teal"
         >
           {(ownerProfile?.displayName || "Unknown User").charAt(0).toUpperCase()}
         </Avatar>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <Text size="xs" color="dimmed">
+          <Text size="xs" style={{ color: "#5a7a7e" }}>
             {ownerProfile?.displayName || "Unknown User"}
           </Text>
           {app.updatedAt && (
-            <Text size="xs" color="dimmed" style={{ opacity: 0.7 }}>
+            <Text size="xs" style={{ color: "#a49966", opacity: 0.8 }}>
               {formatRelativeTime(app.updatedAt)}
             </Text>
           )}
@@ -144,7 +144,7 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
       <Group gap="xs" mt="xs" grow>
         <Button
           variant="filled"
-          color="violet"
+          color="coral"
           leftSection={<IconExternalLink size={12} />}
           onClick={() => onOpen(app)}
         >
@@ -152,7 +152,7 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
         </Button>
         <Button
           variant="light"
-          color="violet"
+          color="slate"
           leftSection={<IconInfoCircle size={12} />}
           onClick={() => onDetails(app)}
         >

@@ -75,14 +75,13 @@ export default function AppGrid({
             size={rem(28)}
             weight={700}
             style={{
-              background: "linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
+              color: "#416165",
+              letterSpacing: "-0.02em",
             }}
           >
             Basebase Playground
           </Title>
-          <Text size="xs" color="dimmed" weight={500}>
+          <Text size="xs" style={{ color: "#5a7a7e" }} weight={400}>
             Discover and build amazing apps
           </Text>
         </Stack>
@@ -95,22 +94,21 @@ export default function AppGrid({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ flex: 1 }}
-            styles={(theme) => ({
+            styles={{
               input: {
-                borderColor: "rgba(147, 51, 234, 0.3)",
+                borderColor: "#f5f3eb",
                 "&:focus": {
-                  borderColor: theme.colors.violet[6],
-                  boxShadow: `0 0 0 2px rgba(147, 51, 234, 0.1)`,
+                  borderColor: "#ff715b",
+                  boxShadow: `0 0 0 2px rgba(255, 113, 91, 0.1)`,
                 },
               },
-            })}
+            }}
           />
           <Button
-            variant="gradient"
-            gradient={{ from: "violet", to: "grape", deg: 135 }}
+            variant="filled"
+            color="coral"
             leftSection={<IconPlus size={14} />}
             onClick={onCreateApp}
-            style={{ boxShadow: "0 4px 12px rgba(147, 51, 234, 0.2)" }}
           >
             Create App
           </Button>
@@ -121,22 +119,18 @@ export default function AppGrid({
           <Grid.Col span={4}>
             <Card
               style={{
-                background: !showMyApps 
-                  ? "linear-gradient(135deg, rgba(147, 51, 234, 0.2) 0%, rgba(79, 70, 229, 0.15) 100%)"
-                  : "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%)",
-                border: !showMyApps 
-                  ? "2px solid rgba(147, 51, 234, 0.5)"
-                  : "1px solid rgba(147, 51, 234, 0.2)",
+                background: !showMyApps ? "#fff0ed" : "#FFFFFF",
+                border: !showMyApps ? "2px solid #ff715b" : "1px solid #f5f3eb",
                 cursor: "pointer",
                 transition: "all 0.2s ease",
               }}
               onClick={() => setShowMyApps(false)}
             >
               <Group gap={6}>
-                <IconRocket size={16} color="var(--mantine-color-violet-6)" />
+                <IconRocket size={16} color="#ff715b" />
                 <div>
-                  <Text size="sm" weight={700}>{publicApps.length}</Text>
-                  <Text size="xs" color="dimmed">Public Apps</Text>
+                  <Text size="sm" weight={600} style={{ color: "#416165" }}>{publicApps.length}</Text>
+                  <Text size="xs" style={{ color: "#5a7a7e" }}>Public Apps</Text>
                 </div>
               </Group>
             </Card>
@@ -144,22 +138,18 @@ export default function AppGrid({
           <Grid.Col span={4}>
             <Card
               style={{
-                background: showMyApps 
-                  ? "linear-gradient(135deg, rgba(147, 51, 234, 0.2) 0%, rgba(79, 70, 229, 0.15) 100%)"
-                  : "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%)",
-                border: showMyApps 
-                  ? "2px solid rgba(147, 51, 234, 0.5)"
-                  : "1px solid rgba(147, 51, 234, 0.2)",
+                background: showMyApps ? "#fff0ed" : "#FFFFFF",
+                border: showMyApps ? "2px solid #ff715b" : "1px solid #f5f3eb",
                 cursor: user ? "pointer" : "default",
                 transition: "all 0.2s ease",
               }}
               onClick={() => user && setShowMyApps(true)}
             >
               <Group gap={6}>
-                <IconCode size={16} color="var(--mantine-color-violet-6)" />
+                <IconCode size={16} color="#17bebb" />
                 <div>
-                  <Text size="sm" weight={700}>{myApps.length}</Text>
-                  <Text size="xs" color="dimmed">Your Apps</Text>
+                  <Text size="sm" weight={600} style={{ color: "#416165" }}>{myApps.length}</Text>
+                  <Text size="xs" style={{ color: "#5a7a7e" }}>Your Apps</Text>
                 </div>
               </Group>
             </Card>
@@ -167,17 +157,17 @@ export default function AppGrid({
           <Grid.Col span={4}>
             <Card
               style={{
-                background: "linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%)",
-                border: "1px solid rgba(147, 51, 234, 0.2)",
+                background: "#FFFFFF",
+                border: "1px solid #f5f3eb",
               }}
             >
               <Group gap={6}>
-                <IconUsers size={16} color="var(--mantine-color-violet-6)" />
+                <IconUsers size={16} color="#fed766" />
                 <div>
-                  <Text size="sm" weight={700}>
+                  <Text size="sm" weight={600} style={{ color: "#416165" }}>
                     {new Set(publicApps.map((a) => a.owner)).size}
                   </Text>
-                  <Text size="xs" color="dimmed">Developers</Text>
+                  <Text size="xs" style={{ color: "#5a7a7e" }}>Developers</Text>
                 </div>
               </Group>
             </Card>
@@ -190,22 +180,22 @@ export default function AppGrid({
         <Card
           padding="md"
           style={{
-            background: "linear-gradient(135deg, rgba(147, 51, 234, 0.05) 0%, rgba(79, 70, 229, 0.05) 100%)",
-            border: "1px solid rgba(147, 51, 234, 0.2)",
+            background: "#faf9f7",
+            border: "1px solid #f5f3eb",
             textAlign: "center",
           }}
         >
           <Stack align="center" gap="xs">
-            <IconRocket size={40} color="var(--mantine-color-violet-6)" opacity={0.5} />
+            <IconRocket size={40} color="#a49966" opacity={0.5} />
             <div>
-              <Text size="sm" weight={600} mb="xs">
+              <Text size="sm" weight={600} mb="xs" style={{ color: "#416165" }}>
                 {searchQuery 
                   ? "No apps found" 
                   : showMyApps 
                     ? "No apps yet" 
                     : "No public apps yet"}
               </Text>
-              <Text size="xs" color="dimmed">
+              <Text size="xs" style={{ color: "#5a7a7e" }}>
                 {searchQuery
                   ? "Try adjusting your search query"
                   : showMyApps
@@ -215,8 +205,8 @@ export default function AppGrid({
             </div>
             {!searchQuery && (
               <Button
-                variant="gradient"
-                gradient={{ from: "violet", to: "grape", deg: 135 }}
+                variant="filled"
+                color="coral"
                 leftSection={<IconPlus size={14} />}
                 onClick={onCreateApp}
                 mt="xs"

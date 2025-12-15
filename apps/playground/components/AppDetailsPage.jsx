@@ -49,6 +49,7 @@ export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
       <Group mb="lg" justify="space-between">
         <Button 
           variant="subtle" 
+          color="slate"
           leftSection={<IconArrowLeft size={14} />}
           onClick={onBack}
         >
@@ -56,7 +57,7 @@ export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
         </Button>
         <Button
           variant="filled"
-          color="violet"
+          color="coral"
           leftSection={<IconExternalLink size={14} />}
           onClick={() => window.open(`https://${app.id}.basebase.com`, '_blank')}
         >
@@ -65,27 +66,25 @@ export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
       </Group>
       
       {/* App Header */}
-      <Card withBorder mb="lg">
+      <Card withBorder mb="lg" style={{ borderColor: '#f5f3eb' }}>
         <Group gap="md">
           <Avatar
             src={app.logoURL}
             alt={app.name}
             size={80}
             radius="md"
-            color="violet"
-            variant="gradient"
-            gradient={{ from: "violet", to: "grape", deg: 135 }}
+            color="coral"
           >
             {app.name?.charAt(0)?.toUpperCase() || "A"}
           </Avatar>
           <div style={{ flex: 1 }}>
-            <Text size="xl" fw={700}>{app.name || "Untitled App"}</Text>
+            <Text size="xl" fw={600} style={{ color: '#416165' }}>{app.name || "Untitled App"}</Text>
             <Group gap="xs" mt={4}>
-              <Avatar src={ownerProfile?.photoURL} size="xs" radius="xl" color="violet">
+              <Avatar src={ownerProfile?.photoURL} size="xs" radius="xl" color="teal">
                 {(ownerProfile?.displayName || "?").charAt(0).toUpperCase()}
               </Avatar>
-              <Text size="sm" c="dimmed">{ownerProfile?.displayName || "Unknown"}</Text>
-              {app.category && <Badge color="violet" variant="light" size="sm">{app.category}</Badge>}
+              <Text size="sm" style={{ color: '#5a7a7e' }}>{ownerProfile?.displayName || "Unknown"}</Text>
+              {app.category && <Badge color="coral" variant="light" size="sm">{app.category}</Badge>}
             </Group>
           </div>
         </Group>

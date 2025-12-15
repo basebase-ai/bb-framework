@@ -161,7 +161,7 @@ export default function IssuesTab({ app }) {
           <Stack gap="sm">
             <Group justify="space-between">
               <Group gap="xs">
-                <ThemeIcon size="sm" variant="light" color={selectedIssue.issueType === "bug" ? "red" : "violet"}>
+                <ThemeIcon size="sm" variant="light" color={selectedIssue.issueType === "bug" ? "red" : "gray"}>
                   <TypeIcon size={12} />
                 </ThemeIcon>
                 <Text size="lg" fw={600}>{selectedIssue.title}</Text>
@@ -173,7 +173,7 @@ export default function IssuesTab({ app }) {
             </Group>
             
             <Group gap="xs">
-              <Avatar src={issueProfile?.photoURL} size="xs" radius="xl" color="violet">
+              <Avatar src={issueProfile?.photoURL} size="xs" radius="xl" color="gray">
                 {(issueProfile?.displayName || "?").charAt(0).toUpperCase()}
               </Avatar>
               <Text size="xs">{issueProfile?.displayName || "Unknown"}</Text>
@@ -206,7 +206,7 @@ export default function IssuesTab({ app }) {
           return (
             <Card key={comment.id} withBorder>
               <Group gap="xs" align="flex-start">
-                <Avatar src={commentProfile?.photoURL} size="sm" radius="xl" color="violet">
+                <Avatar src={commentProfile?.photoURL} size="sm" radius="xl" color="gray">
                   {(commentProfile?.displayName || "?").charAt(0).toUpperCase()}
                 </Avatar>
                 <div style={{ flex: 1 }}>
@@ -326,7 +326,7 @@ export default function IssuesTab({ app }) {
             >
               <Group justify="space-between">
                 <Group gap="xs">
-                  <ThemeIcon size="sm" variant="light" color={issue.issueType === "bug" ? "red" : "violet"}>
+                  <ThemeIcon size="sm" variant="light" color={issue.issueType === "bug" ? "red" : "gray"}>
                     <TypeIcon size={12} />
                   </ThemeIcon>
                   <div>

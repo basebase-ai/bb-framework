@@ -9,8 +9,8 @@ export default function CreateAppModal({ opened, onClose }) {
       onClose={onClose}
       title={
         <Group spacing="xs">
-          <IconRocket size={24} color="var(--mantine-color-violet-6)" />
-          <Text weight={600} size="lg">
+          <IconRocket size={24} color="#1D1D1F" />
+          <Text weight={600} size="lg" style={{ color: '#1D1D1F' }}>
             Create Your Own App!
           </Text>
         </Group>
@@ -39,10 +39,11 @@ export default function CreateAppModal({ opened, onClose }) {
             <code style={{
               display: "block",
               padding: "12px",
-              background: "rgba(147, 51, 234, 0.1)",
-              borderRadius: "6px",
+              background: "#F5F5F7",
+              borderRadius: "8px",
               fontSize: "13px",
-              color: "var(--mantine-color-violet-6)",
+              color: "#1D1D1F",
+              fontFamily: "SF Mono, Monaco, Menlo, monospace",
             }}>
               git clone https://github.com/basebase-ai/bb-framework.git
             </code>
@@ -53,10 +54,11 @@ export default function CreateAppModal({ opened, onClose }) {
             <code style={{
               display: "block",
               padding: "12px",
-              background: "rgba(147, 51, 234, 0.1)",
-              borderRadius: "6px",
+              background: "#F5F5F7",
+              borderRadius: "8px",
               fontSize: "13px",
-              color: "var(--mantine-color-violet-6)",
+              color: "#1D1D1F",
+              fontFamily: "SF Mono, Monaco, Menlo, monospace",
             }}>
               cd bb-framework && npm install
             </code>
@@ -67,10 +69,11 @@ export default function CreateAppModal({ opened, onClose }) {
             <code style={{
               display: "block",
               padding: "12px",
-              background: "rgba(147, 51, 234, 0.1)",
-              borderRadius: "6px",
+              background: "#F5F5F7",
+              borderRadius: "8px",
               fontSize: "13px",
-              color: "var(--mantine-color-violet-6)",
+              color: "#1D1D1F",
+              fontFamily: "SF Mono, Monaco, Menlo, monospace",
             }}>
               npm run app:init
             </code>
@@ -83,8 +86,8 @@ export default function CreateAppModal({ opened, onClose }) {
 
         <Group position="right" mt="md">
           <Button
-            variant="gradient"
-            gradient={{ from: "violet", to: "grape", deg: 135 }}
+            variant="filled"
+            color="dark"
             onClick={onClose}
             size="md"
           >

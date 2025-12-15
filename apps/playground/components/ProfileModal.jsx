@@ -358,7 +358,7 @@ export function ProfileModal({ opened, onClose }) {
           </Button>
           
           <Collapse in={showPasswordSection}>
-            <Stack gap="sm" mt="md" p="md" style={{ background: 'var(--mantine-color-dark-6)', borderRadius: 8 }}>
+            <Stack gap="sm" mt="md" p="md" style={{ background: '#F5F5F7', borderRadius: 8 }}>
               {!authInfo.hasPassword && (
                 <Alert color="blue" icon={<IconKey size={16} />}>
                   <Text size="sm">

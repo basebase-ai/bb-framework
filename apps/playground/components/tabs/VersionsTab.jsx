@@ -210,8 +210,8 @@ export default function VersionsTab({ app, onUpdate }) {
                 withBorder 
                 p="md"
                 style={{
-                  borderColor: isCurrent ? 'var(--mantine-color-violet-5)' : undefined,
-                  background: isCurrent ? 'rgba(147, 51, 234, 0.05)' : undefined,
+                  borderColor: isCurrent ? '#1D1D1F' : '#E8E8ED',
+                  background: isCurrent ? '#F5F5F7' : undefined,
                 }}
               >
                 <Group justify="space-between" align="flex-start">
@@ -220,7 +220,7 @@ export default function VersionsTab({ app, onUpdate }) {
                       src={authorProfile?.photoURL} 
                       size="md" 
                       radius="xl" 
-                      color="violet"
+                      color="gray"
                     >
                       {authorName.charAt(0).toUpperCase()}
                     </Avatar>
@@ -231,7 +231,7 @@ export default function VersionsTab({ app, onUpdate }) {
                           {version.id.slice(0, 8)}
                         </Text>
                         {isCurrent && (
-                          <Badge color="violet" size="xs">Current</Badge>
+                          <Badge color="dark" size="xs">Current</Badge>
                         )}
                       </Group>
                       

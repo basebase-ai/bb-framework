@@ -60,6 +60,10 @@ import {
   IconLayoutGrid,
   IconCalendar,
   IconCalendarEvent,
+  IconBrandStripe,
+  IconCreditCard,
+  IconUsers,
+  IconCash,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -208,6 +212,33 @@ import "@mantine/notifications/styles.css";
  * @property {string} [htmlLink]
  */
 
+/**
+ * @typedef {Object} StripeCustomer
+ * @property {string} id
+ * @property {string} [email]
+ * @property {string} [name]
+ * @property {string} created
+ * @property {number} balance
+ */
+
+/**
+ * @typedef {Object} StripePayment
+ * @property {string} id
+ * @property {number} amount
+ * @property {string} currency
+ * @property {string} status
+ * @property {string} [description]
+ * @property {string} [customerEmail]
+ * @property {string} created
+ * @property {boolean} paid
+ */
+
+/**
+ * @typedef {Object} StripeBalance
+ * @property {{amount: number, currency: string}[]} available
+ * @property {{amount: number, currency: string}[]} pending
+ */
+
 function AppContent() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
@@ -296,6 +327,15 @@ function AppContent() {
     error: calendarOauthError,
   } = useNangoOAuth(NangoIntegrations.googleCalendar);
 
+  // Stripe OAuth via Nango
+  const {
+    isConnected: stripeConnected,
+    connect: connectStripe,
+    disconnect: disconnectStripe,
+    loading: stripeOauthLoading,
+    error: stripeOauthError,
+  } = useNangoOAuth(NangoIntegrations.stripe);
+
   // Gmail functions
   const { call: scanGmail, loading: scanningGmail } = useFunction("scanGmail");
 
@@ -340,6 +380,10 @@ function AppContent() {
   // Google Calendar functions
   const { call: fetchCalendarEvents, loading: fetchingCalendarEvents } =
     useFunction("fetchGoogleCalendarEvents");
+
+  // Stripe functions
+  const { call: fetchStripeData, loading: fetchingStripeData } =
+    useFunction("fetchStripeData");
 
   // Supabase functions
   const { call: saveSupabaseCreds, loading: savingSupabaseCreds } =
@@ -434,6 +478,18 @@ function AppContent() {
   const [calendarEvents, setCalendarEvents] = useState([]);
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
   const [calendarError, setCalendarError] = useState(null);
+
+  // Stripe state
+  /** @type {[StripeBalance | null, React.Dispatch<React.SetStateAction<StripeBalance | null>>]} */
+  const [stripeBalance, setStripeBalance] = useState(null);
+  /** @type {[StripeCustomer[], React.Dispatch<React.SetStateAction<StripeCustomer[]>>]} */
+  const [stripeCustomers, setStripeCustomers] = useState([]);
+  /** @type {[StripePayment[], React.Dispatch<React.SetStateAction<StripePayment[]>>]} */
+  const [stripePayments, setStripePayments] = useState([]);
+  /** @type {["customers" | "payments", React.Dispatch<React.SetStateAction<"customers" | "payments">>]} */
+  const [stripeView, setStripeView] = useState("payments");
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [stripeError, setStripeError] = useState(null);
 
   // Supabase state
   /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
@@ -542,6 +598,13 @@ function AppContent() {
       icon: IconCalendar,
       color: "#4285F4",
       connected: calendarConnected,
+    },
+    {
+      id: "stripe",
+      label: "Stripe",
+      icon: IconBrandStripe,
+      color: "#635BFF",
+      connected: stripeConnected,
     },
   ];
 
@@ -1313,6 +1376,74 @@ function AppContent() {
       const message =
         err instanceof Error ? err.message : "Failed to fetch events";
       setCalendarError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // Stripe handlers
+  const handleConnectStripe = async () => {
+    try {
+      await connectStripe();
+      notifications.show({
+        title: "Connected!",
+        message: "Stripe connected successfully",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Connection Failed",
+        message: err instanceof Error ? err.message : "Failed to connect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleDisconnectStripe = async () => {
+    try {
+      await disconnectStripe();
+      setStripeBalance(null);
+      setStripeCustomers([]);
+      setStripePayments([]);
+      notifications.show({
+        title: "Disconnected",
+        message: "Stripe has been disconnected",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchStripeData = async () => {
+    try {
+      setStripeError(null);
+      const result = await fetchStripeData({});
+
+      if (result.success) {
+        setStripeBalance(result.balance || null);
+        setStripeCustomers(result.customers || []);
+        setStripePayments(result.payments || []);
+        notifications.show({
+          title: "Data Loaded",
+          message: `Found ${result.customers?.length || 0} customers and ${result.payments?.length || 0} payments`,
+          color: "green",
+        });
+      } else {
+        throw new Error(result.error || "Failed to fetch data");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch data";
+      setStripeError(message);
       notifications.show({
         title: "Error",
         message,
@@ -3030,6 +3161,228 @@ function AppContent() {
                     <Text c="dimmed" ta="center" py="xl">
                       No events loaded. Click "Load Events" to fetch from
                       Google Calendar.
+                    </Text>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      case "stripe":
+        return (
+          <Stack gap="lg">
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconBrandStripe size={40} color="#635BFF" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      Stripe Connection
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect your Stripe account to view payments and customers
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group gap="sm">
+                  {stripeConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  <Button
+                    onClick={
+                      stripeConnected
+                        ? handleDisconnectStripe
+                        : handleConnectStripe
+                    }
+                    loading={stripeOauthLoading}
+                    color={stripeConnected ? "gray" : "violet"}
+                    variant={stripeConnected ? "light" : "filled"}
+                  >
+                    {stripeConnected ? "Disconnect" : "Connect Stripe"}
+                  </Button>
+                </Group>
+              </Group>
+
+              {stripeOauthError && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  mt="md"
+                >
+                  {stripeOauthError.message}
+                </Alert>
+              )}
+            </Paper>
+
+            {stripeConnected && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Tabs
+                      value={stripeView}
+                      onChange={(v) => setStripeView(v || "payments")}
+                    >
+                      <Tabs.List>
+                        <Tabs.Tab
+                          value="payments"
+                          leftSection={<IconCreditCard size={16} />}
+                        >
+                          Payments
+                        </Tabs.Tab>
+                        <Tabs.Tab
+                          value="customers"
+                          leftSection={<IconUsers size={16} />}
+                        >
+                          Customers
+                        </Tabs.Tab>
+                      </Tabs.List>
+                    </Tabs>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={handleFetchStripeData}
+                      loading={fetchingStripeData}
+                    >
+                      {stripePayments.length > 0 || stripeCustomers.length > 0
+                        ? "Refresh"
+                        : "Load Data"}
+                    </Button>
+                  </Group>
+
+                  {stripeBalance && (
+                    <Group gap="lg">
+                      {stripeBalance.available.map((b, i) => (
+                        <Card key={i} withBorder p="sm">
+                          <Text size="xs" c="dimmed">
+                            Available ({b.currency})
+                          </Text>
+                          <Group gap="xs">
+                            <IconCash size={20} color="green" />
+                            <Text fw={600} size="lg">
+                              {b.amount.toLocaleString("en-US", {
+                                style: "currency",
+                                currency: b.currency,
+                              })}
+                            </Text>
+                          </Group>
+                        </Card>
+                      ))}
+                      {stripeBalance.pending.map((b, i) => (
+                        <Card key={`pending-${i}`} withBorder p="sm">
+                          <Text size="xs" c="dimmed">
+                            Pending ({b.currency})
+                          </Text>
+                          <Text fw={600} size="lg" c="dimmed">
+                            {b.amount.toLocaleString("en-US", {
+                              style: "currency",
+                              currency: b.currency,
+                            })}
+                          </Text>
+                        </Card>
+                      ))}
+                    </Group>
+                  )}
+
+                  {stripeError && (
+                    <Alert icon={<IconAlertCircle size={16} />} color="red">
+                      {stripeError}
+                    </Alert>
+                  )}
+
+                  {fetchingStripeData ? (
+                    <Center py="xl">
+                      <Loader size="lg" />
+                    </Center>
+                  ) : stripeView === "payments" ? (
+                    stripePayments.length > 0 ? (
+                      <Table striped highlightOnHover>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>Amount</Table.Th>
+                            <Table.Th>Status</Table.Th>
+                            <Table.Th>Customer</Table.Th>
+                            <Table.Th>Description</Table.Th>
+                            <Table.Th>Date</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {stripePayments.map((payment) => (
+                            <Table.Tr key={payment.id}>
+                              <Table.Td>
+                                <Text fw={500}>
+                                  {payment.amount.toLocaleString("en-US", {
+                                    style: "currency",
+                                    currency: payment.currency,
+                                  })}
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Badge
+                                  color={
+                                    payment.status === "succeeded"
+                                      ? "green"
+                                      : payment.status === "pending"
+                                        ? "yellow"
+                                        : "red"
+                                  }
+                                  size="sm"
+                                >
+                                  {payment.status}
+                                </Badge>
+                              </Table.Td>
+                              <Table.Td>{payment.customerEmail || "-"}</Table.Td>
+                              <Table.Td>{payment.description || "-"}</Table.Td>
+                              <Table.Td>
+                                {new Date(payment.created).toLocaleDateString()}
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    ) : (
+                      <Text c="dimmed" ta="center" py="xl">
+                        No payments loaded. Click "Load Data" to fetch from
+                        Stripe.
+                      </Text>
+                    )
+                  ) : stripeCustomers.length > 0 ? (
+                    <Table striped highlightOnHover>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Name</Table.Th>
+                          <Table.Th>Email</Table.Th>
+                          <Table.Th>Balance</Table.Th>
+                          <Table.Th>Created</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {stripeCustomers.map((customer) => (
+                          <Table.Tr key={customer.id}>
+                            <Table.Td>{customer.name || "-"}</Table.Td>
+                            <Table.Td>{customer.email || "-"}</Table.Td>
+                            <Table.Td>
+                              {customer.balance !== 0
+                                ? `$${customer.balance.toFixed(2)}`
+                                : "-"}
+                            </Table.Td>
+                            <Table.Td>
+                              {new Date(customer.created).toLocaleDateString()}
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  ) : (
+                    <Text c="dimmed" ta="center" py="xl">
+                      No customers loaded. Click "Load Data" to fetch from
+                      Stripe.
                     </Text>
                   )}
                 </Stack>

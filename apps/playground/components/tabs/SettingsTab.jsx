@@ -391,8 +391,8 @@ export default function SettingsTab({ app, onUpdate, onDelete, onClose }) {
                 const profile = collaboratorProfiles.get(uid);
                 const displayText = profile?.displayName || profile?.email || uid;
                 return (
-                  <Group key={uid} gap="sm" style={{ padding: '6px 10px', background: 'rgba(147, 51, 234, 0.05)', borderRadius: '6px' }}>
-                    <Avatar src={profile?.photoURL} size="sm" radius="xl" color="violet">
+                  <Group key={uid} gap="sm" style={{ padding: '6px 10px', background: '#F5F5F7', borderRadius: '6px' }}>
+                    <Avatar src={profile?.photoURL} size="sm" radius="xl" color="gray">
                       {displayText.charAt(0).toUpperCase()}
                     </Avatar>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -470,7 +470,7 @@ export default function SettingsTab({ app, onUpdate, onDelete, onClose }) {
                     size="xs"
                     style={{ flex: 2 }}
                   />
-                  <ActionIcon color="violet" variant="filled" size="sm" onClick={handleAddSecret} disabled={!newSecretKey.trim()}>
+                  <ActionIcon color="dark" variant="filled" size="sm" onClick={handleAddSecret} disabled={!newSecretKey.trim()}>
                     <IconPlus size={14} />
                   </ActionIcon>
                 </Group>
@@ -503,7 +503,7 @@ export default function SettingsTab({ app, onUpdate, onDelete, onClose }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Text size="xs" fw={500} truncate>{asset.name}</Text>
               </div>
-              <ActionIcon size="xs" variant="subtle" color="violet" onClick={() => { navigator.clipboard.writeText(asset.url); showNotification({ message: "Copied!", color: "teal" }); }}>
+              <ActionIcon size="xs" variant="subtle" color="dark" onClick={() => { navigator.clipboard.writeText(asset.url); showNotification({ message: "Copied!", color: "teal" }); }}>
                 <IconCopy size={12} />
               </ActionIcon>
               <ActionIcon size="xs" variant="subtle" color="red" onClick={() => handleRemoveAsset(asset.url)}>

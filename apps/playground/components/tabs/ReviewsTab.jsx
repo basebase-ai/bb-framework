@@ -161,7 +161,7 @@ export default function ReviewsTab({ app }) {
               <Stack gap="sm">
                 <Group justify="space-between">
                   <Group gap="xs">
-                    <Avatar src={reviewProfile?.photoURL} size="sm" radius="xl" color="violet">
+                    <Avatar src={reviewProfile?.photoURL} size="sm" radius="xl" color="gray">
                       {(reviewProfile?.displayName || "?").charAt(0).toUpperCase()}
                     </Avatar>
                     <div>

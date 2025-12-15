@@ -113,14 +113,14 @@ export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
           <Stack gap="xs" style={{ flex: 1 }}>
             <Group gap="xs">
               <Badge 
-                color={app.accessMode === "open" ? "teal" : "orange"} 
+                color={app.accessMode === "open" ? "gray" : "dark"} 
                 variant="light"
                 size="sm"
               >
                 {app.accessMode === "open" ? "Free" : "Invite Only"}
               </Badge>
               {app.category && (
-                <Badge color="violet" variant="light" size="sm">
+                <Badge color="gray" variant="light" size="sm">
                   {app.category}
                 </Badge>
               )}
@@ -147,7 +147,7 @@ export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
             <Button
               size="lg"
               radius="xl"
-              color="violet"
+              color="dark"
               leftSection={<IconExternalLink size={18} />}
               onClick={() => window.open(appUrl, '_blank')}
               style={{ minWidth: 140 }}
@@ -199,7 +199,7 @@ export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
                   w="auto"
                   fit="contain"
                   style={{ 
-                    border: '1px solid var(--mantine-color-dark-4)',
+                    border: '1px solid #E8E8ED',
                     borderRadius: 12,
                     flexShrink: 0,
                   }}
@@ -213,8 +213,8 @@ export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
             p="xl" 
             radius="md"
             style={{ 
-              background: 'var(--mantine-color-dark-6)',
-              border: '2px dashed var(--mantine-color-dark-4)',
+              background: '#F5F5F7',
+              border: '2px dashed #D2D2D7',
             }}
           >
             <Stack align="center" gap="sm">
@@ -241,7 +241,7 @@ export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
             showLabel="Read more" 
             hideLabel="Show less"
             styles={{
-              control: { color: 'var(--mantine-color-violet-5)' }
+              control: { color: '#1D1D1F' }
             }}
           >
             <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
@@ -252,7 +252,7 @@ export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
           {app.tags && app.tags.length > 0 && (
             <Group gap={6} mt="md">
               {app.tags.map((tag, idx) => (
-                <Badge key={idx} variant="outline" color="violet" size="sm" radius="sm">
+                <Badge key={idx} variant="outline" color="gray" size="sm" radius="sm">
                   {tag}
                 </Badge>
               ))}
@@ -327,7 +327,7 @@ export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
               alt={ownerProfile?.displayName}
               size={56}
               radius="xl"
-              color="violet"
+              color="gray"
             >
               {(ownerProfile?.displayName || "?").charAt(0).toUpperCase()}
             </Avatar>
@@ -351,7 +351,7 @@ export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
                         src={collab?.photoURL} 
                         size="md" 
                         radius="xl" 
-                        color="violet"
+                        color="gray"
                       >
                         {(collab?.displayName || "?").charAt(0).toUpperCase()}
                       </Avatar>
@@ -376,8 +376,8 @@ function InfoItem({ icon, label, value, copyable }) {
     <Box 
       p="md" 
       style={{ 
-        borderBottom: '1px solid var(--mantine-color-dark-4)',
-        borderRight: '1px solid var(--mantine-color-dark-4)',
+        borderBottom: '1px solid #E8E8ED',
+        borderRight: '1px solid #E8E8ED',
       }}
     >
       <Group gap="xs" mb={4}>
