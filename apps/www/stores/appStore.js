@@ -1,14 +1,15 @@
 /**
- * Global app state store for www landing page
+ * Global app state store
  */
 
 import { create } from "zustand";
 
-/** @typedef {{ submitted: boolean }} WaitlistState */
-/** @typedef {{ setSubmitted: (submitted: boolean) => void }} WaitlistActions */
-
-/** @type {import('zustand').UseBoundStore<import('zustand').StoreApi<WaitlistState & WaitlistActions>>} */
 export const useAppStore = create((set) => ({
-  submitted: false,
-  setSubmitted: (/** @type {boolean} */ submitted) => set({ submitted }),
+  // UI state
+  sidebarOpen: true,
+  theme: "light",
+
+  // Actions
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  setTheme: (theme) => set({ theme }),
 }));
