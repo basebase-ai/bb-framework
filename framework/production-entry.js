@@ -41,6 +41,7 @@ import {
  * - firebase (submodules: app, auth, firestore) ✅
  * - @mantine/core, @mantine/hooks, @mantine/notifications, @mantine/dates, @mantine/carousel ✅
  * - @tabler/icons-react ✅
+ * - react-icons/si ✅ (Simple Icons for brand logos)
  * - zustand ✅
  *
  * Server-side only (don't register):
@@ -71,6 +72,9 @@ import * as FirebaseFirestore from "firebase/firestore";
 
 // PDF viewer
 import * as ReactPdf from "react-pdf";
+
+// React Icons (Simple Icons for brand logos)
+import * as ReactIconsSi from "react-icons/si";
 
 // Show loading screen
 function showLoading(message = "Loading...") {
@@ -246,6 +250,9 @@ async function init() {
 
       // PDF viewer
       "react-pdf": ReactPdf,
+
+      // React Icons (Simple Icons for brand logos)
+      "react-icons/si": ReactIconsSi,
 
       // Framework hooks (with path variants - normalized, relative old styles)
       "framework/hooks/useAuth.js": { useAuth },
