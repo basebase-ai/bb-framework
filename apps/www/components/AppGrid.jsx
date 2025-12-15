@@ -79,7 +79,7 @@ export default function AppGrid({
               letterSpacing: "-0.02em",
             }}
           >
-            Basebase Playground
+            Basebase Studio
           </Title>
           <Text size="xs" style={{ color: "#5a7a7e" }} weight={400}>
             Discover and build amazing apps

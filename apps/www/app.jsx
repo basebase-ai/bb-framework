@@ -2,21 +2,63 @@
  * Main app entry point
  */
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
-import AppPlayground from "./components/AppPlayground.jsx";
+import AppStudio from "./components/AppStudio.jsx";
 import PublicHomepage from "./components/PublicHomepage.jsx";
+import TermsOfService from "./components/TermsOfService.jsx";
+import PrivacyPolicy from "./components/PrivacyPolicy.jsx";
 import { APP_ID } from "./schema.js";
 
 // Mantine CSS imports
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
+/**
+ * Check if current path is a public page (accessible without auth)
+ * @param {string} path
+ * @returns {"terms" | "privacy" | null}
+ */
+function getPublicPage(path) {
+  if (path === "/terms") return "terms";
+  if (path === "/privacy") return "privacy";
+  return null;
+}
+
 function App() {
   console.log("🎨 App component rendering...");
+  
+  // Track current path for public page routing
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  
+  // Listen for navigation changes
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+  
+  // Navigation helper for public pages
+  const navigateToHome = () => {
+    setCurrentPath("/");
+    window.history.pushState({}, "", "/");
+  };
+  
+  const navigateToTerms = () => {
+    setCurrentPath("/terms");
+    window.history.pushState({}, "", "/terms");
+  };
+  
+  const navigateToPrivacy = () => {
+    setCurrentPath("/privacy");
+    window.history.pushState({}, "", "/privacy");
+  };
+  
+  // Check for public pages first (these don't need auth)
+  const publicPage = getPublicPage(currentPath);
   
   return (
     <MantineProvider
@@ -104,12 +146,24 @@ function App() {
       withNormalizeCSS
     >
       <Notifications position="top-right" />
-      <AuthProvider 
-        appId={APP_ID}
-        landingPage={(props) => <PublicHomepage {...props} />}
-      >
-        <AppPlayground />
-      </AuthProvider>
+      {/* Public pages - accessible without auth */}
+      {publicPage === "terms" && <TermsOfService onBack={navigateToHome} />}
+      {publicPage === "privacy" && <PrivacyPolicy onBack={navigateToHome} />}
+      {/* Main app - requires auth for studio, shows landing for unauthenticated */}
+      {!publicPage && (
+        <AuthProvider 
+          appId={APP_ID}
+          landingPage={(props) => (
+            <PublicHomepage 
+              {...props} 
+              onNavigateToTerms={navigateToTerms}
+              onNavigateToPrivacy={navigateToPrivacy}
+            />
+          )}
+        >
+          <AppStudio />
+        </AuthProvider>
+      )}
     </MantineProvider>
   );
 }

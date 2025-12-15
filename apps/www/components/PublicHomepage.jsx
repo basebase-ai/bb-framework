@@ -93,11 +93,11 @@ const PAIN_POINTS = [
 ];
 
 /**
- * @param {{ onSignIn: () => void; isAuthenticated?: boolean }} props
+ * @param {{ onSignIn: () => void; isAuthenticated?: boolean; onNavigateToTerms?: () => void; onNavigateToPrivacy?: () => void }} props
  */
-export default function PublicHomepage({ onSignIn, isAuthenticated = false }) {
-  const ctaText = isAuthenticated ? "Go to Playground" : "Start building free";
-  const navCtaText = isAuthenticated ? "Playground" : "Get Started";
+export default function PublicHomepage({ onSignIn, isAuthenticated = false, onNavigateToTerms, onNavigateToPrivacy }) {
+  const ctaText = isAuthenticated ? "Go to Studio" : "Start building free";
+  const navCtaText = isAuthenticated ? "Studio" : "Get Started";
 
   return (
     <Box
@@ -121,9 +121,16 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false }) {
       >
         <Container size="lg">
           <Group justify="space-between" h={64}>
-            <Text fw={700} size="lg" style={{ color: COLORS.slate, letterSpacing: "-0.02em" }}>
-              Basebase
-            </Text>
+            <Group gap="xs" align="center">
+              <img 
+                src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765841527369_basebase_white_64.png?alt=media&token=3b9a050f-a9be-41e8-ba90-c5de8929227a"
+                alt="Basebase"
+                style={{ height: 32, width: 32 }}
+              />
+              <Text fw={700} size="lg" style={{ color: COLORS.slate, letterSpacing: "-0.02em" }}>
+                Basebase
+              </Text>
+            </Group>
             <Group gap="xl">
               <Text 
                 component="a" 
@@ -261,10 +268,11 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false }) {
                   fontWeight: 700,
                   color: COLORS.slate,
                   letterSpacing: "-0.02em",
+                  lineHeight: 1.1,
                   margin: 0,
                 }}
               >
-                Running ops is <span style={{ color: COLORS.coral }}>way harder</span> than it should be
+                New team workflows <span style={{ color: COLORS.coral }}>built in minutes</span>
               </Text>
               <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 540 }}>
                 We get it. Your data is scattered across dozens of apps, and building the tools you need feels impossible without an engineering team.
@@ -310,6 +318,7 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false }) {
                   fontWeight: 700,
                   color: COLORS.white,
                   letterSpacing: "-0.02em",
+                  lineHeight: 1.1,
                   margin: 0,
                 }}
               >
@@ -377,6 +386,7 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false }) {
                   fontWeight: 700,
                   color: COLORS.slate,
                   letterSpacing: "-0.02em",
+                  lineHeight: 1.1,
                   margin: 0,
                 }}
               >
@@ -432,6 +442,7 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false }) {
                   fontWeight: 700,
                   color: COLORS.slate,
                   letterSpacing: "-0.02em",
+                  lineHeight: 1.1,
                   margin: 0,
                 }}
               >
@@ -496,6 +507,7 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false }) {
                   fontWeight: 700,
                   color: COLORS.slate,
                   letterSpacing: "-0.02em",
+                  lineHeight: 1.1,
                   margin: 0,
                 }}
               >
@@ -552,6 +564,7 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false }) {
                 fontWeight: 700,
                 color: COLORS.white,
                 letterSpacing: "-0.02em",
+                lineHeight: 1.1,
                 margin: 0,
               }}
             >
@@ -594,7 +607,7 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false }) {
                 No engineers required.
               </Text>
             </Stack>
-            <Group gap={64}>
+            <Group gap={64} align="flex-start">
               <Stack gap="xs">
                 <Text size="xs" fw={600} style={{ color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Product
@@ -610,6 +623,31 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false }) {
                 <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>About</Text>
                 <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>Blog</Text>
                 <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>Contact</Text>
+              </Stack>
+              <Stack gap="xs">
+                <Text size="xs" fw={600} style={{ color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Legal
+                </Text>
+                <Text 
+                  size="sm" 
+                  style={{ color: COLORS.white, cursor: "pointer" }}
+                  onClick={() => {
+                    console.log("[PublicHomepage] Terms clicked, onNavigateToTerms:", onNavigateToTerms);
+                    if (onNavigateToTerms) onNavigateToTerms();
+                  }}
+                >
+                  Terms of Service
+                </Text>
+                <Text 
+                  size="sm" 
+                  style={{ color: COLORS.white, cursor: "pointer" }}
+                  onClick={() => {
+                    console.log("[PublicHomepage] Privacy clicked, onNavigateToPrivacy:", onNavigateToPrivacy);
+                    if (onNavigateToPrivacy) onNavigateToPrivacy();
+                  }}
+                >
+                  Privacy Policy
+                </Text>
               </Stack>
             </Group>
           </Group>
