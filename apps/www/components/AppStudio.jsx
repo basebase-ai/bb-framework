@@ -162,21 +162,32 @@ export default function AppStudio() {
   // Studio content (only for authenticated users - AuthProvider handles this)
   return (
     <AppShell
-      header={{ height: 48 }}
+      header={{ height: 64 }}
       padding="xs"
       style={{
         background: "#faf9f7",
       }}
     >
-      <AppShell.Header style={{ borderBottom: '1px solid #f5f3eb', background: '#FFFFFF' }}>
-        <Group h="100%" px="sm" justify="space-between">
-          <Group gap="xs">
-            <Text 
-              fw={700} 
-              size="md" 
-              style={{ color: "#416165", cursor: "pointer" }}
-              onClick={navigateToHome}
-            >
+      <AppShell.Header 
+        style={{ 
+          background: "rgba(255, 255, 255, 0.9)",
+          backdropFilter: "blur(20px)",
+          borderBottom: "1px solid #e8eced",
+        }}
+      >
+        <Group h="100%" px="md" justify="space-between" maw={1400} mx="auto">
+          <Group 
+            gap="xs" 
+            align="center"
+            style={{ cursor: "pointer" }}
+            onClick={navigateToHome}
+          >
+            <img 
+              src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695"
+              alt="Basebase"
+              style={{ height: 32, width: 32 }}
+            />
+            <Text fw={700} size="lg" style={{ color: "#416165", letterSpacing: "-0.02em" }}>
               Basebase
             </Text>
           </Group>

@@ -64,6 +64,8 @@ import {
   IconCreditCard,
   IconUsers,
   IconCash,
+  IconBrandLinkedin,
+  IconWorld,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -397,6 +399,12 @@ function AppContent() {
   const { call: fetchSupabaseData, loading: fetchingSupabaseData } =
     useFunction("fetchSupabaseData");
 
+  // LinkedIn via Airtop functions (consolidated)
+  const { call: airtopSession, loading: airtopSessionLoading } =
+    useFunction("airtopSession");
+  const { call: airtopLinkedIn, loading: airtopLinkedInLoading } =
+    useFunction("airtopLinkedIn");
+
   // Gmail state
   /** @type {[number | null, React.Dispatch<React.SetStateAction<number | null>>]} */
   const [gmailCount, setGmailCount] = useState(null);
@@ -491,6 +499,22 @@ function AppContent() {
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
   const [stripeError, setStripeError] = useState(null);
 
+  // LinkedIn via Airtop state
+  /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
+  const [linkedinConnected, setLinkedinConnected] = useState(false);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [linkedinLiveViewUrl, setLinkedinLiveViewUrl] = useState(null);
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [linkedinSessionId, setLinkedinSessionId] = useState(null);
+  /** @type {[Array<{name: string, headline?: string, profileUrl?: string, connectedDate?: string}>, React.Dispatch<React.SetStateAction<Array<{name: string, headline?: string, profileUrl?: string, connectedDate?: string}>>>]} */
+  const [linkedinConnections, setLinkedinConnections] = useState([]);
+  /** @type {[Array<{authorName: string, content: string, timestamp?: string, likes?: number, comments?: number}>, React.Dispatch<React.SetStateAction<Array<{authorName: string, content: string, timestamp?: string, likes?: number, comments?: number}>>>]} */
+  const [linkedinFeed, setLinkedinFeed] = useState([]);
+  /** @type {["connections" | "feed", React.Dispatch<React.SetStateAction<"connections" | "feed">>]} */
+  const [linkedinView, setLinkedinView] = useState("connections");
+  /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
+  const [linkedinError, setLinkedinError] = useState(null);
+
   // Supabase state
   /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
   const [supabaseConnected, setSupabaseConnected] = useState(false);
@@ -524,6 +548,26 @@ function AppContent() {
     };
     if (user) {
       checkSupabaseConnection();
+    }
+  }, [user]);
+
+  // Check LinkedIn (Airtop) profile on mount
+  React.useEffect(() => {
+    const checkLinkedInProfile = async () => {
+      try {
+        const result = await airtopSession({
+          action: "checkProfile",
+          profileName: "linkedin",
+        });
+        if (result.success && result.hasProfile) {
+          setLinkedinConnected(true);
+        }
+      } catch (err) {
+        // No profile saved - that's OK
+      }
+    };
+    if (user) {
+      checkLinkedInProfile();
     }
   }, [user]);
 
@@ -605,6 +649,13 @@ function AppContent() {
       icon: IconBrandStripe,
       color: "#635BFF",
       connected: stripeConnected,
+    },
+    {
+      id: "linkedin",
+      label: "LinkedIn (Airtop)",
+      icon: IconBrandLinkedin,
+      color: "#0A66C2",
+      connected: linkedinConnected,
     },
   ];
 
@@ -1444,6 +1495,188 @@ function AppContent() {
       const message =
         err instanceof Error ? err.message : "Failed to fetch data";
       setStripeError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  // LinkedIn via Airtop handlers
+  const handleStartLinkedInSession = async () => {
+    try {
+      setLinkedinError(null);
+      const result = await airtopSession({
+        action: "createSession",
+        url: "https://www.linkedin.com/login",
+        timeoutMinutes: 10,
+      });
+
+      if (result.success && result.liveViewUrl) {
+        setLinkedinLiveViewUrl(result.liveViewUrl);
+        setLinkedinSessionId(result.sessionId);
+        notifications.show({
+          title: "Session Started",
+          message: "Please log into LinkedIn in the browser window below",
+          color: "blue",
+          icon: <IconWorld size={16} />,
+        });
+      } else {
+        throw new Error("Failed to get live view URL");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to start session";
+      setLinkedinError(message);
+      notifications.show({
+        title: "Session Failed",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleSaveLinkedInProfile = async () => {
+    if (!linkedinSessionId) {
+      notifications.show({
+        title: "No Active Session",
+        message: "Please start a session first",
+        color: "yellow",
+      });
+      return;
+    }
+
+    try {
+      setLinkedinError(null);
+      const result = await airtopSession({
+        action: "saveProfile",
+        sessionId: linkedinSessionId,
+        profileName: "linkedin",
+      });
+
+      if (result.success) {
+        setLinkedinConnected(true);
+        setLinkedinLiveViewUrl(null);
+        setLinkedinSessionId(null);
+        notifications.show({
+          title: "Connected!",
+          message: "LinkedIn profile saved. You can now fetch your data.",
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
+      } else {
+        throw new Error("Failed to save profile");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to save profile";
+      setLinkedinError(message);
+      notifications.show({
+        title: "Save Failed",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleCancelLinkedInSession = async () => {
+    try {
+      if (linkedinSessionId) {
+        await airtopSession({
+          action: "terminateSession",
+          sessionId: linkedinSessionId,
+        });
+      }
+      setLinkedinLiveViewUrl(null);
+      setLinkedinSessionId(null);
+      notifications.show({
+        title: "Session Cancelled",
+        message: "Browser session terminated",
+        color: "gray",
+      });
+    } catch (err) {
+      // Still clear the UI even if termination fails
+      setLinkedinLiveViewUrl(null);
+      setLinkedinSessionId(null);
+    }
+  };
+
+  const handleDisconnectLinkedIn = async () => {
+    try {
+      await airtopSession({
+        action: "deleteProfile",
+        profileName: "linkedin",
+      });
+      setLinkedinConnected(false);
+      setLinkedinConnections([]);
+      setLinkedinFeed([]);
+      notifications.show({
+        title: "Disconnected",
+        message: "LinkedIn profile removed",
+        color: "gray",
+      });
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to disconnect",
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchLinkedInConnections = async () => {
+    try {
+      setLinkedinError(null);
+      const result = await airtopLinkedIn({
+        action: "connections",
+        limit: 50,
+      });
+
+      if (result.success) {
+        setLinkedinConnections(result.connections || []);
+        notifications.show({
+          title: "Connections Loaded",
+          message: `Found ${result.connections?.length || 0} connections`,
+          color: "green",
+        });
+      } else {
+        throw new Error("Failed to fetch connections");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch connections";
+      setLinkedinError(message);
+      notifications.show({
+        title: "Error",
+        message,
+        color: "red",
+      });
+    }
+  };
+
+  const handleFetchLinkedInFeed = async () => {
+    try {
+      setLinkedinError(null);
+      const result = await airtopLinkedIn({
+        action: "feed",
+        limit: 20,
+      });
+
+      if (result.success) {
+        setLinkedinFeed(result.posts || []);
+        notifications.show({
+          title: "Feed Loaded",
+          message: `Found ${result.posts?.length || 0} posts`,
+          color: "green",
+        });
+      } else {
+        throw new Error("Failed to fetch feed");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch feed";
+      setLinkedinError(message);
       notifications.show({
         title: "Error",
         message,
@@ -3383,6 +3616,250 @@ function AppContent() {
                     <Text c="dimmed" ta="center" py="xl">
                       No customers loaded. Click "Load Data" to fetch from
                       Stripe.
+                    </Text>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        );
+
+      case "linkedin":
+        return (
+          <Stack gap="lg">
+            <Paper shadow="sm" p="lg" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <IconBrandLinkedin size={40} color="#0A66C2" />
+                  <div>
+                    <Text fw={500} size="lg">
+                      LinkedIn Connection (via Airtop)
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Connect LinkedIn via cloud browser to access your network
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group gap="sm">
+                  {linkedinConnected && (
+                    <Badge
+                      color="green"
+                      size="lg"
+                      leftSection={<IconCheck size={14} />}
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  {!linkedinLiveViewUrl && (
+                    <Button
+                      onClick={
+                        linkedinConnected
+                          ? handleDisconnectLinkedIn
+                          : handleStartLinkedInSession
+                      }
+                      loading={airtopSessionLoading}
+                      color={linkedinConnected ? "gray" : "blue"}
+                      variant={linkedinConnected ? "light" : "filled"}
+                    >
+                      {linkedinConnected ? "Disconnect" : "Connect LinkedIn"}
+                    </Button>
+                  )}
+                </Group>
+              </Group>
+
+              {linkedinError && (
+                <Alert icon={<IconAlertCircle size={16} />} color="red" mt="md">
+                  {linkedinError}
+                </Alert>
+              )}
+            </Paper>
+
+            {/* Live View Session - Show when connecting */}
+            {linkedinLiveViewUrl && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <div>
+                      <Title order={4}>Login to LinkedIn</Title>
+                      <Text size="sm" c="dimmed">
+                        Log into your LinkedIn account in the browser below, then
+                        click "Save & Connect"
+                      </Text>
+                    </div>
+                    <Group gap="sm">
+                      <Button
+                        variant="light"
+                        color="gray"
+                        onClick={handleCancelLinkedInSession}
+                        loading={airtopSessionLoading}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        color="green"
+                        onClick={handleSaveLinkedInProfile}
+                        loading={airtopSessionLoading}
+                        leftSection={<IconCheck size={16} />}
+                      >
+                        Save & Connect
+                      </Button>
+                    </Group>
+                  </Group>
+
+                  <Box
+                    style={{
+                      border: "1px solid #dee2e6",
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      height: 600,
+                    }}
+                  >
+                    <iframe
+                      src={linkedinLiveViewUrl}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        border: "none",
+                      }}
+                      title="LinkedIn Login"
+                      sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                    />
+                  </Box>
+                </Stack>
+              </Paper>
+            )}
+
+            {/* Data View - Show when connected */}
+            {linkedinConnected && !linkedinLiveViewUrl && (
+              <Paper shadow="sm" p="lg" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Tabs
+                      value={linkedinView}
+                      onChange={(v) =>
+                        setLinkedinView(v)
+                      }
+                    >
+                      <Tabs.List>
+                        <Tabs.Tab value="connections" leftSection={<IconUsers size={16} />}>
+                          Connections
+                        </Tabs.Tab>
+                        <Tabs.Tab value="feed" leftSection={<IconMessage size={16} />}>
+                          Feed
+                        </Tabs.Tab>
+                      </Tabs.List>
+                    </Tabs>
+                    <Button
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={
+                        linkedinView === "connections"
+                          ? handleFetchLinkedInConnections
+                          : handleFetchLinkedInFeed
+                      }
+                      loading={airtopLinkedInLoading}
+                    >
+                      {linkedinView === "connections"
+                        ? linkedinConnections.length > 0
+                          ? "Refresh Connections"
+                          : "Fetch Connections"
+                        : linkedinFeed.length > 0
+                          ? "Refresh Feed"
+                          : "Fetch Feed"}
+                    </Button>
+                  </Group>
+
+                  {airtopLinkedInLoading ? (
+                    <Center py="xl">
+                      <Stack align="center" gap="sm">
+                        <Loader size="lg" />
+                        <Text size="sm" c="dimmed">
+                          {linkedinView === "connections"
+                            ? "Fetching your connections..."
+                            : "Fetching your feed..."}
+                        </Text>
+                      </Stack>
+                    </Center>
+                  ) : linkedinView === "connections" ? (
+                    linkedinConnections.length > 0 ? (
+                      <Table striped highlightOnHover>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>Name</Table.Th>
+                            <Table.Th>Headline</Table.Th>
+                            <Table.Th>Connected</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {linkedinConnections.map((connection, idx) => (
+                            <Table.Tr key={idx}>
+                              <Table.Td>
+                                {connection.profileUrl ? (
+                                  <Text
+                                    component="a"
+                                    href={connection.profileUrl}
+                                    target="_blank"
+                                    c="blue"
+                                    td="underline"
+                                  >
+                                    {connection.name}
+                                  </Text>
+                                ) : (
+                                  connection.name
+                                )}
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm" c="dimmed" lineClamp={1}>
+                                  {connection.headline || "-"}
+                                </Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="sm" c="dimmed">
+                                  {connection.connectedDate || "-"}
+                                </Text>
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    ) : (
+                      <Text c="dimmed" ta="center" py="xl">
+                        Click "Fetch Connections" to load your LinkedIn connections
+                      </Text>
+                    )
+                  ) : linkedinFeed.length > 0 ? (
+                    <Stack gap="md">
+                      {linkedinFeed.map((post, idx) => (
+                        <Card key={idx} withBorder p="md">
+                          <Group justify="space-between" mb="xs">
+                            <div>
+                              <Text fw={500}>{post.authorName}</Text>
+                              <Text size="xs" c="dimmed">
+                                {post.timestamp || ""}
+                              </Text>
+                            </div>
+                            <Group gap="xs">
+                              {post.likes !== undefined && post.likes > 0 && (
+                                <Badge variant="light" color="blue" size="sm">
+                                  {post.likes} likes
+                                </Badge>
+                              )}
+                              {post.comments !== undefined && post.comments > 0 && (
+                                <Badge variant="light" color="gray" size="sm">
+                                  {post.comments} comments
+                                </Badge>
+                              )}
+                            </Group>
+                          </Group>
+                          <Text size="sm" lineClamp={4}>
+                            {post.content}
+                          </Text>
+                        </Card>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Text c="dimmed" ta="center" py="xl">
+                      Click "Fetch Feed" to load your LinkedIn feed
                     </Text>
                   )}
                 </Stack>

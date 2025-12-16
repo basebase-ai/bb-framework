@@ -84,6 +84,7 @@ export function ProjectSettings({ projectId, opened, onClose }) {
     const seenEmails = new Set();
     return allUsers
       .filter((u) => !project?.memberIds?.includes(u.id))
+      .filter((u) => typeof u.email === 'string' && u.email.trim()) // Ensure email is a valid string
       .filter((u) => {
         if (seenEmails.has(u.email)) {
           return false;

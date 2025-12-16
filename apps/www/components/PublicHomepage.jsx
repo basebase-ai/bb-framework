@@ -123,7 +123,7 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false, onNa
           <Group justify="space-between" h={64}>
             <Group gap="xs" align="center">
               <img 
-                src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765841527369_basebase_white_64.png?alt=media&token=3b9a050f-a9be-41e8-ba90-c5de8929227a"
+                src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695"
                 alt="Basebase"
                 style={{ height: 32, width: 32 }}
               />
@@ -197,9 +197,9 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false, onNa
                   margin: 0,
                 }}
               >
-                Build the tools
+                Build business tools
                 <br />
-                <span style={{ color: COLORS.coral }}>your business needs</span>
+                <span style={{ color: COLORS.coral }}>in minutes, not months</span>
               </Text>
               <Text
                 ta="center"
@@ -272,7 +272,7 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false, onNa
                   margin: 0,
                 }}
               >
-                New team workflows <span style={{ color: COLORS.coral }}>built in minutes</span>
+                We know <span style={{ color: COLORS.coral }}>it's not easy</span>
               </Text>
               <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 540 }}>
                 We get it. Your data is scattered across dozens of apps, and building the tools you need feels impossible without an engineering team.
