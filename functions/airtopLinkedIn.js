@@ -55,30 +55,111 @@ module.exports = async function (params, context) {
 
   try {
     // Create a session with the saved profile
-    const sessionResponse = await context.http.post(
-      `${baseUrl}/sessions`,
-      {
-        configuration: {
-          timeoutMinutes: 5,
-          baseProfileId: profileId,
-          persistProfile: true,
+    context.log("Creating session with profile", { profileId });
+    
+    let sessionResponse;
+    try {
+      sessionResponse = await context.http.post(
+        `${baseUrl}/sessions`,
+        {
+          configuration: {
+            timeoutMinutes: 5,
+            baseProfileId: profileId,
+          },
         },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 60000,
-      }
-    );
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 60000,
+        }
+      );
+    } catch (createError) {
+      const errorDetail = JSON.stringify({
+        status: createError.response?.status,
+        data: createError.response?.data,
+        message: createError.message,
+      });
+      throw new Error(`Failed to create session: ${errorDetail}`);
+    }
 
     sessionId = sessionResponse.data?.data?.id;
     if (!sessionId) {
-      throw new Error("Failed to create session");
+      throw new Error(`Failed to create session - no ID returned. Response: ${JSON.stringify(sessionResponse.data)}`);
     }
 
-    context.log("Session created", { sessionId });
+    context.log("Session created, waiting for ready state", { sessionId });
+
+    // Poll for session to be ready (status = "active" or "running")
+    const maxWaitMs = 60000; // 60 seconds max
+    const pollIntervalMs = 2000; // Check every 2 seconds
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitMs) {
+      let statusResponse;
+      try {
+        statusResponse = await context.http.get(
+          `${baseUrl}/sessions/${sessionId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+            },
+            timeout: 10000,
+          }
+        );
+      } catch (pollError) {
+        const errorDetail = JSON.stringify({
+          status: pollError.response?.status,
+          data: pollError.response?.data,
+          message: pollError.message,
+        });
+        throw new Error(`Failed to poll session status: ${errorDetail}`);
+      }
+
+      const status = statusResponse.data?.data?.status;
+      context.log("Session status check", { sessionId, status });
+
+      if (status === "active" || status === "running") {
+        context.log("Session is ready", { sessionId, status });
+        break;
+      }
+
+      if (status === "ended" || status === "error" || status === "failed") {
+        throw new Error(`Session failed with status: ${status}. Full response: ${JSON.stringify(statusResponse.data)}`);
+      }
+
+      // Wait before next poll
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+
+    // Final status check
+    let finalStatusResponse;
+    try {
+      finalStatusResponse = await context.http.get(
+        `${baseUrl}/sessions/${sessionId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+          timeout: 10000,
+        }
+      );
+    } catch (finalCheckError) {
+      const errorDetail = JSON.stringify({
+        status: finalCheckError.response?.status,
+        data: finalCheckError.response?.data,
+        message: finalCheckError.message,
+      });
+      throw new Error(`Failed final session status check: ${errorDetail}`);
+    }
+
+    const finalStatus = finalStatusResponse.data?.data?.status;
+    if (finalStatus !== "active" && finalStatus !== "running") {
+      throw new Error(`Session failed to become ready (status: ${finalStatus})`);
+    }
+
+    context.log("Session ready, proceeding with action", { sessionId, action });
 
     switch (action) {
       // =========================================================================
@@ -88,25 +169,35 @@ module.exports = async function (params, context) {
         const { limit = 50 } = params;
 
         // Navigate to connections page
-        const windowResponse = await context.http.post(
-          `${baseUrl}/sessions/${sessionId}/windows`,
-          {
-            url: "https://www.linkedin.com/mynetwork/invite-connect/connections/",
-            waitUntil: "load",
-            screenResolution: "1280x800",
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
+        let windowResponse;
+        try {
+          windowResponse = await context.http.post(
+            `${baseUrl}/sessions/${sessionId}/windows`,
+            {
+              url: "https://www.linkedin.com/mynetwork/invite-connect/connections/",
+              waitUntil: "load",
+              screenResolution: "1280x800",
             },
-            timeout: 60000,
-          }
-        );
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+              timeout: 60000,
+            }
+          );
+        } catch (windowError) {
+          const errorDetail = JSON.stringify({
+            status: windowError.response?.status,
+            data: windowError.response?.data,
+            message: windowError.message,
+          });
+          throw new Error(`Failed to create window for connections: ${errorDetail}`);
+        }
 
         windowId = windowResponse.data?.data?.windowId;
         if (!windowId) {
-          throw new Error("Failed to create window");
+          throw new Error(`Failed to create window - no ID returned. Response: ${JSON.stringify(windowResponse.data)}`);
         }
 
         context.log("Navigated to connections page", { windowId });
@@ -133,20 +224,27 @@ module.exports = async function (params, context) {
           {
             prompt: extractionPrompt,
             configuration: {
-              outputSchema: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    name: { type: "string" },
-                    headline: { type: "string" },
-                    profileUrl: { type: "string" },
-                    connectedDate: { type: "string" },
-                    profileImageUrl: { type: "string" },
+              outputSchema: JSON.stringify({
+                $schema: "http://json-schema.org/draft-07/schema#",
+                type: "object",
+                properties: {
+                  connections: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        headline: { type: "string" },
+                        profileUrl: { type: "string" },
+                        connectedDate: { type: "string" },
+                        profileImageUrl: { type: "string" },
+                      },
+                      required: ["name"],
+                    },
                   },
-                  required: ["name"],
                 },
-              },
+                required: ["connections"],
+              }),
             },
           },
           {
@@ -164,10 +262,16 @@ module.exports = async function (params, context) {
         /** @type {Array<{name: string, headline?: string, profileUrl?: string, connectedDate?: string, profileImageUrl?: string}>} */
         let connections = [];
         try {
+          let parsed;
           if (typeof modelResponse === "string") {
-            connections = JSON.parse(modelResponse);
-          } else if (Array.isArray(modelResponse)) {
-            connections = modelResponse;
+            parsed = JSON.parse(modelResponse);
+          } else {
+            parsed = modelResponse;
+          }
+          // Extract from wrapper object
+          connections = parsed?.connections || parsed || [];
+          if (!Array.isArray(connections)) {
+            connections = [];
           }
         } catch (parseError) {
           context.log("Could not parse AI response as JSON", {
@@ -249,25 +353,32 @@ module.exports = async function (params, context) {
           {
             prompt: extractionPrompt,
             configuration: {
-              outputSchema: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    authorName: { type: "string" },
-                    authorHeadline: { type: "string" },
-                    authorProfileUrl: { type: "string" },
-                    content: { type: "string" },
-                    timestamp: { type: "string" },
-                    likes: { type: "number" },
-                    comments: { type: "number" },
-                    postUrl: { type: "string" },
-                    hasImage: { type: "boolean" },
-                    hasVideo: { type: "boolean" },
+              outputSchema: JSON.stringify({
+                $schema: "http://json-schema.org/draft-07/schema#",
+                type: "object",
+                properties: {
+                  posts: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        authorName: { type: "string" },
+                        authorHeadline: { type: "string" },
+                        authorProfileUrl: { type: "string" },
+                        content: { type: "string" },
+                        timestamp: { type: "string" },
+                        likes: { type: "number" },
+                        comments: { type: "number" },
+                        postUrl: { type: "string" },
+                        hasImage: { type: "boolean" },
+                        hasVideo: { type: "boolean" },
+                      },
+                      required: ["authorName", "content"],
+                    },
                   },
-                  required: ["authorName", "content"],
                 },
-              },
+                required: ["posts"],
+              }),
             },
           },
           {
@@ -285,10 +396,16 @@ module.exports = async function (params, context) {
         /** @type {Array<{authorName: string, authorHeadline?: string, content: string, timestamp?: string, likes?: number, comments?: number, postUrl?: string, hasImage?: boolean, hasVideo?: boolean}>} */
         let posts = [];
         try {
+          let parsed;
           if (typeof modelResponse === "string") {
-            posts = JSON.parse(modelResponse);
-          } else if (Array.isArray(modelResponse)) {
-            posts = modelResponse;
+            parsed = JSON.parse(modelResponse);
+          } else {
+            parsed = modelResponse;
+          }
+          // Extract from wrapper object
+          posts = parsed?.posts || parsed || [];
+          if (!Array.isArray(posts)) {
+            posts = [];
           }
         } catch (parseError) {
           context.log("Could not parse AI response as JSON", {
@@ -317,7 +434,12 @@ module.exports = async function (params, context) {
         );
     }
   } catch (error) {
-    context.error("Failed to fetch LinkedIn data:", error);
+    context.error("Failed to fetch LinkedIn data:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      profileId,
+    });
 
     if (
       error.response?.status === 401 ||
@@ -329,11 +451,16 @@ module.exports = async function (params, context) {
       );
     }
 
-    throw new Error(
-      error.response?.data?.message ||
-        error.message ||
-        "Failed to fetch LinkedIn data"
-    );
+    // Pass through the FULL error message - don't strip details
+    // If this is an axios error, include the response data
+    if (error.response?.data) {
+      throw new Error(
+        `API Error: ${JSON.stringify(error.response.data)} | Original: ${error.message}`
+      );
+    }
+    
+    // Otherwise just pass through our detailed error message
+    throw error;
   } finally {
     // Always clean up the session
     if (sessionId) {

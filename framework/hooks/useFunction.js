@@ -49,6 +49,7 @@ export function useFunction(functionName) {
    * @param {Object} [options] - Call options
    * @param {string} [options.appId] - App ID for app-specific functions
    * @param {boolean} [options.waitForResult=true] - Wait for function to complete
+   * @param {number} [options.timeout=60000] - Timeout in milliseconds (default 60s)
    * @returns {Promise<Object>} Function result
    */
   const call = useCallback(
@@ -95,16 +96,17 @@ export function useFunction(functionName) {
         }
 
         // Subscribe to task updates
+        const timeoutMs = options.timeout || 120000; // Default 2 minutes
         return new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
+          const timeoutHandle = setTimeout(() => {
             if (unsubscribeRef.current) {
               unsubscribeRef.current();
             }
-            const err = new Error("Function call timed out after 60 seconds");
+            const err = new Error(`Function call timed out after ${timeoutMs / 1000} seconds. Task ID: ${taskRef.id} - check task status manually.`);
             setError(err);
             setLoading(false);
             reject(err);
-          }, 60000); // 60 second timeout
+          }, timeoutMs);
 
           unsubscribeRef.current = onSnapshot(
             doc(db, "tasks", taskRef.id),
@@ -116,7 +118,7 @@ export function useFunction(functionName) {
               console.log(`📊 Task status: ${data.status}`, data);
 
               if (data.status === "completed") {
-                clearTimeout(timeout);
+                clearTimeout(timeoutHandle);
                 if (unsubscribeRef.current) {
                   unsubscribeRef.current();
                 }
@@ -130,7 +132,7 @@ export function useFunction(functionName) {
                 setLoading(false);
                 resolve(data.result);
               } else if (data.status === "failed") {
-                clearTimeout(timeout);
+                clearTimeout(timeoutHandle);
                 if (unsubscribeRef.current) {
                   unsubscribeRef.current();
                 }
@@ -154,7 +156,7 @@ export function useFunction(functionName) {
               }
             },
             (err) => {
-              clearTimeout(timeout);
+              clearTimeout(timeoutHandle);
               console.error(`❌ Error watching task: ${functionName}`, err);
 
               setError(err);

@@ -58,12 +58,13 @@ module.exports = async function (params, context) {
         // CHECK FOR EXISTING SESSION FIRST
         // =====================================================================
         const userSecretsDoc = await userSecretsRef.get();
-        const existingSession = userSecretsDoc.exists 
-          ? userSecretsDoc.data()?.services?.airtop?.session 
+        const existingSession = userSecretsDoc.exists
+          ? userSecretsDoc.data()?.services?.airtop?.session
           : null;
 
         if (existingSession) {
-          const { sessionId: existingSessionId, windowId: existingWindowId } = existingSession;
+          const { sessionId: existingSessionId, windowId: existingWindowId } =
+            existingSession;
 
           if (existingSessionId) {
             context.log("Found existing session, checking if still active", {
@@ -81,7 +82,10 @@ module.exports = async function (params, context) {
               );
 
               const status = statusResponse.data?.data?.status;
-              context.log("Existing session status", { sessionId: existingSessionId, status });
+              context.log("Existing session status", {
+                sessionId: existingSessionId,
+                status,
+              });
 
               if (status === "active" || status === "running") {
                 // Session is still alive! Get the live view URL
@@ -94,7 +98,8 @@ module.exports = async function (params, context) {
                     }
                   );
 
-                  const liveViewUrl = windowInfoResponse.data?.data?.liveViewUrl;
+                  const liveViewUrl =
+                    windowInfoResponse.data?.data?.liveViewUrl;
 
                   context.log("Reconnecting to existing session", {
                     sessionId: existingSessionId,
@@ -114,9 +119,12 @@ module.exports = async function (params, context) {
               }
             } catch (checkError) {
               // Session doesn't exist on Airtop anymore, clean up Firestore
-              context.log("Existing session no longer valid, will create new one", {
-                error: checkError.message,
-              });
+              context.log(
+                "Existing session no longer valid, will create new one",
+                {
+                  error: checkError.message,
+                }
+              );
               await userSecretsRef.set(
                 { services: { airtop: { session: null } } },
                 { merge: true }
@@ -207,7 +215,9 @@ module.exports = async function (params, context) {
 
         const finalStatus = finalStatusResponse.data?.data?.status;
         if (finalStatus !== "active" && finalStatus !== "running") {
-          throw new Error(`Session failed to become ready within timeout (status: ${finalStatus})`);
+          throw new Error(
+            `Session failed to become ready within timeout (status: ${finalStatus})`
+          );
         }
 
         context.log("Session ready, creating window", { sessionId });
@@ -288,15 +298,22 @@ module.exports = async function (params, context) {
 
         // CLEANUP: Terminate the session if one was created
         if (createdSessionId) {
-          context.log("Cleaning up session after failure", { sessionId: createdSessionId });
+          context.log("Cleaning up session after failure", {
+            sessionId: createdSessionId,
+          });
           try {
-            await context.http.delete(`${baseUrl}/sessions/${createdSessionId}`, {
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-              },
-              timeout: 10000,
+            await context.http.delete(
+              `${baseUrl}/sessions/${createdSessionId}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${apiKey}`,
+                },
+                timeout: 10000,
+              }
+            );
+            context.log("Session cleaned up successfully", {
+              sessionId: createdSessionId,
             });
-            context.log("Session cleaned up successfully", { sessionId: createdSessionId });
           } catch (cleanupError) {
             context.log("Warning: Failed to cleanup session", {
               sessionId: createdSessionId,
@@ -398,7 +415,11 @@ module.exports = async function (params, context) {
       // Create a unique profile name for this user
       const userProfileName = `${userId}_${profileName}`;
 
-      context.log("Saving Airtop profile", { userId, sessionId, userProfileName });
+      context.log("Saving Airtop profile", {
+        userId,
+        sessionId,
+        userProfileName,
+      });
 
       try {
         // Step 1: Mark the session to save profile on termination
@@ -414,7 +435,9 @@ module.exports = async function (params, context) {
           }
         );
 
-        context.log("Profile marked for save on termination", { userProfileName });
+        context.log("Profile marked for save on termination", {
+          userProfileName,
+        });
 
         // Step 2: Terminate the session (this triggers the profile save)
         await context.http.delete(`${baseUrl}/sessions/${sessionId}`, {
@@ -424,7 +447,10 @@ module.exports = async function (params, context) {
           timeout: 30000,
         });
 
-        context.log("Session terminated, profile saved", { sessionId, userProfileName });
+        context.log("Session terminated, profile saved", {
+          sessionId,
+          userProfileName,
+        });
 
         // Step 3: Store the profile reference in user-secrets
         await userSecretsRef.set(
@@ -620,4 +646,3 @@ module.exports = async function (params, context) {
       );
   }
 };
-

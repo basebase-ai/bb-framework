@@ -1,0 +1,24 @@
+# Dependencies - will be installed fresh via npm ci
+node_modules
+
+# Build output - will be regenerated
+dist
+
+# Development files
+.git
+.gitignore
+*.log
+.env
+.env.*
+.DS_Store
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test files
+coverage
+.nyc_output
+
