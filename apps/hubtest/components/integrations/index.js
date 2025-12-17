@@ -17,3 +17,4 @@ export { StripePanel } from "./StripePanel.jsx";
 export { LinkedInPanel } from "./LinkedInPanel.jsx";
 export { PostgresPanel } from "./PostgresPanel.jsx";
 export { MongoDBPanel } from "./MongoDBPanel.jsx";
+export { GoogleAdsPanel } from "./GoogleAdsPanel.jsx";

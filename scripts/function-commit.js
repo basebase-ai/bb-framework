@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Commit local function code to Firestore
- * Usage: npm run function:commit <functionId> [options]
+ * Usage: npm run function:commit <filename.js> [options]
  * Options:
  *   --app=<appId>   - Mark as app-specific function
  *   --type=<type>   - Function type (app, framework)
@@ -134,21 +134,26 @@ async function commit(functionId, options = {}) {
 }
 
 // Parse command line arguments
-const functionId = process.argv[2];
+let functionId = process.argv[2];
 const options = {};
 
 if (!functionId || functionId.startsWith("--")) {
-  console.error(chalk.red("\n❌ Function ID is required"));
+  console.error(chalk.red("\n❌ Function filename is required"));
   console.log(
-    chalk.gray("\nUsage: npm run function:commit <functionId> [options]")
+    chalk.gray("\nUsage: npm run function:commit <filename.js> [options]")
   );
   console.log(chalk.gray("Options:"));
   console.log(chalk.gray("  --app=<appId>   Mark as app-specific function"));
   console.log(chalk.gray("  --type=<type>   Function type (app, framework)"));
   console.log(
-    chalk.gray("\nExample: npm run function:commit myFunction --app=crm\n")
+    chalk.gray("\nExample: npm run function:commit myFunction.js --app=crm\n")
   );
   process.exit(1);
+}
+
+// Strip .js extension if provided
+if (functionId.endsWith(".js")) {
+  functionId = functionId.slice(0, -3);
 }
 
 // Parse options

@@ -33,6 +33,7 @@ import {
   IconCalendar,
   IconBrandStripe,
   IconBrandLinkedin,
+  IconAd2,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -58,6 +59,7 @@ import {
   LinkedInPanel,
   PostgresPanel,
   MongoDBPanel,
+  GoogleAdsPanel,
 } from "./components/integrations/index.js";
 
 // Mantine CSS imports
@@ -78,6 +80,7 @@ const INTEGRATION_CONFIG = [
   { id: "hubspot", label: "HubSpot", icon: IconAddressBook, color: "#ff7a59" },
   { id: "slack", label: "Slack", icon: IconBrandSlack, color: "#4A154B" },
   { id: "sheets", label: "Google Sheets", icon: IconFileSpreadsheet, color: "#0F9D58" },
+  { id: "googleads", label: "Google Ads", icon: IconAd2, color: "#4285F4" },
   { id: "airtable", label: "Airtable", icon: IconDatabase, color: "#18BFFF" },
   { id: "supabase", label: "Supabase", icon: IconBrandSupabase, color: "#3ECF8E" },
   { id: "postgres", label: "PostgreSQL", icon: IconDatabase, color: "#4169E1" },
@@ -109,6 +112,7 @@ function AppContent() {
   const { isConnected: notionConnected } = useNangoOAuth(NangoIntegrations.notion);
   const { isConnected: calendarConnected } = useNangoOAuth(NangoIntegrations.googleCalendar);
   const { isConnected: stripeConnected } = useNangoOAuth(NangoIntegrations.stripe);
+  const { isConnected: googleAdsConnected } = useNangoOAuth(NangoIntegrations.googleAds);
 
   // Credential-based connection status
   const { call: credentialManager } = useFunction("credentialManager");
@@ -154,6 +158,7 @@ function AppContent() {
     hubspot: hubspotConnected,
     slack: slackConnected,
     sheets: sheetsConnected,
+    googleads: googleAdsConnected,
     airtable: airtableConnected,
     supabase: supabaseConnected,
     postgres: postgresConnected,
@@ -193,6 +198,8 @@ function AppContent() {
         return <SlackPanel user={user} />;
       case "sheets":
         return <SheetsPanel user={user} />;
+      case "googleads":
+        return <GoogleAdsPanel user={user} />;
       case "airtable":
         return <AirtablePanel user={user} />;
       case "supabase":

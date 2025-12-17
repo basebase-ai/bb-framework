@@ -74,9 +74,25 @@ module.exports = async function (params, context) {
     };
   } catch (error) {
     context.error("Failed to create Connect session:", error);
+    context.error("Nango error details:", {
+      status: error.response?.status,
+      data: error.response?.data,
+    });
 
     if (error.response?.status === 401) {
       throw new Error("Invalid Nango secret key");
+    }
+
+    if (error.response?.status === 400) {
+      const errorData = error.response?.data;
+      throw new Error(
+        `Failed to create Nango session: ${
+          errorData?.error?.message ||
+          errorData?.message ||
+          JSON.stringify(errorData) ||
+          error.message
+        }`
+      );
     }
 
     throw new Error(

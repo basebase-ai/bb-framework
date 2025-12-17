@@ -3,8 +3,8 @@
  * Vibrant coral/teal color palette
  */
 
-import React from "react";
-import { Box, Text, Button, Group, Stack, Container } from "@mantine/core";
+import React, { useState } from "react";
+import { Box, Text, Button, Group, Stack, Container, Burger, Drawer } from "@mantine/core";
 import { IconArrowRight, IconCheck } from "@tabler/icons-react";
 import { 
   SiSlack,
@@ -64,7 +64,7 @@ const INTEGRATIONS = [
 const FEATURES = [
   {
     title: "Connect your data",
-    description: "Pull data from 100+ enterprise apps. Slack, Airtable, Google Sheets, Notion, Stripe, and more. No more copy-pasting between tools."
+    description: "Pull data from 100+ enterprise apps. Slack, Airtable, Google Sheets, Stripe, etc. No more copy-pasting between tools."
   },
   {
     title: "Build in minutes",
@@ -112,8 +112,12 @@ export default function PublicHomepage({
   onNavigateToPricing,
   onNavigateToIntegrations,
 }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const ctaText = isAuthenticated ? "Go to Studio" : "Start building free";
   const navCtaText = isAuthenticated ? "Studio" : "Get Started";
+
+  /** @type {React.CSSProperties} */
+  const navLinkStyle = { color: COLORS.slate, textDecoration: "none", cursor: "pointer" };
 
   return (
     <Box
@@ -137,6 +141,7 @@ export default function PublicHomepage({
       >
         <Container size="lg">
           <Group justify="space-between" h={64}>
+            {/* Logo */}
             <Group gap="xs" align="center">
               <img 
                 src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695"
@@ -147,22 +152,20 @@ export default function PublicHomepage({
                 Basebase
               </Text>
             </Group>
-            <Group gap="xl">
+
+            {/* Desktop Nav Links */}
+            <Group gap="xl" visibleFrom="sm">
               <Text
                 size="sm"
-                style={{ color: COLORS.slate, textDecoration: "none", cursor: "pointer" }}
-                onClick={() => {
-                  if (onNavigateToIntegrations) onNavigateToIntegrations();
-                }}
+                style={navLinkStyle}
+                onClick={() => onNavigateToIntegrations?.()}
               >
                 Integrations
               </Text>
               <Text
                 size="sm"
-                style={{ color: COLORS.slate, textDecoration: "none", cursor: "pointer" }}
-                onClick={() => {
-                  if (onNavigateToPricing) onNavigateToPricing();
-                }}
+                style={navLinkStyle}
+                onClick={() => onNavigateToPricing?.()}
               >
                 Pricing
               </Text>
@@ -172,7 +175,7 @@ export default function PublicHomepage({
                 target="_blank"
                 rel="noopener noreferrer"
                 size="sm"
-                style={{ color: COLORS.slate, textDecoration: "none", cursor: "pointer" }}
+                style={navLinkStyle}
               >
                 Documentation
               </Text>
@@ -180,17 +183,81 @@ export default function PublicHomepage({
                 variant="filled" 
                 size="xs" 
                 onClick={onSignIn}
-                style={{ 
-                  background: COLORS.coral,
-                  border: "none",
-                }}
+                style={{ background: COLORS.coral, border: "none" }}
               >
                 {navCtaText}
               </Button>
             </Group>
+
+            {/* Mobile Burger */}
+            <Burger
+              opened={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              hiddenFrom="sm"
+              size="sm"
+              color={COLORS.slate}
+            />
           </Group>
         </Container>
       </Box>
+
+      {/* Mobile Drawer */}
+      <Drawer
+        opened={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        position="right"
+        size="xs"
+        padding="lg"
+        hiddenFrom="sm"
+        zIndex={200}
+      >
+        <Stack gap="lg">
+          <Text
+            size="md"
+            fw={500}
+            style={navLinkStyle}
+            onClick={() => {
+              onNavigateToIntegrations?.();
+              setMobileMenuOpen(false);
+            }}
+          >
+            Integrations
+          </Text>
+          <Text
+            size="md"
+            fw={500}
+            style={navLinkStyle}
+            onClick={() => {
+              onNavigateToPricing?.();
+              setMobileMenuOpen(false);
+            }}
+          >
+            Pricing
+          </Text>
+          <Text
+            component="a"
+            href="https://docs.basebase.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            size="md"
+            fw={500}
+            style={navLinkStyle}
+          >
+            Documentation
+          </Text>
+          <Button 
+            variant="filled" 
+            fullWidth
+            onClick={() => {
+              onSignIn();
+              setMobileMenuOpen(false);
+            }}
+            style={{ background: COLORS.coral, border: "none", marginTop: 8 }}
+          >
+            {navCtaText}
+          </Button>
+        </Stack>
+      </Drawer>
 
       {/* Hero Section */}
       <Box 
@@ -300,7 +367,7 @@ export default function PublicHomepage({
                   margin: 0,
                 }}
               >
-                We know <span style={{ color: COLORS.coral }}>it's not easy</span>
+                Internal apps <span style={{ color: COLORS.coral }}>are hard</span>
               </Text>
               <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 540 }}>
                 We get it. Your data is scattered across dozens of apps, and building the tools you need feels impossible without an engineering team.
@@ -480,6 +547,16 @@ export default function PublicHomepage({
                 Pull data from 100+ enterprise apps. Break down silos. 
                 Get the unified view you've always wanted.
               </Text>
+              <Button
+                variant="filled"
+                size="md"
+                mt="md"
+                rightSection={<IconArrowRight size={18} />}
+                onClick={() => onNavigateToIntegrations?.()}
+                style={{ background: COLORS.teal, border: "none" }}
+              >
+                View all integrations
+              </Button>
             </Stack>
           </Stack>
         </Container>
@@ -715,7 +792,7 @@ export default function PublicHomepage({
             </Group>
           </Group>
           <Text size="xs" ta="center" mt={48} style={{ color: COLORS.grey }}>
-            © {new Date().getFullYear()} Basebase. All rights reserved.
+            � {new Date().getFullYear()} Basebase. All rights reserved.
           </Text>
         </Container>
       </Box>

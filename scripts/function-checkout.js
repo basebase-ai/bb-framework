@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Checkout function code from Firestore to local /functions directory
- * Usage: npm run function:checkout <functionId>
+ * Usage: npm run function:checkout <filename.js>
  */
 
 import { initializeApp } from "firebase/app";
@@ -22,7 +22,6 @@ const functionsDir = join(root, "functions");
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-
 
 // Main checkout function
 async function checkout(functionId) {
@@ -63,7 +62,7 @@ async function checkout(functionId) {
     console.log(chalk.gray(`   Function: ${functionId}`));
     console.log(chalk.gray(`   File: functions/${functionId}.js`));
     console.log(chalk.white(`\n📝 You can now edit the function locally.\n`));
-    
+
     process.exit(0);
   } catch (error) {
     console.error(chalk.red("\n❌ Checkout failed:"), error.message);
@@ -72,14 +71,18 @@ async function checkout(functionId) {
 }
 
 // Get function ID from command line
-const functionId = process.argv[2];
+let functionId = process.argv[2];
 
 if (!functionId) {
-  console.error(chalk.red("\n❌ Function ID is required"));
-  console.log(chalk.gray("\nUsage: npm run function:checkout <functionId>"));
-  console.log(chalk.gray("Example: npm run function:checkout askLLM\n"));
+  console.error(chalk.red("\n❌ Function filename is required"));
+  console.log(chalk.gray("\nUsage: npm run function:checkout <filename.js>"));
+  console.log(chalk.gray("Example: npm run function:checkout askLLM.js\n"));
   process.exit(1);
 }
 
-checkout(functionId);
+// Strip .js extension if provided
+if (functionId.endsWith(".js")) {
+  functionId = functionId.slice(0, -3);
+}
 
+checkout(functionId);

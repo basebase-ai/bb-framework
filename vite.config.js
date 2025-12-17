@@ -12,14 +12,14 @@ export default defineConfig({
     }),
   ],
   root: resolve(__dirname, "framework"),
-  publicDir: false,
+  publicDir: resolve(__dirname, "public"),
   server: {
     port: 3000,
     open: true,
     host: true,
     fs: {
       // Allow serving files from the parent directory (for /apps)
-      allow: ['..'],
+      allow: [".."],
     },
   },
   esbuild: {
@@ -38,11 +38,22 @@ export default defineConfig({
         ".js": "jsx",
       },
     },
-    include: ["react", "react-dom", "firebase/app", "firebase/firestore", "firebase/auth", "zustand", "@mantine/core", "@mantine/hooks", "@mantine/notifications", "@mantine/dates", "dayjs"],
+    include: [
+      "react",
+      "react-dom",
+      "firebase/app",
+      "firebase/firestore",
+      "firebase/auth",
+      "zustand",
+      "@mantine/core",
+      "@mantine/hooks",
+      "@mantine/notifications",
+      "@mantine/dates",
+      "dayjs",
+    ],
   },
   build: {
     outDir: resolve(__dirname, "dist"),
     sourcemap: true,
   },
 });
-
