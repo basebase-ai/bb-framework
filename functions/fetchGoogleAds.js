@@ -34,6 +34,7 @@ module.exports = async function (params, context) {
 
   try {
     // Step 1: Find the user's Google Ads connection
+    context.log("Step 1: Finding Nango connection...");
     const listResponse = await context.http.get(
       "https://api.nango.dev/connections",
       {
@@ -49,14 +50,17 @@ module.exports = async function (params, context) {
     );
 
     const connections = listResponse.data?.connections || [];
+    context.log("Connections found:", { count: connections.length });
 
     if (connections.length === 0) {
       throw new Error("Google Ads not connected. Please connect first.");
     }
 
     const connectionId = connections[0].connection_id;
+    context.log("Using connection:", { connectionId });
 
     // Step 2: Get the access token
+    context.log("Step 2: Getting access token...");
     const connResponse = await context.http.get(
       `https://api.nango.dev/connections/${connectionId}`,
       {
@@ -71,18 +75,24 @@ module.exports = async function (params, context) {
     );
 
     const accessToken = connResponse.data?.credentials?.access_token;
+    context.log("Access token retrieved:", { hasToken: !!accessToken });
 
     if (!accessToken) {
       throw new Error("No access token found for Google Ads");
     }
 
     // Get the developer token for Google Ads API
+    context.log("Step 3: Getting developer token...");
     const developerToken = await context.getSecret(
       "GOOGLE_ADS_DEVELOPER_TOKEN"
     );
     if (!developerToken) {
       throw new Error("GOOGLE_ADS_DEVELOPER_TOKEN not configured");
     }
+    context.log("Developer token retrieved:", {
+      hasToken: !!developerToken,
+      length: developerToken?.length,
+    });
 
     // Common headers for Google Ads API
     const headers = {
@@ -115,6 +125,12 @@ module.exports = async function (params, context) {
     }
   } catch (error) {
     context.error("Failed to fetch Google Ads data:", error);
+    context.error("Error details:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data,
+    });
 
     if (error.response?.status === 401) {
       throw new Error(
@@ -123,6 +139,11 @@ module.exports = async function (params, context) {
     } else if (error.response?.status === 403) {
       throw new Error(
         "Access denied. Make sure you have the required permissions."
+      );
+    } else if (error.response?.status === 404) {
+      throw new Error(
+        `Google Ads API endpoint not found (404). URL: ${error.config?.url}. ` +
+          `Response: ${JSON.stringify(error.response?.data)}`
       );
     }
 
@@ -142,15 +163,20 @@ module.exports = async function (params, context) {
  */
 async function listAccounts(context, headers) {
   context.log("Listing Google Ads accounts");
+  context.log("Calling Google Ads API: listAccessibleCustomers");
 
   // Use the Google Ads API to list accessible customers
-  const response = await context.http.get(
-    "https://googleads.googleapis.com/v17/customers:listAccessibleCustomers",
-    {
-      headers,
-      timeout: 30000,
-    }
-  );
+  const apiUrl =
+    "https://googleads.googleapis.com/v18/customers:listAccessibleCustomers";
+  context.log("API URL:", apiUrl);
+
+  const response = await context.http.get(apiUrl, {
+    headers,
+    timeout: 30000,
+  });
+
+  context.log("API response status:", response.status);
+  context.log("API response data:", response.data);
 
   const customerResourceNames = response.data?.resourceNames || [];
 
@@ -164,7 +190,7 @@ async function listAccounts(context, headers) {
     try {
       // Query customer details
       const detailResponse = await context.http.post(
-        `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:searchStream`,
+        `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:searchStream`,
         {
           query: `
             SELECT
@@ -223,7 +249,7 @@ async function getCampaigns(context, headers, accountId, dateRange) {
   const customerId = accountId.replace(/-/g, "");
 
   const response = await context.http.post(
-    `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:searchStream`,
+    `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:searchStream`,
     {
       query: `
         SELECT
@@ -296,7 +322,7 @@ async function getAdGroups(context, headers, accountId, dateRange) {
   const customerId = accountId.replace(/-/g, "");
 
   const response = await context.http.post(
-    `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:searchStream`,
+    `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:searchStream`,
     {
       query: `
         SELECT

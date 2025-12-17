@@ -102,38 +102,38 @@
         min-height: 100vh;
       }
 
-      /* Noscript fallback styles */
-      .noscript-content {
+      /* Static fallback content styles (visible to bots, replaced by React) */
+      .static-content {
         max-width: 800px;
         margin: 0 auto;
         padding: 40px 20px;
         color: #416165;
         line-height: 1.6;
       }
-      .noscript-content h1 {
+      .static-content h1 {
         color: #416165;
         font-size: 2.5rem;
         margin-bottom: 0.5rem;
       }
-      .noscript-content h2 {
+      .static-content h2 {
         color: #416165;
         font-size: 1.5rem;
         margin-top: 2rem;
       }
-      .noscript-content a {
+      .static-content a {
         color: #17bebb;
       }
-      .noscript-logo {
+      .static-logo {
         display: flex;
         align-items: center;
         gap: 8px;
         margin-bottom: 2rem;
       }
-      .noscript-logo img {
+      .static-logo img {
         width: 40px;
         height: 40px;
       }
-      .noscript-logo span {
+      .static-logo span {
         font-size: 1.5rem;
         font-weight: 700;
         color: #416165;
@@ -141,73 +141,81 @@
     </style>
   </head>
   <body>
+    <!-- 
+      Static content visible to search engines and bots.
+      React will replace this entire #app div when it loads.
+    -->
     <div id="app">
-      <!-- Fallback content for search engines and bots -->
-      <noscript>
-        <div class="noscript-content">
-          <div class="noscript-logo">
-            <img
-              src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695"
-              alt="Basebase Logo"
-            />
-            <span>Basebase</span>
-          </div>
-
-          <h1>Build Business Tools in Minutes, Not Months</h1>
-          <p>
-            Basebase helps revenue ops, marketing ops, and business teams build
-            the custom internal tools they need—without waiting for engineers.
-          </p>
-
-          <h2>Connect Your Data</h2>
-          <p>
-            Pull data from 100+ enterprise apps including Salesforce, HubSpot,
-            Slack, Google Sheets, Airtable, Notion, Stripe, and more. Break down
-            data silos and get the unified view you've always wanted.
-          </p>
-
-          <h2>Build Without Code</h2>
-          <p>
-            Create custom dashboards, workflows, and tools using AI. No coding
-            required. Just describe what you need and Basebase builds it for
-            you.
-          </p>
-
-          <h2>Share Instantly</h2>
-          <p>
-            Deploy and share with your team in one click. Real apps, not
-            prototypes. Production-ready from day one.
-          </p>
-
-          <h2>Get Started</h2>
-          <p>
-            <strong>Free forever for individuals.</strong> No credit card
-            required.<br />
-            <a href="https://studio.basebase.com">Go to Basebase Studio</a>
-          </p>
-
-          <h2>Resources</h2>
-          <ul>
-            <li><a href="https://docs.basebase.com">Documentation</a></li>
-            <li><a href="https://www.basebase.com/pricing">Pricing</a></li>
-            <li>
-              <a href="https://www.basebase.com/integrations">Integrations</a>
-            </li>
-          </ul>
-
-          <h2>Legal</h2>
-          <ul>
-            <li><a href="/privacy.html">Privacy Policy</a></li>
-            <li><a href="/terms.html">Terms of Service</a></li>
-          </ul>
-
-          <p style="margin-top: 3rem; font-size: 0.875rem; color: #5a7a7e">
-            © 2025 Basebase. All rights reserved.<br />
-            Contact:
-            <a href="mailto:support@basebase.com">support@basebase.com</a>
-          </p>
+      <div class="static-content">
+        <div class="static-logo">
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695"
+            alt="Basebase Logo"
+          />
+          <span>Basebase</span>
         </div>
-      </noscript>
+
+        <h1>Basebase – Build Business Tools in Minutes, Not Months</h1>
+        <p>
+          <strong>Basebase</strong> helps revenue ops, marketing ops, and
+          business teams build the custom internal tools they need—without
+          waiting for engineers.
+        </p>
+
+        <h2>What is Basebase?</h2>
+        <p>
+          Basebase is a platform that enables business teams to build custom
+          internal tools by connecting to their existing data sources. No coding
+          required. Just describe what you need and Basebase builds it for you.
+        </p>
+
+        <h2>Connect Your Data</h2>
+        <p>
+          Pull data from 100+ enterprise apps including Salesforce, HubSpot,
+          Slack, Google Sheets, Airtable, Notion, Stripe, and more. Break down
+          data silos and get the unified view you've always wanted.
+        </p>
+
+        <h2>Build Without Code</h2>
+        <p>
+          Create custom dashboards, workflows, and tools using AI. No coding
+          required. Just describe what you need and Basebase builds it for you.
+        </p>
+
+        <h2>Share Instantly</h2>
+        <p>
+          Deploy and share with your team in one click. Real apps, not
+          prototypes. Production-ready from day one.
+        </p>
+
+        <h2>Get Started</h2>
+        <p>
+          <strong>Free forever for individuals.</strong> No credit card
+          required.<br />
+          <a href="https://studio.basebase.com">Go to Basebase Studio</a>
+        </p>
+
+        <h2>Resources</h2>
+        <ul>
+          <li><a href="https://docs.basebase.com">Documentation</a></li>
+          <li><a href="https://www.basebase.com/pricing">Pricing</a></li>
+          <li>
+            <a href="https://www.basebase.com/integrations">Integrations</a>
+          </li>
+        </ul>
+
+        <h2>Legal</h2>
+        <ul>
+          <li><a href="/privacy.html">Privacy Policy</a></li>
+          <li><a href="/terms.html">Terms of Service</a></li>
+        </ul>
+
+        <p style="margin-top: 3rem; font-size: 0.875rem; color: #5a7a7e">
+          © 2025 Basebase. All rights reserved.<br />
+          Contact:
+          <a href="mailto:support@basebase.com">support@basebase.com</a>
+        </p>
+      </div>
     </div>
 
     <!-- Framework entry point (will be replaced with bundled path during build) -->
