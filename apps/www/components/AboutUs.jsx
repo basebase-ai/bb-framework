@@ -19,7 +19,7 @@ const COLORS = {
   offWhite: "#faf9f7",
 };
 
-/** @type {{ name: string; role: string; bio: string; linkedin: string; initials: string }[]} */
+/** @type {{ name: string; role: string; bio: string; linkedin: string; initials: string; photo: string }[]} */
 const FOUNDERS = [
   {
     name: "Trond Grenager",
@@ -27,6 +27,7 @@ const FOUNDERS = [
     bio: "Teg is a product and enginering leader who was CEO of Uncommon (AI recruiting) and Joinable (a private social network), and was cofounder and CPO of Adap.tv, which was acquired by AOL in 2013 for $400M. Before Adap.tv, he studied AI and machine learning as a Ph.D. student at Stanford University. He lives in Marin County, California with his wife, three sons, and lots of pets.",
     linkedin: "https://www.linkedin.com/in/grenager/",
     initials: "TG",
+    photo: "https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765929913099_grenager.jpeg?alt=media&token=5e70d583-0dac-46a9-b7db-5a9d280d303e",
   },
   {
     name: "Ben Wen",
@@ -34,6 +35,7 @@ const FOUNDERS = [
     bio: "Ben is a product and go-to-market leader who has built and scaled companies across cloud infrastructure, developer tools, and B2B SaaS. He served as CMO at ImpairMaster, HashiCorp, and Linqto, and led product marketing at Joyent. Earlier in his career he helped build MongoLab and led sales at IBM/DataPower. He lives in San Francisco with his wife, kids, and a lot of musical instruments.",
     linkedin: "https://www.linkedin.com/in/benzenwen/",
     initials: "BW",
+    photo: "https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765929918448_benzenwen.jpeg?alt=media&token=2b401112-131b-4b1b-b387-64b0ab04351a",
   },
 ];
 
@@ -193,13 +195,15 @@ export default function AboutUs({ onBack }) {
                   <Stack gap="md">
                     <Group gap="md">
                       <Avatar
-                        size={64}
+                        src={founder.photo}
+                        size={80}
                         radius="xl"
                         style={{
                           background: COLORS.coral,
                           color: COLORS.white,
                           fontWeight: 600,
                           fontSize: 20,
+                          border: `3px solid ${COLORS.teal}`,
                         }}
                       >
                         {founder.initials}
