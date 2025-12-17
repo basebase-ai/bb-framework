@@ -93,9 +93,25 @@ const PAIN_POINTS = [
 ];
 
 /**
- * @param {{ onSignIn: () => void; isAuthenticated?: boolean; onNavigateToTerms?: () => void; onNavigateToPrivacy?: () => void }} props
+ * @param {{
+ *   onSignIn: () => void;
+ *   isAuthenticated?: boolean;
+ *   onNavigateToTerms?: () => void;
+ *   onNavigateToPrivacy?: () => void;
+ *   onNavigateToAbout?: () => void;
+ *   onNavigateToPricing?: () => void;
+ *   onNavigateToIntegrations?: () => void;
+ * }} props
  */
-export default function PublicHomepage({ onSignIn, isAuthenticated = false, onNavigateToTerms, onNavigateToPrivacy }) {
+export default function PublicHomepage({
+  onSignIn,
+  isAuthenticated = false,
+  onNavigateToTerms,
+  onNavigateToPrivacy,
+  onNavigateToAbout,
+  onNavigateToPricing,
+  onNavigateToIntegrations,
+}) {
   const ctaText = isAuthenticated ? "Go to Studio" : "Start building free";
   const navCtaText = isAuthenticated ? "Studio" : "Get Started";
 
@@ -132,21 +148,33 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false, onNa
               </Text>
             </Group>
             <Group gap="xl">
-              <Text 
-                component="a" 
-                href="#features" 
-                size="sm" 
+              <Text
+                size="sm"
                 style={{ color: COLORS.slate, textDecoration: "none", cursor: "pointer" }}
-              >
-                Features
-              </Text>
-              <Text 
-                component="a" 
-                href="#integrations" 
-                size="sm" 
-                style={{ color: COLORS.slate, textDecoration: "none", cursor: "pointer" }}
+                onClick={() => {
+                  if (onNavigateToIntegrations) onNavigateToIntegrations();
+                }}
               >
                 Integrations
+              </Text>
+              <Text
+                size="sm"
+                style={{ color: COLORS.slate, textDecoration: "none", cursor: "pointer" }}
+                onClick={() => {
+                  if (onNavigateToPricing) onNavigateToPricing();
+                }}
+              >
+                Pricing
+              </Text>
+              <Text
+                component="a"
+                href="https://docs.basebase.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="sm"
+                style={{ color: COLORS.slate, textDecoration: "none", cursor: "pointer" }}
+              >
+                Documentation
               </Text>
               <Button 
                 variant="filled" 
@@ -614,15 +642,47 @@ export default function PublicHomepage({ onSignIn, isAuthenticated = false, onNa
                 </Text>
                 <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>Features</Text>
                 <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>Integrations</Text>
-                <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>Templates</Text>
+                <Text
+                  size="sm"
+                  style={{ color: COLORS.white, cursor: "pointer" }}
+                  onClick={() => {
+                    if (onNavigateToPricing) onNavigateToPricing();
+                  }}
+                >
+                  Pricing
+                </Text>
+                <Text
+                  component="a"
+                  href="https://docs.basebase.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="sm"
+                  style={{ color: COLORS.white, cursor: "pointer", textDecoration: "none" }}
+                >
+                  Documentation
+                </Text>
               </Stack>
               <Stack gap="xs">
                 <Text size="xs" fw={600} style={{ color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Company
                 </Text>
-                <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>About</Text>
-                <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>Blog</Text>
-                <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>Contact</Text>
+                <Text
+                  size="sm"
+                  style={{ color: COLORS.white, cursor: "pointer" }}
+                  onClick={() => {
+                    if (onNavigateToAbout) onNavigateToAbout();
+                  }}
+                >
+                  About
+                </Text>
+                <Text
+                  component="a"
+                  href="mailto:hello@basebase.com"
+                  size="sm"
+                  style={{ color: COLORS.white, cursor: "pointer", textDecoration: "none" }}
+                >
+                  Contact
+                </Text>
               </Stack>
               <Stack gap="xs">
                 <Text size="xs" fw={600} style={{ color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.05em" }}>

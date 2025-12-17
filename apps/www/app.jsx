@@ -11,6 +11,9 @@ import AppStudio from "./components/AppStudio.jsx";
 import PublicHomepage from "./components/PublicHomepage.jsx";
 import TermsOfService from "./components/TermsOfService.jsx";
 import PrivacyPolicy from "./components/PrivacyPolicy.jsx";
+import AboutUs from "./components/AboutUs.jsx";
+import Pricing from "./components/Pricing.jsx";
+import IntegrationsPage from "./components/IntegrationsPage.jsx";
 import { APP_ID } from "./schema.js";
 
 // Mantine CSS imports
@@ -20,11 +23,14 @@ import "@mantine/notifications/styles.css";
 /**
  * Check if current path is a public page (accessible without auth)
  * @param {string} path
- * @returns {"terms" | "privacy" | null}
+ * @returns {"terms" | "privacy" | "about" | "pricing" | "integrations" | null}
  */
 function getPublicPage(path) {
   if (path === "/terms") return "terms";
   if (path === "/privacy") return "privacy";
+  if (path === "/about") return "about";
+  if (path === "/pricing") return "pricing";
+  if (path === "/integrations") return "integrations";
   return null;
 }
 
@@ -55,6 +61,21 @@ function App() {
   const navigateToPrivacy = () => {
     setCurrentPath("/privacy");
     window.history.pushState({}, "", "/privacy");
+  };
+
+  const navigateToAbout = () => {
+    setCurrentPath("/about");
+    window.history.pushState({}, "", "/about");
+  };
+
+  const navigateToPricing = () => {
+    setCurrentPath("/pricing");
+    window.history.pushState({}, "", "/pricing");
+  };
+
+  const navigateToIntegrations = () => {
+    setCurrentPath("/integrations");
+    window.history.pushState({}, "", "/integrations");
   };
   
   // Check for public pages first (these don't need auth)
@@ -149,6 +170,18 @@ function App() {
       {/* Public pages - accessible without auth */}
       {publicPage === "terms" && <TermsOfService onBack={navigateToHome} />}
       {publicPage === "privacy" && <PrivacyPolicy onBack={navigateToHome} />}
+      {publicPage === "about" && <AboutUs onBack={navigateToHome} />}
+      {publicPage === "pricing" && <Pricing onBack={navigateToHome} />}
+      {publicPage === "integrations" && (
+        <AuthProvider
+          appId={APP_ID}
+          landingPage={(authProps) => (
+            <IntegrationsPage onBack={navigateToHome} onSignIn={authProps.onSignIn} />
+          )}
+        >
+          <IntegrationsPage onBack={navigateToHome} />
+        </AuthProvider>
+      )}
       {/* Main app - requires auth for studio, shows landing for unauthenticated */}
       {!publicPage && (
         <AuthProvider 
@@ -158,6 +191,9 @@ function App() {
               {...props} 
               onNavigateToTerms={navigateToTerms}
               onNavigateToPrivacy={navigateToPrivacy}
+              onNavigateToAbout={navigateToAbout}
+              onNavigateToPricing={navigateToPricing}
+              onNavigateToIntegrations={navigateToIntegrations}
             />
           )}
         >

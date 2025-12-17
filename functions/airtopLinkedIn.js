@@ -163,7 +163,7 @@ module.exports = async function (params, context) {
 
     switch (action) {
       // =========================================================================
-      // CONNECTIONS - Fetch user's LinkedIn connections
+      // CONNECTIONS - Fetch user's LinkedIn connections with scroll support
       // =========================================================================
       case "connections": {
         const { limit = 50 } = params;
@@ -202,83 +202,161 @@ module.exports = async function (params, context) {
 
         context.log("Navigated to connections page", { windowId });
 
-        // Wait for page to render
+        // Wait for initial page to render
         await new Promise((resolve) => setTimeout(resolve, 3000));
 
-        // Extract connections using AI
+        // Helper to create unique connection key for deduplication
+        /** @param {{name: string, headline?: string}} connection */
+        const getConnectionKey = (connection) => {
+          return `${connection.name}:${connection.headline || ""}`;
+        };
+
+        // Accumulated connections with deduplication
+        /** @type {Map<string, {name: string, headline?: string, profileUrl?: string, connectedDate?: string, profileImageUrl?: string}>} */
+        const allConnections = new Map();
+
+        // Extraction prompt
         const extractionPrompt = `
-          Extract the LinkedIn connections visible on this page. For each connection, extract:
+          Extract ALL LinkedIn connections visible on this page. For each connection, extract:
           - name: The person's full name
           - headline: Their job title/headline (if visible)
           - profileUrl: Their LinkedIn profile URL (if available)
           - connectedDate: When you connected (if visible, like "Connected 2 weeks ago")
           - profileImageUrl: URL of their profile picture (if visible)
 
-          Return the data as a JSON array of objects. Extract up to ${limit} connections.
-          If you can't find any connections, return an empty array.
+          Return the data as a JSON object with a "connections" array.
+          If you can't find any connections, return {"connections": []}.
           Only return valid JSON, no additional text.
         `;
 
-        const queryResponse = await context.http.post(
-          `${baseUrl}/sessions/${sessionId}/windows/${windowId}/page-query`,
-          {
-            prompt: extractionPrompt,
-            configuration: {
-              outputSchema: JSON.stringify({
-                $schema: "http://json-schema.org/draft-07/schema#",
+        const outputSchema = JSON.stringify({
+          $schema: "http://json-schema.org/draft-07/schema#",
+          type: "object",
+          properties: {
+            connections: {
+              type: "array",
+              items: {
                 type: "object",
                 properties: {
-                  connections: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        name: { type: "string" },
-                        headline: { type: "string" },
-                        profileUrl: { type: "string" },
-                        connectedDate: { type: "string" },
-                        profileImageUrl: { type: "string" },
-                      },
-                      required: ["name"],
-                    },
-                  },
+                  name: { type: "string" },
+                  headline: { type: "string" },
+                  profileUrl: { type: "string" },
+                  connectedDate: { type: "string" },
+                  profileImageUrl: { type: "string" },
                 },
-                required: ["connections"],
-              }),
+                required: ["name"],
+              },
             },
           },
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
+          required: ["connections"],
+        });
+
+        // Scroll and extract loop
+        const maxScrolls = Math.min(15, Math.ceil(limit / 10)); // ~10 connections per viewport
+        let scrollCount = 0;
+        let consecutiveEmptyExtractions = 0;
+
+        while (allConnections.size < limit && scrollCount < maxScrolls) {
+          context.log("Extracting connections", { scrollCount, currentTotal: allConnections.size });
+
+          // Extract connections from current viewport
+          const queryResponse = await context.http.post(
+            `${baseUrl}/sessions/${sessionId}/windows/${windowId}/page-query`,
+            {
+              prompt: extractionPrompt,
+              configuration: { outputSchema },
             },
-            timeout: 60000,
-          }
-        );
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+              timeout: 60000,
+            }
+          );
 
-        const modelResponse = queryResponse.data?.data?.modelResponse;
-        context.log("AI extraction complete", { hasResponse: !!modelResponse });
+          const modelResponse = queryResponse.data?.data?.modelResponse;
+          
+          /** @type {Array<{name: string, headline?: string, profileUrl?: string, connectedDate?: string, profileImageUrl?: string}>} */
+          let newConnections = [];
+          try {
+            let parsed;
+            if (typeof modelResponse === "string") {
+              parsed = JSON.parse(modelResponse);
+            } else {
+              parsed = modelResponse;
+            }
+            newConnections = parsed?.connections || [];
+            if (!Array.isArray(newConnections)) {
+              newConnections = [];
+            }
+          } catch (parseError) {
+            context.log("Could not parse AI response", { error: parseError.message });
+            newConnections = [];
+          }
 
-        /** @type {Array<{name: string, headline?: string, profileUrl?: string, connectedDate?: string, profileImageUrl?: string}>} */
-        let connections = [];
-        try {
-          let parsed;
-          if (typeof modelResponse === "string") {
-            parsed = JSON.parse(modelResponse);
-          } else {
-            parsed = modelResponse;
+          // Add new connections (deduplicated)
+          const beforeCount = allConnections.size;
+          for (const conn of newConnections) {
+            const key = getConnectionKey(conn);
+            if (!allConnections.has(key)) {
+              allConnections.set(key, conn);
+            }
           }
-          // Extract from wrapper object
-          connections = parsed?.connections || parsed || [];
-          if (!Array.isArray(connections)) {
-            connections = [];
-          }
-        } catch (parseError) {
-          context.log("Could not parse AI response as JSON", {
-            response: modelResponse,
+          const addedCount = allConnections.size - beforeCount;
+
+          context.log("Connections extracted", { 
+            extracted: newConnections.length, 
+            newUnique: addedCount, 
+            total: allConnections.size 
           });
-          connections = [];
+
+          // If we got no new connections twice in a row, stop scrolling
+          if (addedCount === 0) {
+            consecutiveEmptyExtractions++;
+            if (consecutiveEmptyExtractions >= 2) {
+              context.log("No new connections found after scrolling, stopping");
+              break;
+            }
+          } else {
+            consecutiveEmptyExtractions = 0;
+          }
+
+          // Check if we have enough
+          if (allConnections.size >= limit) {
+            context.log("Reached requested limit", { limit, total: allConnections.size });
+            break;
+          }
+
+          // Scroll down to load more connections
+          scrollCount++;
+          
+          try {
+            await context.http.post(
+              `${baseUrl}/sessions/${sessionId}/windows/${windowId}/scroll`,
+              {
+                scrollBy: { y: 600 }, // Scroll down 600 pixels
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${apiKey}`,
+                  "Content-Type": "application/json",
+                },
+                timeout: 30000,
+              }
+            );
+            context.log("Scrolled down", { scrollCount });
+          } catch (scrollError) {
+            context.log("Scroll failed, stopping", { error: scrollError.message });
+            break;
+          }
+
+          // Wait for new content to load after scroll
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
+
+        // Convert map to array
+        const connections = Array.from(allConnections.values());
 
         // Update last used timestamp
         await userSecretsRef.update({
@@ -287,6 +365,7 @@ module.exports = async function (params, context) {
 
         context.log("Connections fetched successfully", {
           count: connections.length,
+          scrollsPerformed: scrollCount,
         });
 
         return {
@@ -297,7 +376,7 @@ module.exports = async function (params, context) {
       }
 
       // =========================================================================
-      // FEED - Fetch user's LinkedIn feed posts
+      // FEED - Fetch user's LinkedIn feed posts with infinite scroll support
       // =========================================================================
       case "feed": {
         const { limit = 20 } = params;
@@ -326,12 +405,23 @@ module.exports = async function (params, context) {
 
         context.log("Navigated to feed", { windowId });
 
-        // Wait for page to render
+        // Wait for initial page to render
         await new Promise((resolve) => setTimeout(resolve, 3000));
 
-        // Extract feed posts using AI
+        // Helper to create unique post key for deduplication
+        /** @param {{authorName: string, content: string}} post */
+        const getPostKey = (post) => {
+          const contentSnippet = (post.content || "").slice(0, 100);
+          return `${post.authorName}:${contentSnippet}`;
+        };
+
+        // Accumulated posts with deduplication
+        /** @type {Map<string, {authorName: string, authorHeadline?: string, content: string, timestamp?: string, likes?: number, comments?: number, postUrl?: string, hasImage?: boolean, hasVideo?: boolean}>} */
+        const allPosts = new Map();
+
+        // Extraction prompt (fixed for each extraction)
         const extractionPrompt = `
-          Extract the LinkedIn posts visible in this feed. For each post, extract:
+          Extract ALL LinkedIn posts visible in this feed viewport. For each post, extract:
           - authorName: The name of the person or company who posted
           - authorHeadline: Their job title or company tagline
           - authorProfileUrl: URL to their LinkedIn profile
@@ -343,83 +433,154 @@ module.exports = async function (params, context) {
           - hasImage: Whether the post contains an image (true/false)
           - hasVideo: Whether the post contains a video (true/false)
 
-          Return the data as a JSON array of objects. Extract up to ${limit} posts.
-          If you can't find any posts, return an empty array.
+          Return the data as a JSON object with a "posts" array. Extract all visible posts.
+          If you can't find any posts, return {"posts": []}.
           Only return valid JSON, no additional text.
         `;
 
-        const queryResponse = await context.http.post(
-          `${baseUrl}/sessions/${sessionId}/windows/${windowId}/page-query`,
-          {
-            prompt: extractionPrompt,
-            configuration: {
-              outputSchema: JSON.stringify({
-                $schema: "http://json-schema.org/draft-07/schema#",
+        const outputSchema = JSON.stringify({
+          $schema: "http://json-schema.org/draft-07/schema#",
+          type: "object",
+          properties: {
+            posts: {
+              type: "array",
+              items: {
                 type: "object",
                 properties: {
-                  posts: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        authorName: { type: "string" },
-                        authorHeadline: { type: "string" },
-                        authorProfileUrl: { type: "string" },
-                        content: { type: "string" },
-                        timestamp: { type: "string" },
-                        likes: { type: "number" },
-                        comments: { type: "number" },
-                        postUrl: { type: "string" },
-                        hasImage: { type: "boolean" },
-                        hasVideo: { type: "boolean" },
-                      },
-                      required: ["authorName", "content"],
-                    },
-                  },
+                  authorName: { type: "string" },
+                  authorHeadline: { type: "string" },
+                  authorProfileUrl: { type: "string" },
+                  content: { type: "string" },
+                  timestamp: { type: "string" },
+                  likes: { type: "number" },
+                  comments: { type: "number" },
+                  postUrl: { type: "string" },
+                  hasImage: { type: "boolean" },
+                  hasVideo: { type: "boolean" },
                 },
-                required: ["posts"],
-              }),
+                required: ["authorName", "content"],
+              },
             },
           },
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
+          required: ["posts"],
+        });
+
+        // Scroll and extract loop
+        const maxScrolls = Math.min(10, Math.ceil(limit / 5)); // ~5 posts per viewport, max 10 scrolls
+        let scrollCount = 0;
+        let consecutiveEmptyExtractions = 0;
+
+        while (allPosts.size < limit && scrollCount < maxScrolls) {
+          context.log("Extracting posts", { scrollCount, currentTotal: allPosts.size });
+
+          // Extract posts from current viewport
+          const queryResponse = await context.http.post(
+            `${baseUrl}/sessions/${sessionId}/windows/${windowId}/page-query`,
+            {
+              prompt: extractionPrompt,
+              configuration: { outputSchema },
             },
-            timeout: 60000,
-          }
-        );
+            {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+              timeout: 60000,
+            }
+          );
 
-        const modelResponse = queryResponse.data?.data?.modelResponse;
-        context.log("AI extraction complete", { hasResponse: !!modelResponse });
+          const modelResponse = queryResponse.data?.data?.modelResponse;
+          
+          /** @type {Array<{authorName: string, authorHeadline?: string, content: string, timestamp?: string, likes?: number, comments?: number, postUrl?: string, hasImage?: boolean, hasVideo?: boolean}>} */
+          let newPosts = [];
+          try {
+            let parsed;
+            if (typeof modelResponse === "string") {
+              parsed = JSON.parse(modelResponse);
+            } else {
+              parsed = modelResponse;
+            }
+            newPosts = parsed?.posts || [];
+            if (!Array.isArray(newPosts)) {
+              newPosts = [];
+            }
+          } catch (parseError) {
+            context.log("Could not parse AI response", { error: parseError.message });
+            newPosts = [];
+          }
 
-        /** @type {Array<{authorName: string, authorHeadline?: string, content: string, timestamp?: string, likes?: number, comments?: number, postUrl?: string, hasImage?: boolean, hasVideo?: boolean}>} */
-        let posts = [];
-        try {
-          let parsed;
-          if (typeof modelResponse === "string") {
-            parsed = JSON.parse(modelResponse);
-          } else {
-            parsed = modelResponse;
+          // Add new posts (deduplicated)
+          const beforeCount = allPosts.size;
+          for (const post of newPosts) {
+            const key = getPostKey(post);
+            if (!allPosts.has(key)) {
+              allPosts.set(key, post);
+            }
           }
-          // Extract from wrapper object
-          posts = parsed?.posts || parsed || [];
-          if (!Array.isArray(posts)) {
-            posts = [];
-          }
-        } catch (parseError) {
-          context.log("Could not parse AI response as JSON", {
-            response: modelResponse,
+          const addedCount = allPosts.size - beforeCount;
+          
+          context.log("Posts extracted", { 
+            extracted: newPosts.length, 
+            newUnique: addedCount, 
+            total: allPosts.size 
           });
-          posts = [];
+
+          // If we got no new posts twice in a row, stop scrolling
+          if (addedCount === 0) {
+            consecutiveEmptyExtractions++;
+            if (consecutiveEmptyExtractions >= 2) {
+              context.log("No new posts found after scrolling, stopping");
+              break;
+            }
+          } else {
+            consecutiveEmptyExtractions = 0;
+          }
+
+          // Check if we have enough
+          if (allPosts.size >= limit) {
+            context.log("Reached requested limit", { limit, total: allPosts.size });
+            break;
+          }
+
+          // Scroll down to load more posts
+          scrollCount++;
+          
+          try {
+            await context.http.post(
+              `${baseUrl}/sessions/${sessionId}/windows/${windowId}/scroll`,
+              {
+                scrollBy: { y: 800 }, // Scroll down 800 pixels
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${apiKey}`,
+                  "Content-Type": "application/json",
+                },
+                timeout: 30000,
+              }
+            );
+            context.log("Scrolled down", { scrollCount });
+          } catch (scrollError) {
+            context.log("Scroll failed, stopping", { error: scrollError.message });
+            break;
+          }
+
+          // Wait for new content to load after scroll
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
+
+        // Convert map to array
+        const posts = Array.from(allPosts.values());
 
         // Update last used timestamp
         await userSecretsRef.update({
           "services.airtop.profiles.linkedin.lastUsed": new Date().toISOString(),
         });
 
-        context.log("Feed posts fetched successfully", { count: posts.length });
+        context.log("Feed posts fetched successfully", { 
+          count: posts.length,
+          scrollsPerformed: scrollCount 
+        });
 
         return {
           success: true,

@@ -70,7 +70,7 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../core/firebase-init.js";
-import { useAuth } from "../hooks/useAuth.js";
+import { useAuth, AuthModalContext } from "../hooks/useAuth.js";
 import { useAppMembership } from "../hooks/useAppMembership.js";
 import { getAppIdFromURL } from "../loader/url-parser.js";
 
@@ -155,6 +155,11 @@ export function AuthProvider({ children, appId, landingPage }) {
   // Get appId from URL if not provided
   const effectiveAppId = appId || getAppIdFromURL();
   
+  // Stable callback for prompting sign-in from anywhere in the app
+  const promptSignIn = useCallback(() => {
+    setShowAuthModal(true);
+  }, []);
+  
   // Check if user is verified
   const verified = isUserVerified(user);
   
@@ -201,13 +206,13 @@ export function AuthProvider({ children, appId, landingPage }) {
     // If a custom landing page is provided, render it with auth modal support
     if (landingPage) {
       return (
-        <>
-          {landingPage({ onSignIn: () => setShowAuthModal(true) })}
+        <AuthModalContext.Provider value={{ promptSignIn }}>
+          {landingPage({ onSignIn: promptSignIn })}
           <AuthModal 
             opened={showAuthModal} 
             onClose={() => setShowAuthModal(false)} 
           />
-        </>
+        </AuthModalContext.Provider>
       );
     }
     // Otherwise, show the default full-screen auth screen
@@ -331,7 +336,11 @@ export function AuthProvider({ children, appId, landingPage }) {
 
   // User is authenticated, verified, and has access - render the app!
   console.log(`✅ User has access to app "${effectiveAppId}" (role: ${membership?.role}, tier: ${membership?.tier})`);
-  return <>{children}</>;
+  return (
+    <AuthModalContext.Provider value={{ promptSignIn }}>
+      {children}
+    </AuthModalContext.Provider>
+  );
 }
 
 /**

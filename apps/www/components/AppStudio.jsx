@@ -19,16 +19,22 @@ import CreateAppModal from "./CreateAppModal.jsx";
 import PublicHomepage from "./PublicHomepage.jsx";
 import TermsOfService from "./TermsOfService.jsx";
 import PrivacyPolicy from "./PrivacyPolicy.jsx";
+import AboutUs from "./AboutUs.jsx";
+import Pricing from "./Pricing.jsx";
+import IntegrationsPage from "./IntegrationsPage.jsx";
 import { APP_ID } from "../schema.js";
 
 /**
  * Parse route from URL path
  * @param {string} path
- * @returns {{ view: "home" | "studio" | "terms" | "privacy" | "app-details"; appId?: string }}
+ * @returns {{ view: "home" | "studio" | "terms" | "privacy" | "about" | "pricing" | "integrations" | "app-details"; appId?: string }}
  */
 function parseRoute(path) {
   if (path === "/terms") return { view: "terms" };
   if (path === "/privacy") return { view: "privacy" };
+  if (path === "/about") return { view: "about" };
+  if (path === "/pricing") return { view: "pricing" };
+  if (path === "/integrations") return { view: "integrations" };
   if (path === "/studio") return { view: "studio" };
   
   // Check for /studio/app/{appId}
@@ -83,6 +89,18 @@ export default function AppStudio() {
   const navigateToPrivacy = () => {
     console.log("[AppStudio] navigateToPrivacy called");
     navigate("/privacy");
+  };
+  const navigateToAbout = () => {
+    console.log("[AppStudio] navigateToAbout called");
+    navigate("/about");
+  };
+  const navigateToPricing = () => {
+    console.log("[AppStudio] navigateToPricing called");
+    navigate("/pricing");
+  };
+  const navigateToIntegrations = () => {
+    console.log("[AppStudio] navigateToIntegrations called");
+    navigate("/integrations");
   };
   const navigateToApp = (/** @type {string | null} */ appId) => {
     if (appId) {
@@ -148,6 +166,15 @@ export default function AppStudio() {
   if (route.view === "privacy") {
     return <PrivacyPolicy onBack={navigateToHome} />;
   }
+  if (route.view === "about") {
+    return <AboutUs onBack={navigateToHome} />;
+  }
+  if (route.view === "pricing") {
+    return <Pricing onBack={navigateToHome} onSignIn={navigateToStudio} />;
+  }
+  if (route.view === "integrations") {
+    return <IntegrationsPage onBack={navigateToHome} />;
+  }
   if (route.view === "home") {
     return (
       <PublicHomepage 
@@ -155,6 +182,9 @@ export default function AppStudio() {
         isAuthenticated={!!user}
         onNavigateToTerms={navigateToTerms}
         onNavigateToPrivacy={navigateToPrivacy}
+        onNavigateToAbout={navigateToAbout}
+        onNavigateToPricing={navigateToPricing}
+        onNavigateToIntegrations={navigateToIntegrations}
       />
     );
   }

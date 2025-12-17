@@ -150,6 +150,16 @@ service cloud.firestore {
     }
     
 
+    // PUBLIC namespaced collections: {appId}_{name}_public
+    // These are readable by anyone (no auth required), writable by verified users
+    // Example: www_integrations_public, myapp_blog_public
+    match /{collection}/{docId} {
+      allow read: if collection.matches('.*_.*_public$');
+      allow write: if collection.matches('.*_.*_public$')
+                   && request.auth != null 
+                   && isVerifiedUser();
+    }
+
     // MAGIC: Namespaced app collections (scales to infinite apps!)
     // Pattern: {appId}_{collectionName}/{docId}
     match /{collection}/{docId} {
