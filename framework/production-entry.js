@@ -76,10 +76,12 @@ import * as ReactPdf from "react-pdf";
 // React Icons (Simple Icons for brand logos)
 import * as ReactIconsSi from "react-icons/si";
 
-// Show loading screen (renders into #app to preserve #static-fallback for SEO)
+// Show loading screen (renders into #app, keeps #static-fallback visible for SEO bots)
 function showLoading(message = "Loading...") {
   const app = document.getElementById("app");
   if (app) {
+    // Don't hide static-fallback during loading - bots need to see it
+    // The loading spinner will appear below/after the static content
     app.innerHTML = `
       <div style="
         display: flex;
@@ -113,16 +115,14 @@ function showLoading(message = "Loading...") {
         }
       </style>
     `;
-    // Hide static fallback when showing loading
-    const fallback = document.getElementById("static-fallback");
-    if (fallback) fallback.style.display = "none";
   }
 }
 
-// Show error screen (renders into #app to preserve #static-fallback for SEO)
+// Show error screen (renders into #app, keeps #static-fallback visible for SEO bots)
 function showError(title, message, details) {
   const app = document.getElementById("app");
   if (app) {
+    // Don't hide static-fallback during error - bots need to see it
     app.innerHTML = `
       <div style="
         display: flex;
@@ -177,9 +177,6 @@ function showError(title, message, details) {
         </div>
       </div>
     `;
-    // Hide static fallback when showing error
-    const fallback = document.getElementById("static-fallback");
-    if (fallback) fallback.style.display = "none";
   }
 }
 
@@ -373,11 +370,8 @@ async function init() {
     if (appContainer) {
       appContainer.innerHTML = "";
     }
-    // Hide static fallback since app is about to render
-    const staticFallback = document.getElementById("static-fallback");
-    if (staticFallback) {
-      staticFallback.style.display = "none";
-    }
+    // Note: Don't hide static-fallback here - let the React app hide it after mounting
+    // This ensures bots can always see the static content
 
     // Prepare import.meta for environment variables
     const importMeta = {
@@ -405,6 +399,7 @@ async function init() {
 
     // The app module should have already mounted itself to the DOM
     // (via ReactDOM.render in its entry point)
+    // Note: #static-fallback is positioned behind #app via CSS, no need to hide it
   } catch (error) {
     console.error("Failed to initialize app:", error);
     showError(
