@@ -61,7 +61,14 @@ function DocsApp({ onSignIn }) {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   const { path, navigate } = useRouter();
-  const { data: docs = [], loading, add, update, remove } = useCollection(collections.docs);
+  const { data: docs = [], loading, error: docsError, add, update, remove } = useCollection(collections.docs);
+  
+  // Log collection errors for debugging
+  useEffect(() => {
+    if (docsError) {
+      console.error("Docs collection error:", docsError);
+    }
+  }, [docsError]);
   
   const [sidebarOpened, { toggle: toggleSidebar }] = useDisclosure(true);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
@@ -79,6 +86,16 @@ function DocsApp({ onSignIn }) {
     if (!currentSlug) return null;
     return docs.find(d => d.slug === currentSlug) || null;
   }, [currentSlug, docs]);
+  
+  // Default to "what-is-basebase" when no doc is selected
+  useEffect(() => {
+    if (!loading && docs.length > 0 && !currentSlug) {
+      const defaultDoc = docs.find(d => d.slug === "what-is-basebase");
+      if (defaultDoc) {
+        navigate("/what-is-basebase", { replace: true });
+      }
+    }
+  }, [loading, docs, currentSlug, navigate]);
 
   // Handle doc selection
   const handleSelectDoc = useCallback((/** @type {string} */ slug) => {

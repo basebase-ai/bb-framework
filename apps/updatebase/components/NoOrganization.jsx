@@ -209,3 +209,4 @@ export function NoOrganization({ onOrganizationCreated }) {
     </Container>
   );
 }
+

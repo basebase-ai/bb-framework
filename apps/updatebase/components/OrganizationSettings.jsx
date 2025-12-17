@@ -597,3 +597,4 @@ export function OrganizationSettings({ opened, onClose, organization, isOwner })
     </Modal>
   );
 }
+

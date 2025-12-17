@@ -14,7 +14,6 @@ import {
   TextInput,
   Select,
   Switch,
-  Paper,
   Loader,
   Center,
   ActionIcon,
@@ -67,6 +66,11 @@ export function DocViewer({ doc, loading, isAdmin, onSave, onDelete }) {
     published: false,
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  // Scroll to top when doc changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [doc?.id]);
 
   useEffect(() => {
     if (doc) {
@@ -277,14 +281,12 @@ export function DocViewer({ doc, loading, isAdmin, onSave, onDelete }) {
             </Text>
           </Stack>
         ) : (
-          <Paper p="md" radius="sm" style={{ background: "transparent" }}>
-            <div
-              className="markdown-content"
-              dangerouslySetInnerHTML={{
-                __html: renderMarkdown(doc.content),
-              }}
-            />
-          </Paper>
+          <div
+            className="markdown-content"
+            dangerouslySetInnerHTML={{
+              __html: renderMarkdown(doc.content),
+            }}
+          />
         )}
       </Stack>
 

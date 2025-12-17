@@ -3,7 +3,7 @@
  * Technical documentation with sidebar navigation
  */
 
-export const APP_ID = 'docs';
+export const APP_ID = "docs";
 
 /**
  * Namespaced collection names
@@ -13,8 +13,8 @@ export const collections = {
   apps: "apps",
   users: "users",
 
-  // App-specific collections
-  docs: `${APP_ID}_docs`,
+  // App-specific collections (using _public suffix for public read access)
+  docs: `${APP_ID}_docs_public`,
 };
 
 /**
@@ -37,7 +37,7 @@ export const collections = {
  */
 export const DOC_CATEGORIES = [
   "Getting Started",
-  "Guides", 
+  "Guides",
   "Building Apps",
   "Integrations",
   "API Reference",
@@ -68,9 +68,12 @@ export const schema = {
       // Published docs are publicly readable, unpublished only by admins
       read: "true",
       // Only global admins can write docs
-      write: "auth != null && get(/databases/$(database)/documents/users/$(auth.uid)).data.role == 'admin'",
-      create: "auth != null && get(/databases/$(database)/documents/users/$(auth.uid)).data.role == 'admin'",
-      delete: "auth != null && get(/databases/$(database)/documents/users/$(auth.uid)).data.role == 'admin'",
+      write:
+        "auth != null && get(/databases/$(database)/documents/users/$(auth.uid)).data.role == 'admin'",
+      create:
+        "auth != null && get(/databases/$(database)/documents/users/$(auth.uid)).data.role == 'admin'",
+      delete:
+        "auth != null && get(/databases/$(database)/documents/users/$(auth.uid)).data.role == 'admin'",
     },
   },
 };
