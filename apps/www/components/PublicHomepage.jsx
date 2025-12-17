@@ -640,8 +640,15 @@ export default function PublicHomepage({
                 <Text size="xs" fw={600} style={{ color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Product
                 </Text>
-                <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>Features</Text>
-                <Text size="sm" style={{ color: COLORS.white, cursor: "pointer" }}>Integrations</Text>
+                <Text
+                  size="sm"
+                  style={{ color: COLORS.white, cursor: "pointer" }}
+                  onClick={() => {
+                    if (onNavigateToIntegrations) onNavigateToIntegrations();
+                  }}
+                >
+                  Integrations
+                </Text>
                 <Text
                   size="sm"
                   style={{ color: COLORS.white, cursor: "pointer" }}
@@ -654,8 +661,6 @@ export default function PublicHomepage({
                 <Text
                   component="a"
                   href="https://docs.basebase.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
                   size="sm"
                   style={{ color: COLORS.white, cursor: "pointer", textDecoration: "none" }}
                 >
@@ -692,7 +697,6 @@ export default function PublicHomepage({
                   size="sm" 
                   style={{ color: COLORS.white, cursor: "pointer" }}
                   onClick={() => {
-                    console.log("[PublicHomepage] Terms clicked, onNavigateToTerms:", onNavigateToTerms);
                     if (onNavigateToTerms) onNavigateToTerms();
                   }}
                 >
@@ -702,7 +706,6 @@ export default function PublicHomepage({
                   size="sm" 
                   style={{ color: COLORS.white, cursor: "pointer" }}
                   onClick={() => {
-                    console.log("[PublicHomepage] Privacy clicked, onNavigateToPrivacy:", onNavigateToPrivacy);
                     if (onNavigateToPrivacy) onNavigateToPrivacy();
                   }}
                 >
