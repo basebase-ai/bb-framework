@@ -76,99 +76,111 @@ import * as ReactPdf from "react-pdf";
 // React Icons (Simple Icons for brand logos)
 import * as ReactIconsSi from "react-icons/si";
 
-// Show loading screen
+// Show loading screen (renders into #app to preserve #static-fallback for SEO)
 function showLoading(message = "Loading...") {
-  document.body.innerHTML = `
-    <div style="
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f8f9fa;
-      color: #495057;
-    ">
+  const app = document.getElementById("app");
+  if (app) {
+    app.innerHTML = `
       <div style="
-        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #f8f9fa;
+        color: #495057;
+      ">
+        <div style="
+          text-align: center;
+          padding: 2rem;
+        ">
+          <div style="
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e9ecef;
+            border-top-color: #228be6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+          "></div>
+          <div style="font-size: 1.125rem; font-weight: 500;">${message}</div>
+        </div>
+      </div>
+      <style>
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      </style>
+    `;
+    // Hide static fallback when showing loading
+    const fallback = document.getElementById("static-fallback");
+    if (fallback) fallback.style.display = "none";
+  }
+}
+
+// Show error screen (renders into #app to preserve #static-fallback for SEO)
+function showError(title, message, details) {
+  const app = document.getElementById("app");
+  if (app) {
+    app.innerHTML = `
+      <div style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #f8f9fa;
         padding: 2rem;
       ">
         <div style="
-          width: 48px;
-          height: 48px;
-          border: 4px solid #e9ecef;
-          border-top-color: #228be6;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin: 0 auto 1rem;
-        "></div>
-        <div style="font-size: 1.125rem; font-weight: 500;">${message}</div>
-      </div>
-    </div>
-    <style>
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-    </style>
-  `;
-}
-
-// Show error screen
-function showError(title, message, details) {
-  document.body.innerHTML = `
-    <div style="
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f8f9fa;
-      padding: 2rem;
-    ">
-      <div style="
-        max-width: 600px;
-        padding: 2rem;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      ">
-        <h1 style="
-          color: #fa5252;
-          margin: 0 0 1rem;
-          font-size: 1.5rem;
-        ">${title}</h1>
-        <p style="
-          color: #495057;
-          margin: 0 0 1rem;
-          line-height: 1.6;
-        ">${message}</p>
-        ${
-          details
-            ? `
-          <details style="
-            margin-top: 1rem;
-            padding: 1rem;
-            background: #f8f9fa;
-            border-radius: 4px;
+          max-width: 600px;
+          padding: 2rem;
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        ">
+          <h1 style="
+            color: #fa5252;
+            margin: 0 0 1rem;
+            font-size: 1.5rem;
+          ">${title}</h1>
+          <p style="
             color: #495057;
-          ">
-            <summary style="cursor: pointer; font-weight: 500; color: #495057;">Technical Details</summary>
-            <pre style="
-              margin: 1rem 0 0;
-              padding: 0;
-              font-size: 0.875rem;
-              white-space: pre-wrap;
-              word-wrap: break-word;
-              color: #212529;
-              font-family: 'Courier New', monospace;
-            ">${details}</pre>
-          </details>
-        `
-            : ""
-        }
+            margin: 0 0 1rem;
+            line-height: 1.6;
+          ">${message}</p>
+          ${
+            details
+              ? `
+            <details style="
+              margin-top: 1rem;
+              padding: 1rem;
+              background: #f8f9fa;
+              border-radius: 4px;
+              color: #495057;
+            ">
+              <summary style="cursor: pointer; font-weight: 500; color: #495057;">Technical Details</summary>
+              <pre style="
+                margin: 1rem 0 0;
+                padding: 0;
+                font-size: 0.875rem;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                color: #212529;
+                font-family: 'Courier New', monospace;
+              ">${details}</pre>
+            </details>
+          `
+              : ""
+          }
+        </div>
       </div>
-    </div>
-  `;
+    `;
+    // Hide static fallback when showing error
+    const fallback = document.getElementById("static-fallback");
+    if (fallback) fallback.style.display = "none";
+  }
 }
 
 // Main initialization
@@ -356,8 +368,16 @@ async function init() {
       "../../framework/loader/url-parser.js": { getAppIdFromURL },
     };
 
-    // Restore the app container before loading the app
-    document.body.innerHTML = '<div id="app"></div>';
+    // Clear the app container before loading the app (preserves #static-fallback for SEO)
+    const appContainer = document.getElementById("app");
+    if (appContainer) {
+      appContainer.innerHTML = "";
+    }
+    // Hide static fallback since app is about to render
+    const staticFallback = document.getElementById("static-fallback");
+    if (staticFallback) {
+      staticFallback.style.display = "none";
+    }
 
     // Prepare import.meta for environment variables
     const importMeta = {

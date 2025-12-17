@@ -241,24 +241,6 @@
     <!-- React app mounts here -->
     <div id="app"></div>
 
-    <!-- Hide static fallback once React renders -->
-    <script>
-      (function () {
-        var observer = new MutationObserver(function (mutations, obs) {
-          var app = document.getElementById("app");
-          if (app && app.children.length > 0) {
-            var fallback = document.getElementById("static-fallback");
-            if (fallback) fallback.style.display = "none";
-            obs.disconnect();
-          }
-        });
-        observer.observe(document.getElementById("app"), {
-          childList: true,
-          subtree: true,
-        });
-      })();
-    </script>
-
     <!-- Framework entry point (will be replaced with bundled path during build) -->
     <script type="module" src="/framework/production-entry.js"></script>
   </body>
