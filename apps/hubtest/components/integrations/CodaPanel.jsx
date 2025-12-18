@@ -1,5 +1,6 @@
 /**
  * Coda Integration Panel
+ * Uses API key authentication (not OAuth)
  */
 
 import React, { useState } from "react";
@@ -16,6 +17,8 @@ import {
   Table,
   Title,
   ThemeIcon,
+  PasswordInput,
+  Anchor,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -24,9 +27,9 @@ import {
   IconRefresh,
   IconTable,
   IconFolder,
+  IconKey,
 } from "@tabler/icons-react";
 import { SiCoda } from "react-icons/si";
-import { useNangoOAuth } from "../../../../framework/hooks/useNangoOAuth.js";
 import { useFunction } from "../../../../framework/hooks/useFunction.js";
 
 /**
@@ -60,19 +63,23 @@ import { useFunction } from "../../../../framework/hooks/useFunction.js";
  * @param {CodaPanelProps} props
  */
 export function CodaPanel({ user, onConnectionChange }) {
-  // OAuth - use "coda" as the Nango integration ID
-  const {
-    isConnected,
-    connect,
-    disconnect,
-    loading: oauthLoading,
-    error: oauthError,
-  } = useNangoOAuth("coda");
-
   // Functions
+  const { call: credentialManager, loading: credLoading } = useFunction("credentialManager");
   const { call: fetchDocs, loading: fetchingDocs } = useFunction("fetchCodaDocs");
 
-  // State
+  // Credential helpers
+  const saveCreds = (/** @type {Record<string, string>} */ creds) =>
+    credentialManager({ action: "save", serviceName: "coda", credentials: creds });
+  const getCreds = () => credentialManager({ action: "get", serviceName: "coda" });
+  const deleteCreds = () => credentialManager({ action: "delete", serviceName: "coda" });
+
+  // Connection state
+  /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
+  const [connected, setConnected] = useState(false);
+  /** @type {[string, React.Dispatch<React.SetStateAction<string>>]} */
+  const [apiToken, setApiToken] = useState("");
+
+  // Data state
   /** @type {[CodaDoc[], React.Dispatch<React.SetStateAction<CodaDoc[]>>]} */
   const [docs, setDocs] = useState([]);
   /** @type {[CodaTable[], React.Dispatch<React.SetStateAction<CodaTable[]>>]} */
@@ -80,24 +87,63 @@ export function CodaPanel({ user, onConnectionChange }) {
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
   const [error, setError] = useState(null);
 
+  // Check connection on mount
+  React.useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const result = await getCreds();
+        if (result.success && result.hasCredentials) {
+          setConnected(true);
+          onConnectionChange?.(true);
+        }
+      } catch (err) {
+        // No credentials saved - that's OK
+      }
+    };
+    if (user) {
+      checkConnection();
+    }
+  }, [user]);
+
   // Notify parent of connection changes
   React.useEffect(() => {
-    onConnectionChange?.(isConnected);
-  }, [isConnected, onConnectionChange]);
+    onConnectionChange?.(connected);
+  }, [connected, onConnectionChange]);
 
   const handleConnect = async () => {
-    try {
-      await connect();
+    if (!apiToken) {
       notifications.show({
-        title: "Connected!",
-        message: "Coda connected successfully",
-        color: "green",
-        icon: <IconCheck size={16} />,
+        title: "Missing API Token",
+        message: "Please enter your Coda API token",
+        color: "yellow",
       });
+      return;
+    }
+
+    try {
+      setError(null);
+      const result = await saveCreds({
+        apiToken: apiToken,
+      });
+
+      if (result.success) {
+        setConnected(true);
+        setApiToken(""); // Clear token from state for security
+        notifications.show({
+          title: "Connected!",
+          message: "Coda API token saved successfully",
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
+      } else {
+        throw new Error(result.error || "Failed to save credentials");
+      }
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to connect";
+      setError(message);
       notifications.show({
         title: "Connection Failed",
-        message: err instanceof Error ? err.message : "Failed to connect",
+        message,
         color: "red",
       });
     }
@@ -105,12 +151,14 @@ export function CodaPanel({ user, onConnectionChange }) {
 
   const handleDisconnect = async () => {
     try {
-      await disconnect();
+      await deleteCreds();
+      setConnected(false);
+      setApiToken("");
       setDocs([]);
       setTables([]);
       notifications.show({
         title: "Disconnected",
-        message: "Coda has been disconnected",
+        message: "Coda credentials removed",
         color: "gray",
       });
     } catch (err) {
@@ -166,31 +214,59 @@ export function CodaPanel({ user, onConnectionChange }) {
             </div>
           </Group>
 
-          <Group gap="sm">
-            {isConnected && (
+          {connected && (
+            <Group gap="sm">
               <Badge color="green" size="lg" leftSection={<IconCheck size={14} />}>
                 Connected
               </Badge>
-            )}
-            <Button
-              onClick={isConnected ? handleDisconnect : handleConnect}
-              loading={oauthLoading}
-              color={isConnected ? "gray" : "orange"}
-              variant={isConnected ? "light" : "filled"}
-            >
-              {isConnected ? "Disconnect" : "Connect Coda"}
-            </Button>
-          </Group>
+              <Button
+                onClick={handleDisconnect}
+                loading={credLoading}
+                color="gray"
+                variant="light"
+              >
+                Disconnect
+              </Button>
+            </Group>
+          )}
         </Group>
 
-        {oauthError && (
+        {!connected && (
+          <Stack gap="md" mt="lg">
+            <PasswordInput
+              label="API Token"
+              description={
+                <Text size="xs">
+                  Get your API token from{" "}
+                  <Anchor href="https://coda.io/account" target="_blank" rel="noopener noreferrer">
+                    coda.io/account
+                  </Anchor>
+                </Text>
+              }
+              placeholder="Enter your Coda API token"
+              value={apiToken}
+              onChange={(e) => setApiToken(e.target.value)}
+              leftSection={<IconKey size={16} />}
+            />
+            <Button
+              onClick={handleConnect}
+              loading={credLoading}
+              color="orange"
+              leftSection={<SiCoda size={16} />}
+            >
+              Connect Coda
+            </Button>
+          </Stack>
+        )}
+
+        {error && (
           <Alert icon={<IconAlertCircle size={16} />} color="red" mt="md">
-            {oauthError.message}
+            {error}
           </Alert>
         )}
       </Paper>
 
-      {isConnected && (
+      {connected && (
         <Paper shadow="sm" p="lg" withBorder>
           <Stack gap="md">
             <Group justify="space-between">
@@ -234,9 +310,9 @@ export function CodaPanel({ user, onConnectionChange }) {
                         {docs.map((doc) => (
                           <Table.Tr key={doc.id}>
                             <Table.Td>
-                              <a href={doc.browserLink} target="_blank" rel="noopener noreferrer">
+                              <Anchor href={doc.browserLink} target="_blank" rel="noopener noreferrer">
                                 {doc.icon || "📄"} {doc.name || "Untitled"}
-                              </a>
+                              </Anchor>
                             </Table.Td>
                             <Table.Td>{doc.folderName || "-"}</Table.Td>
                             <Table.Td>
@@ -269,9 +345,9 @@ export function CodaPanel({ user, onConnectionChange }) {
                         {tables.map((table) => (
                           <Table.Tr key={table.id}>
                             <Table.Td>
-                              <a href={table.browserLink} target="_blank" rel="noopener noreferrer">
+                              <Anchor href={table.browserLink} target="_blank" rel="noopener noreferrer">
                                 📊 {table.name || "Untitled"}
-                              </a>
+                              </Anchor>
                             </Table.Td>
                             <Table.Td>{table.tableType || "-"}</Table.Td>
                             <Table.Td>{table.rowCount ?? "-"}</Table.Td>

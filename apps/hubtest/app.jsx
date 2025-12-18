@@ -115,7 +115,6 @@ function AppContent() {
   const { isConnected: salesforceConnected } = useNangoOAuth(NangoIntegrations.salesforce);
   const { isConnected: githubConnected } = useNangoOAuth(NangoIntegrations.github);
   const { isConnected: notionConnected } = useNangoOAuth(NangoIntegrations.notion);
-  const { isConnected: codaConnected } = useNangoOAuth("coda");
   const { isConnected: calendarConnected } = useNangoOAuth(NangoIntegrations.googleCalendar);
   const { isConnected: stripeConnected } = useNangoOAuth(NangoIntegrations.stripe);
   const { isConnected: googleAdsConnected } = useNangoOAuth(NangoIntegrations.googleAds);
@@ -130,6 +129,8 @@ function AppContent() {
   const [postgresConnected, setPostgresConnected] = useState(false);
   /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
   const [mongodbConnected, setMongodbConnected] = useState(false);
+  /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
+  const [codaConnected, setCodaConnected] = useState(false);
   /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
   const [linkedinConnected, setLinkedinConnected] = useState(false);
 
@@ -151,6 +152,11 @@ function AppContent() {
     credentialManager({ action: "get", serviceName: "mongodb" })
       .then((r) => setMongodbConnected(r.hasCredentials === true))
       .catch(() => setMongodbConnected(false));
+
+    // Check Coda
+    credentialManager({ action: "get", serviceName: "coda" })
+      .then((r) => setCodaConnected(r.hasCredentials === true))
+      .catch(() => setCodaConnected(false));
 
     // Check LinkedIn via Airtop
     airtopSession({ action: "checkProfile", profileName: "linkedin" })
@@ -182,6 +188,7 @@ function AppContent() {
   const onSupabaseChange = useCallback((c) => setSupabaseConnected(c), []);
   const onPostgresChange = useCallback((c) => setPostgresConnected(c), []);
   const onMongodbChange = useCallback((c) => setMongodbConnected(c), []);
+  const onCodaChange = useCallback((c) => setCodaConnected(c), []);
   const onLinkedinChange = useCallback((c) => setLinkedinConnected(c), []);
 
   // Render the active integration panel
@@ -222,7 +229,7 @@ function AppContent() {
       case "notion":
         return <NotionPanel user={user} />;
       case "coda":
-        return <CodaPanel user={user} />;
+        return <CodaPanel user={user} onConnectionChange={onCodaChange} />;
       case "calendar":
         return <CalendarPanel user={user} />;
       case "stripe":
