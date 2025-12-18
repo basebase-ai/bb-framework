@@ -3,7 +3,7 @@
  */
 
 // Your app's unique identifier
-export const APP_ID = "hubtest";
+export const APP_ID = 'connections';
 
 /**
  * Namespaced collection names
