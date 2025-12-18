@@ -17,10 +17,10 @@ import {
   Tabs,
   Card,
   Title,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconBrandLinkedin,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
@@ -29,6 +29,7 @@ import {
   IconWorld,
   IconPlugConnected,
 } from "@tabler/icons-react";
+import { SiLinkedin } from "react-icons/si";
 import { useFunction } from "../../../../framework/hooks/useFunction.js";
 
 /**
@@ -235,7 +236,9 @@ export function LinkedInPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconBrandLinkedin size={40} color="#0A66C2" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiLinkedin size={24} color="#0A66C2" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 LinkedIn Connection (via Airtop)

@@ -83,38 +83,38 @@ function showLoading(message = "Loading...") {
     // Don't hide static-fallback during loading - bots need to see it
     // The loading spinner will appear below/after the static content
     app.innerHTML = `
+    <div style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f8f9fa;
+      color: #495057;
+    ">
       <div style="
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        font-family: system-ui, -apple-system, sans-serif;
-        background: #f8f9fa;
-        color: #495057;
+        text-align: center;
+        padding: 2rem;
       ">
         <div style="
-          text-align: center;
-          padding: 2rem;
-        ">
-          <div style="
-            width: 48px;
-            height: 48px;
-            border: 4px solid #e9ecef;
-            border-top-color: #228be6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-          "></div>
-          <div style="font-size: 1.125rem; font-weight: 500;">${message}</div>
-        </div>
+          width: 48px;
+          height: 48px;
+          border: 4px solid #e9ecef;
+          border-top-color: #228be6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 1rem;
+        "></div>
+        <div style="font-size: 1.125rem; font-weight: 500;">${message}</div>
       </div>
-      <style>
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      </style>
-    `;
+    </div>
+    <style>
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  `;
   }
 }
 
@@ -127,8 +127,8 @@ function showError(title, message, details) {
     <details style="margin: 0;">
       <summary style="
         cursor: pointer;
-        display: flex;
-        align-items: center;
+      display: flex;
+      align-items: center;
         gap: 0.5rem;
         font-weight: 500;
         font-size: 0.875rem;
@@ -162,7 +162,7 @@ function showError(title, message, details) {
             font-family: 'SF Mono', 'Consolas', monospace;
             max-height: 150px;
             overflow-y: auto;
-          ">${details}</pre>
+            ">${details}</pre>
         `
             : ""
         }

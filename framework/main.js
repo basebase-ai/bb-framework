@@ -14,10 +14,10 @@ function getAppIdFromURL() {
   if (parsedAppId) {
     return parsedAppId;
   }
-  
+
   // Fallback: query param or default
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('app') || 'starter-app';
+  return urlParams.get("app") || "starter-app";
 }
 
 // Dynamic import of the app entry point
@@ -27,10 +27,13 @@ const loadApp = async () => {
   try {
     const appId = getAppIdFromURL();
     console.log(`🚀 Loading app: ${appId}`);
-    
-      // In development, load from /apps/{app-id}/app.jsx
-      // Must use relative path for Vite dynamic imports
-      await import(`../apps/${appId}/app.jsx`);
+
+    // In development, load from /apps/{app-id}/app.jsx
+    // Must use relative path for Vite dynamic imports
+    await import(`../apps/${appId}/app.jsx`);
+
+    // Hide static fallback content (used for SEO/bots)
+    document.body.classList.add("app-loaded");
   } catch (error) {
     console.error("Failed to load app:", error);
     const appId = getAppIdFromURL();
@@ -46,4 +49,3 @@ const loadApp = async () => {
 };
 
 loadApp();
-

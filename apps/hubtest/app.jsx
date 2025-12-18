@@ -21,21 +21,23 @@ import {
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import {
-  IconAddressBook,
-  IconBrandSlack,
-  IconBrandGmail,
-  IconFileSpreadsheet,
-  IconDatabase,
-  IconBrandSupabase,
-  IconCloud,
-  IconBrandGithub,
-  IconBrandNotion,
-  IconCalendar,
-  IconBrandStripe,
-  IconBrandLinkedin,
-  IconAd2,
-  IconFile,
-} from "@tabler/icons-react";
+  SiGmail,
+  SiHubspot,
+  SiSlack,
+  SiGooglesheets,
+  SiAirtable,
+  SiSupabase,
+  SiSalesforce,
+  SiGithub,
+  SiNotion,
+  SiGooglecalendar,
+  SiStripe,
+  SiLinkedin,
+  SiPostgresql,
+  SiMongodb,
+  SiCoda,
+  SiGoogleads,
+} from "react-icons/si";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
 import { useFunction } from "../../framework/hooks/useFunction.js";
@@ -78,22 +80,22 @@ import "@mantine/notifications/styles.css";
 
 /** @type {IntegrationConfig[]} */
 const INTEGRATION_CONFIG = [
-  { id: "gmail", label: "Gmail", icon: IconBrandGmail, color: "#EA4335" },
-  { id: "hubspot", label: "HubSpot", icon: IconAddressBook, color: "#ff7a59" },
-  { id: "slack", label: "Slack", icon: IconBrandSlack, color: "#4A154B" },
-  { id: "sheets", label: "Google Sheets", icon: IconFileSpreadsheet, color: "#0F9D58" },
-  { id: "googleads", label: "Google Ads", icon: IconAd2, color: "#4285F4" },
-  { id: "airtable", label: "Airtable", icon: IconDatabase, color: "#18BFFF" },
-  { id: "supabase", label: "Supabase", icon: IconBrandSupabase, color: "#3ECF8E" },
-  { id: "postgres", label: "PostgreSQL", icon: IconDatabase, color: "#4169E1" },
-  { id: "mongodb", label: "MongoDB", icon: IconDatabase, color: "#47A248" },
-  { id: "salesforce", label: "Salesforce", icon: IconCloud, color: "#00A1E0" },
-  { id: "github", label: "GitHub", icon: IconBrandGithub, color: "#333" },
-  { id: "notion", label: "Notion", icon: IconBrandNotion, color: "#000" },
-  { id: "coda", label: "Coda", icon: IconFile, color: "#F46A54" },
-  { id: "calendar", label: "Google Calendar", icon: IconCalendar, color: "#4285F4" },
-  { id: "stripe", label: "Stripe", icon: IconBrandStripe, color: "#635BFF" },
-  { id: "linkedin", label: "LinkedIn (Airtop)", icon: IconBrandLinkedin, color: "#0A66C2" },
+  { id: "gmail", label: "Gmail", icon: SiGmail, color: "#EA4335" },
+  { id: "hubspot", label: "HubSpot", icon: SiHubspot, color: "#ff7a59" },
+  { id: "slack", label: "Slack", icon: SiSlack, color: "#4A154B" },
+  { id: "sheets", label: "Google Sheets", icon: SiGooglesheets, color: "#0F9D58" },
+  { id: "googleads", label: "Google Ads", icon: SiGoogleads, color: "#4285F4" },
+  { id: "airtable", label: "Airtable", icon: SiAirtable, color: "#18BFFF" },
+  { id: "supabase", label: "Supabase", icon: SiSupabase, color: "#3ECF8E" },
+  { id: "postgres", label: "PostgreSQL", icon: SiPostgresql, color: "#4169E1" },
+  { id: "mongodb", label: "MongoDB", icon: SiMongodb, color: "#47A248" },
+  { id: "salesforce", label: "Salesforce", icon: SiSalesforce, color: "#00A1E0" },
+  { id: "github", label: "GitHub", icon: SiGithub, color: "#333" },
+  { id: "notion", label: "Notion", icon: SiNotion, color: "#000" },
+  { id: "coda", label: "Coda", icon: SiCoda, color: "#F46A54" },
+  { id: "calendar", label: "Google Calendar", icon: SiGooglecalendar, color: "#4285F4" },
+  { id: "stripe", label: "Stripe", icon: SiStripe, color: "#635BFF" },
+  { id: "linkedin", label: "LinkedIn (Airtop)", icon: SiLinkedin, color: "#0A66C2" },
 ];
 
 function AppContent() {

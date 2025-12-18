@@ -19,16 +19,17 @@ import {
   PasswordInput,
   Card,
   Select,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconDatabase,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
   IconKey,
   IconTable,
 } from "@tabler/icons-react";
+import { SiPostgresql } from "react-icons/si";
 import { useFunction } from "../../../../framework/hooks/useFunction.js";
 
 /**
@@ -239,7 +240,9 @@ export function PostgresPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconDatabase size={40} color="#4169E1" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiPostgresql size={24} color="#4169E1" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 PostgreSQL Connection

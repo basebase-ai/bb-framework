@@ -15,15 +15,16 @@ import {
   Center,
   Title,
   Card,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconBrandGmail,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
   IconMailOpened,
 } from "@tabler/icons-react";
+import { SiGmail } from "react-icons/si";
 import {
   useNangoOAuth,
   NangoIntegrations,
@@ -102,7 +103,9 @@ export function GmailPanel({ user, onConnectionChange }) {
   const handleScan = async () => {
     try {
       setError(null);
-      const result = await scanGmail({});
+      // Pass the userId explicitly so the function knows which user to scan for
+      const result = await scanGmail({ userId: user?.uid });
+      console.log("scanGmail result:", result);
       if (result.success && typeof result.importantCount === "number") {
         setCount(result.importantCount);
         notifications.show({
@@ -110,11 +113,20 @@ export function GmailPanel({ user, onConnectionChange }) {
           message: `Found ${result.importantCount} important emails`,
           color: "green",
         });
+      } else if (result.success) {
+        // Success but no importantCount - show message from result
+        setCount(0);
+        notifications.show({
+          title: "Scan Complete",
+          message: result.message || "No important emails found",
+          color: "blue",
+        });
       } else {
         throw new Error(result.error || "Failed to scan inbox");
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to scan";
+      console.error("scanGmail error:", err);
       setError(message);
       notifications.show({
         title: "Scan Failed",
@@ -129,7 +141,9 @@ export function GmailPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconBrandGmail size={40} color="#EA4335" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiGmail size={24} color="#EA4335" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Gmail Connection

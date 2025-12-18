@@ -17,16 +17,17 @@ import {
   Card,
   Select,
   Textarea,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconBrandSlack,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
   IconMessage,
   IconSparkles,
 } from "@tabler/icons-react";
+import { SiSlack } from "react-icons/si";
 import {
   useNangoOAuth,
   NangoIntegrations,
@@ -182,7 +183,9 @@ export function SlackPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconBrandSlack size={40} color="#4A154B" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiSlack size={24} color="#4A154B" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Slack Connection

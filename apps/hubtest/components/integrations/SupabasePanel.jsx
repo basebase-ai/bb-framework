@@ -20,10 +20,10 @@ import {
   PasswordInput,
   Card,
   Select,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconBrandSupabase,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
@@ -31,6 +31,7 @@ import {
   IconKey,
   IconTable,
 } from "@tabler/icons-react";
+import { SiSupabase } from "react-icons/si";
 import { useFunction } from "../../../../framework/hooks/useFunction.js";
 
 /**
@@ -240,7 +241,9 @@ export function SupabasePanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconBrandSupabase size={40} color="#3ECF8E" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiSupabase size={24} color="#3ECF8E" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Supabase Connection
@@ -288,7 +291,7 @@ export function SupabasePanel({ user, onConnectionChange }) {
               onClick={handleConnect}
               loading={savingCreds}
               color="green"
-              leftSection={<IconBrandSupabase size={16} />}
+              leftSection={<SiSupabase size={16} />}
             >
               Connect Supabase
             </Button>

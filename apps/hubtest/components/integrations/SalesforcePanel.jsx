@@ -15,16 +15,17 @@ import {
   Center,
   Table,
   Tabs,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconCloud,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
   IconAddressBook,
   IconBuilding,
 } from "@tabler/icons-react";
+import { SiSalesforce } from "react-icons/si";
 import {
   useNangoOAuth,
   NangoIntegrations,
@@ -183,7 +184,9 @@ export function SalesforcePanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconCloud size={40} color="#00A1E0" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiSalesforce size={24} color="#00A1E0" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Salesforce Connection

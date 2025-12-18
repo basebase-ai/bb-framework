@@ -15,15 +15,16 @@ import {
   Center,
   Table,
   Title,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconCalendar,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
   IconCalendarEvent,
 } from "@tabler/icons-react";
+import { SiGooglecalendar } from "react-icons/si";
 import {
   useNangoOAuth,
   NangoIntegrations,
@@ -155,7 +156,9 @@ export function CalendarPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconCalendar size={40} color="#4285F4" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiGooglecalendar size={24} color="#4285F4" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Google Calendar Connection

@@ -18,15 +18,16 @@ import {
   Select,
   Table,
   ScrollArea,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconDatabase,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
   IconTable,
 } from "@tabler/icons-react";
+import { SiAirtable } from "react-icons/si";
 import {
   useNangoOAuth,
   NangoIntegrations,
@@ -231,7 +232,9 @@ export function AirtablePanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconDatabase size={40} color="#18BFFF" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiAirtable size={24} color="#18BFFF" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Airtable Connection

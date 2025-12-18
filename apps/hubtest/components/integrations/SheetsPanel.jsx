@@ -18,15 +18,16 @@ import {
   Select,
   Table,
   ScrollArea,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconFileSpreadsheet,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
   IconTable,
 } from "@tabler/icons-react";
+import { SiGooglesheets } from "react-icons/si";
 import {
   useNangoOAuth,
   NangoIntegrations,
@@ -186,7 +187,9 @@ export function SheetsPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconFileSpreadsheet size={40} color="#0F9D58" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiGooglesheets size={24} color="#0F9D58" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Google Sheets Connection

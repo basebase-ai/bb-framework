@@ -22,6 +22,7 @@ import {
   SimpleGrid,
   NumberFormatter,
   Progress,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -312,7 +313,9 @@ export function GoogleAdsPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <GoogleAdsIcon size={40} />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <GoogleAdsIcon size={24} />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Google Ads Connection

@@ -15,16 +15,17 @@ import {
   Center,
   Table,
   Title,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconBrandNotion,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
   IconFile,
   IconLayoutGrid,
 } from "@tabler/icons-react";
+import { SiNotion } from "react-icons/si";
 import {
   useNangoOAuth,
   NangoIntegrations,
@@ -152,7 +153,9 @@ export function NotionPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconBrandNotion size={40} color="#000" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiNotion size={24} color="#000" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Notion Connection

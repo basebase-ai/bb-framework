@@ -132,10 +132,25 @@ module.exports = async function (params, context) {
 
   try {
     context.log("Starting email check", { userId: userId || "all users" });
+    context.log("DEBUG: params received", {
+      paramsType: typeof params,
+      paramsKeys: params ? Object.keys(params) : "null",
+      paramsJson: JSON.stringify(params),
+    });
 
     const db = context.firebase;
+    if (!db) {
+      throw new Error("DEBUG: context.firebase is not available!");
+    }
+    context.log("DEBUG: Firebase DB available", { hasFirebase: !!db });
+
     const now = new Date();
     const nowTimestamp = context.firebase.FieldValue.serverTimestamp();
+    context.log("DEBUG: Timestamps created", {
+      nowType: typeof now,
+      nowTimestampType: typeof nowTimestamp,
+      nowTimestampConstructor: nowTimestamp?.constructor?.name,
+    });
 
     // Get user configs to check
     let userConfigsSnapshot;
@@ -268,41 +283,73 @@ module.exports = async function (params, context) {
         for (const msg of importantMessages) {
           // Use gmailMessageId as document ID to prevent duplicates
           const emailRef = db.collection("emails").doc(msg.gmailMessageId);
-          batch.set(
-            emailRef,
-            {
-              userId: config.userId,
-              gmailMessageId: msg.gmailMessageId,
-              gmailThreadId: msg.threadId,
-              from: msg.from,
-              to: msg.to || [],
-              cc: msg.cc || [],
-              bcc: msg.bcc || [],
-              subject: msg.subject,
-              snippet: msg.snippet,
-              receivedAt: msg.internalDate || null,
-              needsResponse: true,
-              urgencyScore: msg.urgencyScore || null,
-              llmReason: msg.llmReason,
-              isRead: false,
-              isArchived: false,
-              labelIds: msg.labelIds || [],
-              bodiesFetched: false, // Flag to indicate bodies need to be fetched separately
-              createdAt: nowTimestamp,
-              updatedAt: nowTimestamp,
-            },
-            { merge: true }
-          ); // Use merge to avoid overwriting existing fields
+
+          // Build the document data explicitly and validate each field
+          const emailDocData = {
+            userId: config.userId,
+            gmailMessageId: msg.gmailMessageId,
+            gmailThreadId: msg.threadId,
+            from: msg.from,
+            to: msg.to || [],
+            cc: msg.cc || [],
+            bcc: msg.bcc || [],
+            subject: msg.subject,
+            snippet: msg.snippet,
+            receivedAt: msg.internalDate || null,
+            needsResponse: true,
+            urgencyScore: msg.urgencyScore || null,
+            llmReason: msg.llmReason,
+            isRead: false,
+            isArchived: false,
+            labelIds: msg.labelIds || [],
+            bodiesFetched: false,
+            createdAt: nowTimestamp,
+            updatedAt: nowTimestamp,
+          };
+
+          // Debug: Log the data types of each field
+          context.log("DEBUG: Email document data for Firestore", {
+            docId: msg.gmailMessageId,
+            fieldTypes: Object.fromEntries(
+              Object.entries(emailDocData).map(([k, v]) => [
+                k,
+                v === null ? "null" : Array.isArray(v) ? "array" : typeof v,
+              ])
+            ),
+            rawData: JSON.stringify(emailDocData).substring(0, 500),
+          });
+
+          // Validate it's a plain object
+          if (typeof emailDocData !== "object" || emailDocData === null) {
+            context.error("ERROR: emailDocData is not a plain object!", {
+              type: typeof emailDocData,
+              value: emailDocData,
+            });
+            continue;
+          }
+
+          batch.set(emailRef, emailDocData, { merge: true });
         }
 
         // Update last check time (only if config exists in DB)
         if (configDoc.id) {
-          batch.update(db.collection("user-configs").doc(configDoc.id), {
+          const updateData = {
             lastCheckTime: nowTimestamp,
+          };
+          context.log("DEBUG: Updating user-config", {
+            docId: configDoc.id,
+            updateData: JSON.stringify(updateData),
+            nowTimestampType: typeof nowTimestamp,
           });
+          batch.update(
+            db.collection("user-configs").doc(configDoc.id),
+            updateData
+          );
         }
 
+        context.log("DEBUG: About to commit batch");
         await batch.commit();
+        context.log("DEBUG: Batch committed successfully");
         context.log(
           `Stored ${importantMessages.length} important messages for user ${config.userId}`
         );
@@ -317,8 +364,18 @@ module.exports = async function (params, context) {
       usersChecked: userConfigsSnapshot.size,
       totalNewEmails,
       totalImportantEmails,
+      importantCount: totalImportantEmails, // Add this for client compatibility
       timestamp: now.toISOString(),
     };
+
+    context.log("DEBUG: Result object to return", {
+      resultType: typeof result,
+      resultKeys: Object.keys(result),
+      resultJson: JSON.stringify(result),
+      fieldTypes: Object.fromEntries(
+        Object.entries(result).map(([k, v]) => [k, typeof v])
+      ),
+    });
 
     context.log("Email check completed", result);
     return result;

@@ -20,16 +20,17 @@ import {
   TextInput,
   Card,
   Select,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconDatabase,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
   IconKey,
   IconTable,
 } from "@tabler/icons-react";
+import { SiMongodb } from "react-icons/si";
 import { useFunction } from "../../../../framework/hooks/useFunction.js";
 
 /**
@@ -264,7 +265,9 @@ export function MongoDBPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconDatabase size={40} color="#47A248" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiMongodb size={24} color="#47A248" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 MongoDB Connection

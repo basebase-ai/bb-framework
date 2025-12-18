@@ -15,16 +15,17 @@ import {
   Center,
   Table,
   Title,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconFile,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
   IconTable,
   IconFolder,
 } from "@tabler/icons-react";
+import { SiCoda } from "react-icons/si";
 import { useNangoOAuth } from "../../../../framework/hooks/useNangoOAuth.js";
 import { useFunction } from "../../../../framework/hooks/useFunction.js";
 
@@ -152,7 +153,9 @@ export function CodaPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconFile size={40} color="#F46A54" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiCoda size={24} color="#F46A54" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Coda Connection

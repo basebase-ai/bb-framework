@@ -15,10 +15,10 @@ import {
   Center,
   Table,
   Avatar,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconBrandGithub,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
@@ -26,6 +26,7 @@ import {
   IconGitFork,
   IconLock,
 } from "@tabler/icons-react";
+import { SiGithub } from "react-icons/si";
 import {
   useNangoOAuth,
   NangoIntegrations,
@@ -158,7 +159,9 @@ export function GitHubPanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconBrandGithub size={40} color="#333" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiGithub size={24} color="#333" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 GitHub Connection

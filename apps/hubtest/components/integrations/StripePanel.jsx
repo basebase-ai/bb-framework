@@ -16,10 +16,10 @@ import {
   Table,
   Tabs,
   Card,
+  ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconBrandStripe,
   IconCheck,
   IconAlertCircle,
   IconRefresh,
@@ -27,6 +27,7 @@ import {
   IconCreditCard,
   IconCash,
 } from "@tabler/icons-react";
+import { SiStripe } from "react-icons/si";
 import {
   useNangoOAuth,
   NangoIntegrations,
@@ -185,7 +186,9 @@ export function StripePanel({ user, onConnectionChange }) {
       <Paper shadow="sm" p="lg" withBorder>
         <Group justify="space-between" align="center">
           <Group gap="md">
-            <IconBrandStripe size={40} color="#635BFF" />
+            <ThemeIcon size={44} radius="md" variant="light" color="gray">
+              <SiStripe size={24} color="#635BFF" />
+            </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
                 Stripe Connection
