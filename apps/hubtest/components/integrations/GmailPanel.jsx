@@ -14,15 +14,17 @@ import {
   Loader,
   Center,
   Title,
-  Card,
   ThemeIcon,
+  Box,
+  ScrollArea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconCheck,
   IconAlertCircle,
   IconRefresh,
-  IconMailOpened,
+  IconMail,
+  IconInbox,
 } from "@tabler/icons-react";
 import { SiGmail } from "react-icons/si";
 import {
@@ -32,10 +34,55 @@ import {
 import { useFunction } from "../../../../framework/hooks/useFunction.js";
 
 /**
+ * @typedef {Object} GmailMessage
+ * @property {string} gmailMessageId
+ * @property {string | null} from
+ * @property {string | null} subject
+ * @property {string | null} snippet
+ * @property {string | null} date
+ * @property {string | null} internalDate
+ * @property {string[]} labelIds
+ */
+
+/**
  * @typedef {Object} GmailPanelProps
  * @property {import("firebase/auth").User | null} user
  * @property {(connected: boolean) => void} [onConnectionChange]
  */
+
+/**
+ * Parse email sender to get display name
+ * @param {string | null} from
+ * @returns {string}
+ */
+function parseSender(from) {
+  if (!from) return "Unknown";
+  // Extract name from "Name <email>" format
+  const match = from.match(/^([^<]+)</);
+  if (match) return match[1].trim();
+  // If no name, return email without angle brackets
+  return from.replace(/<|>/g, "").trim();
+}
+
+/**
+ * Format date for display
+ * @param {string | null} dateStr
+ * @returns {string}
+ */
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    if (isToday) {
+      return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    }
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+}
 
 /**
  * @param {GmailPanelProps} props
@@ -54,10 +101,12 @@ export function GmailPanel({ user, onConnectionChange }) {
   const { call: readGmail, loading: scanning } = useFunction("readGmail");
 
   // State
-  /** @type {[number | null, React.Dispatch<React.SetStateAction<number | null>>]} */
-  const [messageCount, setMessageCount] = useState(null);
+  /** @type {[GmailMessage[], React.Dispatch<React.SetStateAction<GmailMessage[]>>]} */
+  const [messages, setMessages] = useState([]);
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
   const [error, setError] = useState(null);
+  /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
+  const [hasScanned, setHasScanned] = useState(false);
 
   // Notify parent of connection changes
   React.useEffect(() => {
@@ -85,7 +134,8 @@ export function GmailPanel({ user, onConnectionChange }) {
   const handleDisconnect = async () => {
     try {
       await disconnect();
-      setMessageCount(null);
+      setMessages([]);
+      setHasScanned(false);
       notifications.show({
         title: "Disconnected",
         message: "Gmail has been disconnected",
@@ -118,8 +168,9 @@ export function GmailPanel({ user, onConnectionChange }) {
       console.log("readGmail result:", result);
 
       if (result.success) {
+        setMessages(result.messages || []);
+        setHasScanned(true);
         const count = result.messageCount ?? 0;
-        setMessageCount(count);
         notifications.show({
           title: "Scan Complete",
           message: `Found ${count} unread email${count !== 1 ? "s" : ""}`,
@@ -211,20 +262,48 @@ export function GmailPanel({ user, onConnectionChange }) {
                   </Text>
                 </Stack>
               </Center>
-            ) : messageCount !== null ? (
-              <Card withBorder>
-                <Center py="lg">
+            ) : hasScanned ? (
+              messages.length > 0 ? (
+                <ScrollArea.Autosize mah={400}>
+                  <Stack gap={0}>
+                    {messages.map((msg) => (
+                      <Box
+                        key={msg.gmailMessageId}
+                        p="sm"
+                        style={(theme) => ({
+                          borderBottom: `1px solid ${theme.colors.gray[2]}`,
+                          "&:last-child": { borderBottom: "none" },
+                        })}
+                      >
+                        <Group justify="space-between" wrap="nowrap" mb={4}>
+                          <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                            <IconMail size={16} color="#EA4335" style={{ flexShrink: 0 }} />
+                            <Text fw={500} size="sm" truncate style={{ flex: 1 }}>
+                              {parseSender(msg.from)}
+                            </Text>
+                          </Group>
+                          <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                            {formatDate(msg.internalDate || msg.date)}
+                          </Text>
+                        </Group>
+                        <Text size="sm" fw={500} truncate mb={2}>
+                          {msg.subject || "(no subject)"}
+                        </Text>
+                        <Text size="xs" c="dimmed" lineClamp={1}>
+                          {msg.snippet || ""}
+                        </Text>
+                      </Box>
+                    ))}
+                  </Stack>
+                </ScrollArea.Autosize>
+              ) : (
+                <Center py="xl">
                   <Stack align="center" gap="sm">
-                    <IconMailOpened size={48} color="#EA4335" />
-                    <Text size="xl" fw={600}>
-                      {messageCount} unread email{messageCount !== 1 ? "s" : ""}
-                    </Text>
-                    <Text size="sm" c="dimmed">
-                      Found in your inbox
-                    </Text>
+                    <IconInbox size={48} color="gray" />
+                    <Text c="dimmed">No unread emails</Text>
                   </Stack>
                 </Center>
-              </Card>
+              )
             ) : (
               <Text c="dimmed" ta="center" py="xl">
                 Click "Scan Inbox" to check for unread emails
