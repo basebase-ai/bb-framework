@@ -118,66 +118,66 @@ function showLoading(message = "Loading...") {
   }
 }
 
-// Show error screen (renders into #app, keeps #static-fallback visible for SEO bots)
+// Show error as a small ribbon at top of page (keeps static-fallback visible for SEO bots)
 function showError(title, message, details) {
-  const app = document.getElementById("app");
-  if (app) {
-    // Don't hide static-fallback during error - bots need to see it
-    app.innerHTML = `
-      <div style="
+  // Create error ribbon element
+  const ribbon = document.createElement("div");
+  ribbon.id = "error-ribbon";
+  ribbon.innerHTML = `
+    <details style="margin: 0;">
+      <summary style="
+        cursor: pointer;
         display: flex;
         align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        font-family: system-ui, -apple-system, sans-serif;
-        background: #f8f9fa;
-        padding: 2rem;
+        gap: 0.5rem;
+        font-weight: 500;
+        font-size: 0.875rem;
       ">
-        <div style="
-          max-width: 600px;
-          padding: 2rem;
-          background: white;
-          border-radius: 8px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        ">
-          <h1 style="
-            color: #fa5252;
-            margin: 0 0 1rem;
-            font-size: 1.5rem;
-          ">${title}</h1>
-          <p style="
+        <span style="color: #fa5252;">⚠</span>
+        <span>${title}</span>
+        <span style="
+          font-weight: 400;
+          color: #868e96;
+          margin-left: 0.5rem;
+        ">(click to expand)</span>
+      </summary>
+      <div style="
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e9ecef;
+      ">
+        <p style="margin: 0 0 0.5rem; color: #495057; font-size: 0.875rem;">${message}</p>
+        ${
+          details
+            ? `
+          <pre style="
+            margin: 0.5rem 0 0;
+            padding: 0.75rem;
+            background: #f1f3f5;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
             color: #495057;
-            margin: 0 0 1rem;
-            line-height: 1.6;
-          ">${message}</p>
-          ${
-            details
-              ? `
-            <details style="
-              margin-top: 1rem;
-              padding: 1rem;
-              background: #f8f9fa;
-              border-radius: 4px;
-              color: #495057;
-            ">
-              <summary style="cursor: pointer; font-weight: 500; color: #495057;">Technical Details</summary>
-              <pre style="
-                margin: 1rem 0 0;
-                padding: 0;
-                font-size: 0.875rem;
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                color: #212529;
-                font-family: 'Courier New', monospace;
-              ">${details}</pre>
-            </details>
-          `
-              : ""
-          }
-        </div>
+            font-family: 'SF Mono', 'Consolas', monospace;
+            max-height: 150px;
+            overflow-y: auto;
+          ">${details}</pre>
+        `
+            : ""
+        }
       </div>
-    `;
-  }
+    </details>
+  `;
+  ribbon.style.cssText = `
+    background: #fff5f5;
+    border-bottom: 1px solid #ffc9c9;
+    padding: 0.75rem 1rem;
+    font-family: system-ui, -apple-system, sans-serif;
+  `;
+
+  // Insert at very top of body
+  document.body.insertBefore(ribbon, document.body.firstChild);
 }
 
 // Main initialization
@@ -399,7 +399,9 @@ async function init() {
 
     // The app module should have already mounted itself to the DOM
     // (via ReactDOM.render in its entry point)
-    // Note: #static-fallback is positioned behind #app via CSS, no need to hide it
+
+    // Mark app as loaded - this triggers CSS to hide static fallback
+    document.body.classList.add("app-loaded");
   } catch (error) {
     console.error("Failed to initialize app:", error);
     showError(

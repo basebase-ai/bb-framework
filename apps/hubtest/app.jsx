@@ -34,6 +34,7 @@ import {
   IconBrandStripe,
   IconBrandLinkedin,
   IconAd2,
+  IconFile,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -54,6 +55,7 @@ import {
   SalesforcePanel,
   GitHubPanel,
   NotionPanel,
+  CodaPanel,
   CalendarPanel,
   StripePanel,
   LinkedInPanel,
@@ -88,6 +90,7 @@ const INTEGRATION_CONFIG = [
   { id: "salesforce", label: "Salesforce", icon: IconCloud, color: "#00A1E0" },
   { id: "github", label: "GitHub", icon: IconBrandGithub, color: "#333" },
   { id: "notion", label: "Notion", icon: IconBrandNotion, color: "#000" },
+  { id: "coda", label: "Coda", icon: IconFile, color: "#F46A54" },
   { id: "calendar", label: "Google Calendar", icon: IconCalendar, color: "#4285F4" },
   { id: "stripe", label: "Stripe", icon: IconBrandStripe, color: "#635BFF" },
   { id: "linkedin", label: "LinkedIn (Airtop)", icon: IconBrandLinkedin, color: "#0A66C2" },
@@ -110,6 +113,7 @@ function AppContent() {
   const { isConnected: salesforceConnected } = useNangoOAuth(NangoIntegrations.salesforce);
   const { isConnected: githubConnected } = useNangoOAuth(NangoIntegrations.github);
   const { isConnected: notionConnected } = useNangoOAuth(NangoIntegrations.notion);
+  const { isConnected: codaConnected } = useNangoOAuth("coda");
   const { isConnected: calendarConnected } = useNangoOAuth(NangoIntegrations.googleCalendar);
   const { isConnected: stripeConnected } = useNangoOAuth(NangoIntegrations.stripe);
   const { isConnected: googleAdsConnected } = useNangoOAuth(NangoIntegrations.googleAds);
@@ -166,6 +170,7 @@ function AppContent() {
     salesforce: salesforceConnected,
     github: githubConnected,
     notion: notionConnected,
+    coda: codaConnected,
     calendar: calendarConnected,
     stripe: stripeConnected,
     linkedin: linkedinConnected,
@@ -214,6 +219,8 @@ function AppContent() {
         return <GitHubPanel user={user} />;
       case "notion":
         return <NotionPanel user={user} />;
+      case "coda":
+        return <CodaPanel user={user} />;
       case "calendar":
         return <CalendarPanel user={user} />;
       case "stripe":

@@ -12,6 +12,7 @@ export { SupabasePanel } from "./SupabasePanel.jsx";
 export { SalesforcePanel } from "./SalesforcePanel.jsx";
 export { GitHubPanel } from "./GitHubPanel.jsx";
 export { NotionPanel } from "./NotionPanel.jsx";
+export { CodaPanel } from "./CodaPanel.jsx";
 export { CalendarPanel } from "./CalendarPanel.jsx";
 export { StripePanel } from "./StripePanel.jsx";
 export { LinkedInPanel } from "./LinkedInPanel.jsx";

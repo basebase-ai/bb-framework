@@ -99,24 +99,21 @@
       }
 
       #app {
-        position: relative;
         min-height: 100vh;
-        z-index: 1;
-        background: white;
       }
 
-      /* Static fallback content styles (visible to bots, covered by React app) */
+      /* Static fallback: visible by default, hidden only when app fully loads */
       #static-fallback {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
         max-width: 800px;
         margin: 0 auto;
         padding: 40px 20px;
         color: #416165;
         line-height: 1.6;
-        z-index: 0;
+      }
+
+      /* Hide static fallback only when body has app-loaded class */
+      body.app-loaded #static-fallback {
+        display: none;
       }
       #static-fallback h1 {
         color: #416165;
