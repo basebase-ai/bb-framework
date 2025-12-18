@@ -168,10 +168,83 @@ function extractFromParts(parts, result, context = null, depth = 0) {
 }
 
 /**
+ * Get OAuth access token from Nango (handles refresh automatically)
+ * @param {string} userId - User ID (used as endUserId in Nango)
+ * @param {string} integrationId - Nango integration ID
+ * @param {Object} context - Function context
+ * @returns {Promise<string>} Access token
+ */
+async function getNangoAccessToken(userId, integrationId, context) {
+  const secretKey = await context.getSecret("NANGO_SECRET_KEY");
+  if (!secretKey) {
+    throw new Error("NANGO_SECRET_KEY not configured");
+  }
+
+  try {
+    // Find the connection by endUserId
+    const listResponse = await context.http.get(
+      "https://api.nango.dev/connections",
+      {
+        params: {
+          endUserId: userId,
+          integrationId: integrationId,
+        },
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+        },
+        timeout: 10000,
+      }
+    );
+
+    const connections = listResponse.data?.connections || [];
+    if (connections.length === 0) {
+      throw new Error(
+        `User has not connected ${integrationId}. Please connect first.`
+      );
+    }
+
+    const connectionId = connections[0].connection_id;
+
+    // Get connection with credentials (Nango auto-refreshes if expired)
+    const connResponse = await context.http.get(
+      `https://api.nango.dev/connections/${connectionId}`,
+      {
+        params: {
+          provider_config_key: integrationId,
+        },
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+        },
+        timeout: 10000,
+      }
+    );
+
+    const connection = connResponse.data;
+    if (!connection.credentials?.access_token) {
+      throw new Error(`No access token found for ${integrationId}`);
+    }
+
+    return connection.credentials.access_token;
+  } catch (error) {
+    if (
+      error.response?.status === 404 ||
+      error.message?.includes("not found") ||
+      error.message?.includes("No ")
+    ) {
+      throw new Error(
+        `User has not connected ${integrationId}. Please connect first.`
+      );
+    }
+    throw error;
+  }
+}
+
+/**
  * Framework function: Read Gmail messages
  * @param {Object} params - Function parameters
  * @param {string} [params.accessToken] - Gmail OAuth access token (from Nango - preferred)
  * @param {string} [params.refreshToken] - Gmail OAuth refresh token (legacy - will be exchanged for access token)
+ * @param {string} [params.userId] - User ID to fetch Nango token for (alternative to accessToken/refreshToken)
  * @param {string} [params.query] - Gmail search query (e.g., "is:unread", "from:example@gmail.com")
  * @param {Array<string>} [params.labels] - Gmail labels to filter by (e.g., ["INBOX"], ["CATEGORY_PERSONAL"], ["CATEGORY_SOCIAL"])
  * @param {number} [params.days=7] - Number of days of messages to fetch (1-365)
@@ -183,6 +256,10 @@ function extractFromParts(parts, result, context = null, depth = 0) {
  * @param {boolean} [params.excludeBodies=false] - Exclude body content from returned messages (reduces size)
  * @param {Object} context - Function context
  * @returns {Promise<Object>} Gmail messages in JSON format
+ *
+ * @example
+ * // Using Nango with userId (simplest - fetches token automatically)
+ * readGmail({ userId: "user123", labels: ["INBOX"] })
  *
  * @example
  * // Using Nango (preferred) - access token provided directly
@@ -200,6 +277,7 @@ module.exports = async function (params, context) {
   const {
     accessToken: providedAccessToken,
     refreshToken,
+    userId,
     query = "",
     labels,
     days = 7,
@@ -211,10 +289,10 @@ module.exports = async function (params, context) {
     excludeBodies = false,
   } = params;
 
-  // Validate required parameters - need either accessToken or refreshToken
-  if (!providedAccessToken && !refreshToken) {
+  // Validate required parameters - need accessToken, refreshToken, or userId
+  if (!providedAccessToken && !refreshToken && !userId) {
     throw new Error(
-      "Either accessToken (from Nango) or refreshToken parameter is required"
+      "One of accessToken, refreshToken, or userId parameter is required"
     );
   }
 
@@ -248,16 +326,20 @@ module.exports = async function (params, context) {
     days: messageDays,
     maxResults: messageLimit,
     saveToCollection: saveToCollection || "none",
-    tokenSource: providedAccessToken ? "nango" : "refresh",
+    tokenSource: providedAccessToken ? "direct" : userId ? "nango" : "refresh",
   });
 
   try {
-    // Use provided access token (from Nango) or exchange refresh token
+    // Get access token from one of three sources
     /** @type {string} */
     let accessToken;
     if (providedAccessToken) {
       accessToken = providedAccessToken;
-      context.log("Using provided access token (from Nango)");
+      context.log("Using provided access token");
+    } else if (userId) {
+      // Fetch token from Nango using userId
+      accessToken = await getNangoAccessToken(userId, "google-mail", context);
+      context.log("Using Nango access token for user", { userId });
     } else {
       accessToken = await getAccessTokenFromRefreshToken(refreshToken, context);
     }

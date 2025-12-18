@@ -51,11 +51,11 @@ export function GmailPanel({ user, onConnectionChange }) {
   } = useNangoOAuth(NangoIntegrations.googleMail);
 
   // Functions
-  const { call: scanGmail, loading: scanning } = useFunction("scanGmail");
+  const { call: readGmail, loading: scanning } = useFunction("readGmail");
 
   // State
   /** @type {[number | null, React.Dispatch<React.SetStateAction<number | null>>]} */
-  const [count, setCount] = useState(null);
+  const [messageCount, setMessageCount] = useState(null);
   /** @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]} */
   const [error, setError] = useState(null);
 
@@ -85,7 +85,7 @@ export function GmailPanel({ user, onConnectionChange }) {
   const handleDisconnect = async () => {
     try {
       await disconnect();
-      setCount(null);
+      setMessageCount(null);
       notifications.show({
         title: "Disconnected",
         message: "Gmail has been disconnected",
@@ -103,30 +103,34 @@ export function GmailPanel({ user, onConnectionChange }) {
   const handleScan = async () => {
     try {
       setError(null);
-      // Pass the userId explicitly so the function knows which user to scan for
-      const result = await scanGmail({ userId: user?.uid });
-      console.log("scanGmail result:", result);
-      if (result.success && typeof result.importantCount === "number") {
-        setCount(result.importantCount);
+      const uid = user?.uid;
+      if (!uid) {
+        throw new Error("No user logged in");
+      }
+
+      // Call readGmail directly - it fetches the Nango token using userId
+      const result = await readGmail({
+        userId: uid,
+        query: "is:unread",
+        maxResults: 20,
+        excludeBodies: true,
+      });
+      console.log("readGmail result:", result);
+
+      if (result.success) {
+        const count = result.messageCount ?? 0;
+        setMessageCount(count);
         notifications.show({
           title: "Scan Complete",
-          message: `Found ${result.importantCount} important emails`,
+          message: `Found ${count} unread email${count !== 1 ? "s" : ""}`,
           color: "green",
         });
-      } else if (result.success) {
-        // Success but no importantCount - show message from result
-        setCount(0);
-        notifications.show({
-          title: "Scan Complete",
-          message: result.message || "No important emails found",
-          color: "blue",
-        });
       } else {
-        throw new Error(result.error || "Failed to scan inbox");
+        throw new Error("Failed to read inbox");
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to scan";
-      console.error("scanGmail error:", err);
+      console.error("readGmail error:", err);
       setError(message);
       notifications.show({
         title: "Scan Failed",
@@ -207,13 +211,13 @@ export function GmailPanel({ user, onConnectionChange }) {
                   </Text>
                 </Stack>
               </Center>
-            ) : count !== null ? (
+            ) : messageCount !== null ? (
               <Card withBorder>
                 <Center py="lg">
                   <Stack align="center" gap="sm">
                     <IconMailOpened size={48} color="#EA4335" />
                     <Text size="xl" fw={600}>
-                      {count} important emails
+                      {messageCount} unread email{messageCount !== 1 ? "s" : ""}
                     </Text>
                     <Text size="sm" c="dimmed">
                       Found in your inbox
@@ -223,7 +227,7 @@ export function GmailPanel({ user, onConnectionChange }) {
               </Card>
             ) : (
               <Text c="dimmed" ta="center" py="xl">
-                Click "Scan Inbox" to check for important emails
+                Click "Scan Inbox" to check for unread emails
               </Text>
             )}
           </Stack>
