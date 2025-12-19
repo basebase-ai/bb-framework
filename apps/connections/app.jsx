@@ -38,6 +38,7 @@ import {
   SiCoda,
   SiGoogleads,
 } from "react-icons/si";
+import { TbApi } from "react-icons/tb";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
 import { useFunction } from "../../framework/hooks/useFunction.js";
@@ -58,6 +59,7 @@ import {
   GitHubPanel,
   NotionPanel,
   CodaPanel,
+  ApifyPanel,
   CalendarPanel,
   StripePanel,
   LinkedInPanel,
@@ -93,6 +95,7 @@ const INTEGRATION_CONFIG = [
   { id: "github", label: "GitHub", icon: SiGithub, color: "#333" },
   { id: "notion", label: "Notion", icon: SiNotion, color: "#000" },
   { id: "coda", label: "Coda", icon: SiCoda, color: "#F46A54" },
+  { id: "apify", label: "Apify", icon: TbApi, color: "#00D4AA" },
   { id: "calendar", label: "Google Calendar", icon: SiGooglecalendar, color: "#4285F4" },
   { id: "stripe", label: "Stripe", icon: SiStripe, color: "#635BFF" },
   { id: "linkedin", label: "LinkedIn (Airtop)", icon: SiLinkedin, color: "#0A66C2" },
@@ -132,6 +135,8 @@ function AppContent() {
   /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
   const [codaConnected, setCodaConnected] = useState(false);
   /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
+  const [apifyConnected, setApifyConnected] = useState(false);
+  /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
   const [linkedinConnected, setLinkedinConnected] = useState(false);
 
   // Check credential-based integrations on mount
@@ -158,6 +163,11 @@ function AppContent() {
       .then((r) => setCodaConnected(r.hasCredentials === true))
       .catch(() => setCodaConnected(false));
 
+    // Check Apify
+    credentialManager({ action: "get", serviceName: "apify" })
+      .then((r) => setApifyConnected(r.hasCredentials === true))
+      .catch(() => setApifyConnected(false));
+
     // Check LinkedIn via Airtop
     airtopSession({ action: "checkProfile", profileName: "linkedin" })
       .then((r) => setLinkedinConnected(r.success === true && r.hasProfile === true))
@@ -179,6 +189,7 @@ function AppContent() {
     github: githubConnected,
     notion: notionConnected,
     coda: codaConnected,
+    apify: apifyConnected,
     calendar: calendarConnected,
     stripe: stripeConnected,
     linkedin: linkedinConnected,
@@ -189,6 +200,7 @@ function AppContent() {
   const onPostgresChange = useCallback((c) => setPostgresConnected(c), []);
   const onMongodbChange = useCallback((c) => setMongodbConnected(c), []);
   const onCodaChange = useCallback((c) => setCodaConnected(c), []);
+  const onApifyChange = useCallback((c) => setApifyConnected(c), []);
   const onLinkedinChange = useCallback((c) => setLinkedinConnected(c), []);
 
   // Render the active integration panel
@@ -230,6 +242,8 @@ function AppContent() {
         return <NotionPanel user={user} />;
       case "coda":
         return <CodaPanel user={user} onConnectionChange={onCodaChange} />;
+      case "apify":
+        return <ApifyPanel user={user} onConnectionChange={onApifyChange} />;
       case "calendar":
         return <CalendarPanel user={user} />;
       case "stripe":
@@ -249,7 +263,7 @@ function AppContent() {
     >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
-          <Title order={3}>Integration Hub</Title>
+          <Title order={3}>Connection Manager</Title>
 
           {user && (
             <Group gap="sm">
