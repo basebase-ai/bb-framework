@@ -26,12 +26,13 @@ app.use((req, res, next) => {
       "script-src 'self' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://www.google.com https://www.gstatic.com; " +
       "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
       "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
-      "frame-src https://accounts.google.com https://*.firebaseapp.com https://www.google.com https://api.nango.dev https://connect.nango.dev https://live.airtop.ai; " +
+      "frame-src http://localhost:3000 http://*.localhost:3000 https://accounts.google.com https://*.firebaseapp.com https://*.basebase.dev https://www.google.com https://api.nango.dev https://connect.nango.dev https://live.airtop.ai; " +
       "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net wss://*.firebaseio.com https://api.nango.dev wss://api.nango.dev; " +
       "img-src 'self' data: https:;"
   );
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
+  // X-Frame-Options removed to allow Builder preview iframe
+  // TODO: Re-enable with proper restrictions in production
   res.setHeader("X-XSS-Protection", "1; mode=block");
   next();
 });

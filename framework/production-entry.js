@@ -57,6 +57,8 @@ import * as MantineDates from "@mantine/dates";
 import * as MantineCarousel from "@mantine/carousel";
 import * as TablerIcons from "@tabler/icons-react";
 import * as Zustand from "zustand";
+import * as ZustandMiddleware from "zustand/middleware";
+import * as Sucrase from "sucrase";
 import { marked } from "marked";
 import dayjs from "dayjs";
 
@@ -222,6 +224,10 @@ async function init() {
 
       // State management
       zustand: Zustand,
+      "zustand/middleware": ZustandMiddleware,
+
+      // Code transformation (for Builder app linting)
+      sucrase: Sucrase,
 
       // Mantine
       "@mantine/core": Mantine,

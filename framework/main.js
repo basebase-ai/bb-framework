@@ -1,11 +1,13 @@
 /**
  * Framework entry point
  * Initializes Firebase and loads the app based on URL parameter
+ * Supports ?draft=true to load from Firestore drafts (for Builder preview)
  */
 
 // Import Firebase initialization first
-import "./core/firebase-init.js";
+import { app as firebaseApp } from "./core/firebase-init.js";
 import { getAppIdFromURL as getAppIdFromURLParser } from "./loader/url-parser.js";
+import { AppLoader } from "./loader/app-loader.js";
 
 // Get app ID from URL (supports query param, subdomain, and path)
 function getAppIdFromURL() {
@@ -20,17 +22,30 @@ function getAppIdFromURL() {
   return urlParams.get("app") || "starter-app";
 }
 
+// Check if we're in draft mode
+const isDraftMode =
+  new URLSearchParams(window.location.search).get("draft") === "true";
+
 // Dynamic import of the app entry point
-// In development, loads from /apps/{app-id}/
+// In development, loads from /apps/{app-id}/ OR from Firestore drafts if ?draft=true
 // In production, loads from Firestore
 const loadApp = async () => {
   try {
     const appId = getAppIdFromURL();
-    console.log(`🚀 Loading app: ${appId}`);
+    console.log(
+      `🚀 Loading app: ${appId}${isDraftMode ? " (DRAFT MODE)" : ""}`
+    );
 
-    // In development, load from /apps/{app-id}/app.jsx
-    // Must use relative path for Vite dynamic imports
-    await import(`../apps/${appId}/app.jsx`);
+    // If draft mode is enabled, load from Firestore drafts instead of filesystem
+    if (isDraftMode) {
+      console.log(`📝 Loading draft from Firestore...`);
+      const loader = new AppLoader(firebaseApp);
+      await loader.loadAndExecute(appId, {}, { url: import.meta.url });
+    } else {
+      // In development, load from /apps/{app-id}/app.jsx
+      // Must use relative path for Vite dynamic imports
+      await import(`../apps/${appId}/app.jsx`);
+    }
 
     // Hide static fallback content (used for SEO/bots)
     document.body.classList.add("app-loaded");
