@@ -5,11 +5,55 @@
  * Usage: node scripts/checkTask.js <taskId>
  */
 
-const { firebaseClient } = require("../lib/firebaseClient");
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import chalk from "chalk";
+import { firebaseConfig } from "../config/firebase.config.js";
+import { authenticateUser } from "./lib/auth-utils.js";
 
+// Initialize Firebase with public config
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// Check if running in an interactive terminal
+function checkInteractive() {
+  if (!process.stdin.isTTY) {
+    console.error(
+      chalk.red("\n❌ ERROR: This command requires an interactive terminal\n")
+    );
+    console.log(
+      chalk.yellow("This script needs to prompt for your email and password.")
+    );
+    console.log(
+      chalk.yellow(
+        "AI coding assistants cannot handle interactive password prompts.\n"
+      )
+    );
+    console.log(
+      chalk.cyan("Please run this command yourself in your terminal:")
+    );
+    console.log(
+      chalk.white(
+        `  node scripts/checkTask.js "${process.argv[2] || "<taskId>"}"\n`
+      )
+    );
+    console.log(
+      chalk.gray(
+        "Then you'll be prompted for your Firebase email and password."
+      )
+    );
+    process.exit(1);
+  }
+}
+
+/**
+ * @param {string} taskId
+ */
 async function checkTask(taskId) {
   if (!taskId) {
-    console.log(`
+    console.log(chalk.cyan(`
 📋 Check Task Script
 
 USAGE:
@@ -18,68 +62,86 @@ USAGE:
 EXAMPLES:
   node scripts/checkTask.js fieommvC8LnboCF2DAnL
   node scripts/checkTask.js xwbc8wbovzco0eaeb4rk
-`);
+`));
     process.exit(0);
   }
 
-  console.log(`🔍 Checking task: ${taskId}`);
-  console.log("─".repeat(50));
+  // Ensure we're in an interactive terminal
+  checkInteractive();
+
+  console.log(chalk.cyan(`\n🔍 Checking task: ${taskId}\n`));
 
   try {
-    const taskStatus = await firebaseClient.getTaskStatus(taskId);
+    // Sign in user
+    await authenticateUser(auth);
 
-    console.log(`📋 Task ID: ${taskStatus.taskId}`);
-    console.log(`📊 Status: ${taskStatus.status}`);
-    console.log(
-      `⏰ Created: ${taskStatus.createdAt?.toDate?.() || taskStatus.createdAt}`
-    );
+    // Get task document from Firestore
+    const taskRef = doc(db, "tasks", taskId);
+    const taskSnap = await getDoc(taskRef);
 
-    if (taskStatus.startedAt) {
+    if (!taskSnap.exists()) {
+      console.error(chalk.red(`❌ Task not found: ${taskId}`));
+      process.exit(1);
+    }
+
+    const taskData = taskSnap.data();
+
+    console.log("─".repeat(50));
+    console.log(chalk.white(`📋 Task ID: ${taskId}`));
+    console.log(chalk.white(`📊 Status: ${taskData.status || "unknown"}`));
+
+    if (taskData.createdAt) {
+      const createdAt = taskData.createdAt?.toDate?.() || taskData.createdAt;
+      console.log(chalk.white(`⏰ Created: ${createdAt}`));
+    }
+
+    if (taskData.startedAt) {
+      const startedAt = taskData.startedAt?.toDate?.() || taskData.startedAt;
+      console.log(chalk.white(`🚀 Started: ${startedAt}`));
+    }
+
+    if (taskData.completedAt) {
+      const completedAt =
+        taskData.completedAt?.toDate?.() || taskData.completedAt;
+      console.log(chalk.white(`✅ Completed: ${completedAt}`));
+    }
+
+    if (taskData.metadata?.duration) {
+      console.log(chalk.white(`⏱️  Duration: ${taskData.metadata.duration}ms`));
+    }
+
+    if (taskData.metadata?.retryCount) {
       console.log(
-        `🚀 Started: ${
-          taskStatus.startedAt?.toDate?.() || taskStatus.startedAt
-        }`
+        chalk.white(`🔄 Retry Count: ${taskData.metadata.retryCount}`)
       );
-    }
-
-    if (taskStatus.completedAt) {
-      console.log(
-        `✅ Completed: ${
-          taskStatus.completedAt?.toDate?.() || taskStatus.completedAt
-        }`
-      );
-    }
-
-    if (taskStatus.metadata?.duration) {
-      console.log(`⏱️  Duration: ${taskStatus.metadata.duration}ms`);
-    }
-
-    if (taskStatus.metadata?.retryCount) {
-      console.log(`🔄 Retry Count: ${taskStatus.metadata.retryCount}`);
     }
 
     console.log("\n" + "─".repeat(50));
 
-    if (taskStatus.status === "completed" && taskStatus.result) {
-      console.log("🎉 RESULT:");
-      console.log(JSON.stringify(taskStatus.result, null, 2));
-    } else if (taskStatus.status === "failed" && taskStatus.error) {
-      console.log("❌ ERROR:");
-      console.log(`Message: ${taskStatus.error.message}`);
-      if (taskStatus.error.stack) {
-        console.log(`Stack: ${taskStatus.error.stack}`);
+    if (taskData.status === "completed" && taskData.result) {
+      console.log(chalk.green("🎉 RESULT:"));
+      console.log(JSON.stringify(taskData.result, null, 2));
+    } else if (taskData.status === "failed" && taskData.error) {
+      console.log(chalk.red("❌ ERROR:"));
+      console.log(chalk.red(`Message: ${taskData.error.message}`));
+      if (taskData.error.stack) {
+        console.log(chalk.gray(`Stack: ${taskData.error.stack}`));
       }
-    } else if (taskStatus.status === "running") {
-      console.log("⏳ Task is currently running...");
-    } else if (taskStatus.status === "pending") {
-      console.log("⏸️  Task is pending...");
+    } else if (taskData.status === "running") {
+      console.log(chalk.yellow("⏳ Task is currently running..."));
+    } else if (taskData.status === "pending") {
+      console.log(chalk.yellow("⏸️  Task is pending..."));
     } else {
-      console.log("📝 No result or error data available");
+      console.log(chalk.gray("📝 No result or error data available"));
     }
   } catch (error) {
-    console.error(`❌ Failed to check task: ${error.message}`);
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+    console.error(chalk.red(`❌ Failed to check task: ${errorMessage}`));
     process.exit(1);
   }
+
+  process.exit(0);
 }
 
 // Main execution

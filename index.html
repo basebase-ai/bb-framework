@@ -102,8 +102,42 @@
         min-height: 100vh;
       }
 
-      /* Static fallback: visible by default, hidden only when app fully loads */
+      /* Initial loader: visible by default while app loads */
+      #initial-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #f8f9fa;
+        color: #495057;
+      }
+      #initial-loader .loader-content {
+        text-align: center;
+        padding: 2rem;
+      }
+      #initial-loader .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid #e9ecef;
+        border-top-color: #17bebb;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+      }
+      #initial-loader .loader-text {
+        font-size: 1.125rem;
+        font-weight: 500;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Static fallback: HIDDEN by default (loader shows instead) */
       #static-fallback {
+        display: none;
         max-width: 800px;
         margin: 0 auto;
         padding: 40px 20px;
@@ -111,10 +145,19 @@
         line-height: 1.6;
       }
 
-      /* Hide static fallback only when body has app-loaded class */
-      body.app-loaded #static-fallback {
+      /* Hide loader when app loads successfully */
+      body.app-loaded #initial-loader {
         display: none;
       }
+
+      /* Fallback mode: hide loader, show static content (for blocked connections/errors) */
+      body.fallback-mode #initial-loader {
+        display: none;
+      }
+      body.fallback-mode #static-fallback {
+        display: block;
+      }
+
       #static-fallback h1 {
         color: #416165;
         font-size: 2.5rem;
@@ -147,9 +190,21 @@
   </head>
   <body>
     <!-- 
+      Initial loader: shown immediately while app loads from Firestore.
+      Hidden once app loads successfully OR falls back to static content.
+    -->
+    <div id="initial-loader">
+      <div class="loader-content">
+        <div class="spinner"></div>
+        <div class="loader-text">Loading...</div>
+      </div>
+    </div>
+
+    <!-- 
       Static fallback content for search engines and bots.
       This is OUTSIDE #app so Vite build doesn't remove it.
-      Hidden by inline script once React loads.
+      HIDDEN by default (CSS), revealed only if app fails to load.
+      Bots that don't execute JS will see this content in the raw HTML.
     -->
     <div id="static-fallback">
       <!-- Navigation header with prominent links -->

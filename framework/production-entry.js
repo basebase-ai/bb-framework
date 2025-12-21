@@ -78,46 +78,17 @@ import * as ReactPdf from "react-pdf";
 // React Icons (Simple Icons for brand logos)
 import * as ReactIconsSi from "react-icons/si";
 
-// Show loading screen (renders into #app, keeps #static-fallback visible for SEO bots)
-function showLoading(message = "Loading...") {
-  const app = document.getElementById("app");
-  if (app) {
-    // Don't hide static-fallback during loading - bots need to see it
-    // The loading spinner will appear below/after the static content
-    app.innerHTML = `
-    <div style="
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f8f9fa;
-      color: #495057;
-    ">
-      <div style="
-        text-align: center;
-        padding: 2rem;
-      ">
-        <div style="
-          width: 48px;
-          height: 48px;
-          border: 4px solid #e9ecef;
-          border-top-color: #228be6;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin: 0 auto 1rem;
-        "></div>
-        <div style="font-size: 1.125rem; font-weight: 500;">${message}</div>
-      </div>
-    </div>
-    <style>
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-    </style>
-  `;
+// Update loader text (uses the HTML loader element)
+function updateLoaderText(message) {
+  const loaderText = document.querySelector("#initial-loader .loader-text");
+  if (loaderText) {
+    loaderText.textContent = message;
   }
+}
+
+// Switch to fallback mode: hide loader, show static content
+function showFallbackMode() {
+  document.body.classList.add("fallback-mode");
 }
 
 // Show error as a small ribbon at top of page (keeps static-fallback visible for SEO bots)
@@ -198,6 +169,7 @@ async function init() {
     console.log("📱 App ID from URL:", appId);
 
     if (!appId) {
+      showFallbackMode();
       showError(
         "App Not Found",
         "No app ID specified in the URL.",
@@ -206,7 +178,8 @@ async function init() {
       return;
     }
 
-    showLoading(`Loading ${appId}...`);
+    // Update the HTML loader text with app name
+    updateLoaderText(`Loading ${appId}...`);
 
     // Initialize Firebase
     const firebaseApp = initializeApp(firebaseConfig);
@@ -410,6 +383,9 @@ async function init() {
     document.body.classList.add("app-loaded");
   } catch (error) {
     console.error("Failed to initialize app:", error);
+    // Switch to fallback mode: hides loader, shows static content
+    showFallbackMode();
+    // Show error ribbon at top of page
     showError(
       "Failed to Load App",
       "An error occurred while loading the application.",
