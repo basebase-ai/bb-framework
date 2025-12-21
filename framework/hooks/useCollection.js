@@ -10,7 +10,6 @@ import {
   orderBy,
   limit,
   onSnapshot,
-  getDocs,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -25,16 +24,13 @@ import { useAuth } from "./useAuth.js";
 const EMPTY_ARRAY = [];
 
 export function useCollection(collectionName, options = {}) {
-  // Handle null options (query should be skipped)
-  const shouldSkip = options === null;
-
   const {
     where: whereConditions = EMPTY_ARRAY,
     orderBy: orderByField = null,
     limit: limitCount = null,
     realtime = true,
     optimistic = true,
-  } = options || {};
+  } = options;
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,67 +69,39 @@ export function useCollection(collectionName, options = {}) {
     return q;
   }, [collectionName, whereConditions, orderByField, limitCount, user?.uid]);
 
-  // Subscribe to collection or fetch once
+  // Subscribe to collection
   useEffect(() => {
-    // Skip query if options is null
-    if (shouldSkip) {
-      setData([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
+    if (!realtime) return;
 
     setLoading(true);
     const q = buildQuery();
 
-    if (realtime) {
-      // Real-time subscription
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const docs = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            _ref: doc.ref,
-          }));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const docs = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          _ref: doc.ref,
+        }));
 
-          setData(docs);
-          setLoading(false);
-          setError(null);
+        setData(docs);
+        setLoading(false);
+        setError(null);
 
-          // Clear optimistic updates that have been confirmed
-          optimisticUpdates.current.clear();
-          setOptimisticVersion((v) => v + 1);
-        },
-        (err) => {
-          console.error("Collection subscription error:", err);
-          setError(err);
-          setLoading(false);
-        }
-      );
+        // Clear optimistic updates that have been confirmed
+        optimisticUpdates.current.clear();
+        setOptimisticVersion((v) => v + 1);
+      },
+      (err) => {
+        console.error("Collection subscription error:", err);
+        setError(err);
+        setLoading(false);
+      }
+    );
 
-      return () => unsubscribe();
-    } else {
-      // One-time fetch
-      getDocs(q)
-        .then((snapshot) => {
-          const docs = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            _ref: doc.ref,
-          }));
-
-          setData(docs);
-          setLoading(false);
-          setError(null);
-        })
-        .catch((err) => {
-          console.error("Collection fetch error:", err);
-          setError(err);
-          setLoading(false);
-        });
-    }
-  }, [buildQuery, realtime, shouldSkip]);
+    return () => unsubscribe();
+  }, [buildQuery, realtime]);
 
   // Apply optimistic updates to data
   const dataWithOptimistic = useCallback(() => {

@@ -15,7 +15,7 @@ import {
 } from "@mantine/core";
 import { IconArrowLeft, IconEdit, IconClock } from "@tabler/icons-react";
 import { marked } from "marked";
-import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { useCollectionOnce } from "../hooks/useCollectionOnce.js";
 import { usePublicAuthor } from "../hooks/usePublicAuthor.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
@@ -30,11 +30,10 @@ export function PostView({ slug, onNavigateHome, onEdit }) {
   const [hasLoaded, setHasLoaded] = useState(false);
 
   // Fetch the post by slug from public collection (published posts)
-  // Using realtime: false to avoid watch stream issues during auth state changes
-  const { data: posts, loading } = useCollection(collections.postsPublic, {
+  // Using one-time fetch to avoid watch stream issues during auth state changes
+  const { data: posts, loading } = useCollectionOnce(collections.postsPublic, {
     where: [["slug", "==", slug]],
     limit: 1,
-    realtime: false,
   });
 
   useEffect(() => {

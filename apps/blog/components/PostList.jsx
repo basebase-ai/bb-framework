@@ -23,7 +23,7 @@ import {
 } from "@tabler/icons-react";
 import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "../../../framework/core/firebase-init.js";
-import { useCollection } from "../../../framework/hooks/useCollection.js";
+import { useCollectionOnce } from "../hooks/useCollectionOnce.js";
 import { usePublicAuthors } from "../hooks/usePublicAuthors.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
@@ -37,22 +37,20 @@ export function PostList({ onNavigate, onCreatePost, onEditPost }) {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch published posts from public collection (anyone can read)
-  // Using realtime: false to avoid watch stream issues during auth state changes
-  const { data: publishedPosts, loading: loadingPublished, error: errorPublished } = useCollection(
+  // Using one-time fetch to avoid watch stream issues during auth state changes
+  const { data: publishedPosts, loading: loadingPublished, error: errorPublished } = useCollectionOnce(
     collections.postsPublic,
     {
       orderBy: ["updatedAt", "desc"],
-      realtime: false,
     }
   );
 
   // Fetch user's own posts from private collection (if logged in)
-  const { data: myPosts, loading: loadingMy, error: errorMy } = useCollection(
+  const { data: myPosts, loading: loadingMy, error: errorMy } = useCollectionOnce(
     collections.posts,
     user ? {
       where: [["authorId", "==", user.uid]],
       orderBy: ["updatedAt", "desc"],
-      realtime: false,
     } : null
   );
 
