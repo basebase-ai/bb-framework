@@ -16,7 +16,6 @@ import {
   Group,
   Title,
   Text,
-  Avatar,
   Box,
   Stack,
   Button,
@@ -45,6 +44,7 @@ import { FileTree } from "./components/FileTree.jsx";
 import { AppControls } from "./components/AppControls.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { LandingScreen, consumePendingPrompt } from "./components/LandingScreen.jsx";
+import { AuthButton } from "./components/AuthButton.jsx";
 import { getAppFiles, saveAppFiles } from "./utils/fileSystem.js";
 import { lintAllFiles } from "./utils/linter.js";
 import { generateAppId } from "./utils/appIdGenerator.js";
@@ -508,7 +508,20 @@ function BuilderContent() {
 
   // Show landing screen if no app selected
   if (!currentAppId) {
-    return <LandingScreen onSubmit={handleNewApp} />;
+    return (
+      <>
+        <LandingScreen
+          onSubmit={handleNewApp}
+          user={user}
+          profile={profile}
+          onProfileClick={() => setProfileModalOpened(true)}
+        />
+        <ProfileModal
+          opened={profileModalOpened}
+          onClose={() => setProfileModalOpened(false)}
+        />
+      </>
+    );
   }
 
   // Main editing UI
@@ -554,24 +567,11 @@ function BuilderContent() {
               </ActionIcon>
             </Tooltip>
 
-            {user && (
-            <Group 
-              gap="xs"
-              style={{ cursor: "pointer" }}
-              onClick={() => setProfileModalOpened(true)}
-            >
-              <Avatar
-                src={profile?.photoURL}
-                alt={profile?.displayName || user.email || "User"}
-                size="sm"
-                radius="xl"
-              >
-                  {(profile?.displayName || user.email || "U")
-                    .charAt(0)
-                    .toUpperCase()}
-              </Avatar>
-            </Group>
-            )}
+            <AuthButton
+              user={user}
+              profile={profile}
+              onProfileClick={() => setProfileModalOpened(true)}
+            />
           </Group>
         </Group>
       </AppShell.Header>

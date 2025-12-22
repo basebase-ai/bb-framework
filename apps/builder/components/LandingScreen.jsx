@@ -14,6 +14,7 @@ import {
   Image,
 } from "@mantine/core";
 import { IconArrowRight, IconEdit, IconGitFork } from "@tabler/icons-react";
+import { AuthButton } from "./AuthButton.jsx";
 import {
   SiSlack,
   SiAirtable,
@@ -69,11 +70,18 @@ export function consumePendingPrompt() {
 }
 
 /**
- * @param {{ onSubmit?: (prompt: string) => void, onSignIn?: () => void }} props
- * - onSubmit: Called when authenticated user clicks "Build It"
- * - onSignIn: Called when unauthenticated user clicks "Build It" (stores prompt first)
+ * @typedef {Object} LandingScreenProps
+ * @property {((prompt: string) => void)} [onSubmit] - Called when authenticated user clicks "Build It"
+ * @property {(() => void)} [onSignIn] - Called when unauthenticated user clicks "Build It" (stores prompt first)
+ * @property {import('firebase/auth').User | null} [user] - Current user (if authenticated)
+ * @property {{ displayName?: string | null, photoURL?: string | null } | null} [profile] - User profile
+ * @property {(() => void)} [onProfileClick] - Called when user clicks their avatar
  */
-export function LandingScreen({ onSubmit, onSignIn }) {
+
+/**
+ * @param {LandingScreenProps} props
+ */
+export function LandingScreen({ onSubmit, onSignIn, user, profile, onProfileClick }) {
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -112,8 +120,18 @@ export function LandingScreen({ onSubmit, onSignIn }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        position: "relative",
       }}
     >
+      {/* Auth indicator - top right */}
+      <Box style={{ position: "absolute", top: 16, right: 16 }}>
+        <AuthButton
+          user={user}
+          profile={profile}
+          onSignIn={onSignIn}
+          onProfileClick={onProfileClick}
+        />
+      </Box>
       <Stack align="center" gap="xl" maw={700} w="100%" p="xl">
         {/* Logo */}
         <Group gap="sm" align="center">
