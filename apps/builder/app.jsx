@@ -28,7 +28,6 @@ import {
 } from "@mantine/core";
 import { Notifications, notifications } from "@mantine/notifications";
 import {
-  IconLogin,
   IconEye,
   IconFiles,
   IconX,
@@ -45,7 +44,7 @@ import { PreviewPanel } from "./components/PreviewPanel.jsx";
 import { FileTree } from "./components/FileTree.jsx";
 import { AppControls } from "./components/AppControls.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
-import { LandingScreen } from "./components/LandingScreen.jsx";
+import { LandingScreen, consumePendingPrompt } from "./components/LandingScreen.jsx";
 import { getAppFiles, saveAppFiles } from "./utils/fileSystem.js";
 import { lintAllFiles } from "./utils/linter.js";
 import { generateAppId } from "./utils/appIdGenerator.js";
@@ -261,6 +260,15 @@ function BuilderContent() {
         return;
       }
 
+      // Check for pending prompt from pre-sign-in landing screen
+      const storedPrompt = consumePendingPrompt();
+      if (storedPrompt) {
+        // User signed in after entering a prompt - create app and submit
+        await handleNewApp(storedPrompt);
+        setIsInitializing(false);
+        return;
+      }
+
       // No URL params - restore from localStorage if exists
       if (currentAppId) {
         const storedFiles = getAppFiles(currentAppId);
@@ -346,15 +354,17 @@ function BuilderContent() {
     const versionData = versionSnap.data();
     const sourceFiles = versionData.source || {};
 
-    // Save to localStorage and store
+    // Save to localStorage
     saveAppFiles(appId, sourceFiles);
-    setCurrentApp(appId, sourceFiles);
-    setLintErrors(lintAllFiles(sourceFiles));
 
-    // Sync draft
+    // Sync draft to Firestore BEFORE setting currentAppId
     if (user) {
       await writeDraft(appId, sourceFiles, user.uid, user.email);
     }
+
+    // Now set current app - this triggers preview iframe to load
+    setCurrentApp(appId, sourceFiles);
+    setLintErrors(lintAllFiles(sourceFiles));
 
     notifications.show({
       title: "App loaded",
@@ -410,15 +420,17 @@ function BuilderContent() {
       }
     }
 
-    // Save to localStorage and store
+    // Save to localStorage
     saveAppFiles(newAppId, newFiles);
-    setCurrentApp(newAppId, newFiles);
-    setLintErrors(lintAllFiles(newFiles));
 
-    // Sync draft
+    // Sync draft to Firestore BEFORE setting currentAppId
     if (user) {
       await writeDraft(newAppId, newFiles, user.uid, user.email);
     }
+
+    // Now set current app - this triggers preview iframe to load
+    setCurrentApp(newAppId, newFiles);
+    setLintErrors(lintAllFiles(newFiles));
 
     notifications.show({
       title: "App forked",
@@ -441,15 +453,18 @@ function BuilderContent() {
       newFiles[fileName] = content.replace(/__APP_ID__/g, appId);
     }
 
-    // Save to localStorage and store
+    // Save to localStorage
     saveAppFiles(appId, newFiles);
-    setCurrentApp(appId, newFiles);
-    setLintErrors(lintAllFiles(newFiles));
 
-    // Sync draft
+    // Sync draft to Firestore BEFORE setting currentAppId
+    // (otherwise preview iframe loads before draft exists)
     if (user) {
       await writeDraft(appId, newFiles, user.uid, user.email);
     }
+
+    // Now set current app - this triggers preview iframe to load
+    setCurrentApp(appId, newFiles);
+    setLintErrors(lintAllFiles(newFiles));
 
     notifications.show({
       title: "App created",
@@ -681,69 +696,13 @@ function BuilderContent() {
   );
 }
 
-/**
- * Landing page for unauthenticated users
- * @param {{ onSignIn: () => void }} props
- */
-function UnauthLandingPage({ onSignIn }) {
-  return (
-    <Box
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#f8f9fa",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Stack align="center" gap="xl" maw={500} p="xl">
-        <Group gap="sm" align="center">
-          <img src={LOGO_URL} alt="Basebase" width={40} height={40} />
-          <Title order={1} c="dark" fw={600}>
-            Basebase
-          </Title>
-        </Group>
-
-        <Text size="xl" c="dimmed" ta="center">
-          Build Basebase apps through conversation with AI. Describe what you
-          want, and let the agent write the code.
-        </Text>
-
-        <Group gap="lg" justify="center">
-          <Text size="sm" c="dimmed">
-            🤖 AI-powered
-          </Text>
-          <Text size="sm" c="dimmed">
-            👁️ Live preview
-          </Text>
-          <Text size="sm" c="dimmed">
-            🚀 Instant deploy
-          </Text>
-        </Group>
-
-        <Button
-          size="lg"
-          leftSection={<IconLogin size={20} />}
-          onClick={onSignIn}
-        >
-          Sign In to Get Started
-        </Button>
-
-        <Text size="xs" c="dimmed" ta="center">
-          Sign in with your Basebase account to start building apps.
-        </Text>
-      </Stack>
-    </Box>
-  );
-}
-
 function App() {
   return (
     <MantineProvider defaultColorScheme="light">
       <Notifications position="top-right" />
       <AuthProvider 
         appId={APP_ID}
-        landingPage={(props) => <UnauthLandingPage {...props} />}
+        landingPage={({ onSignIn }) => <LandingScreen onSignIn={onSignIn} />}
       >
         <BuilderContent />
       </AuthProvider>

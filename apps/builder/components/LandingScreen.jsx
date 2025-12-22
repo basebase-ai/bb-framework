@@ -45,10 +45,35 @@ const INTEGRATIONS = [
   { icon: SiGithub, label: "GitHub", color: "#181717" },
 ];
 
+// Session storage key for pending prompt
+const PENDING_PROMPT_KEY = "builder_pending_prompt";
+
 /**
- * @param {{ onSubmit: (prompt: string) => void }} props
+ * Store a prompt in session storage for use after sign-in
+ * @param {string} prompt
  */
-export function LandingScreen({ onSubmit }) {
+export function storePendingPrompt(prompt) {
+  sessionStorage.setItem(PENDING_PROMPT_KEY, prompt);
+}
+
+/**
+ * Retrieve and clear the pending prompt from session storage
+ * @returns {string | null}
+ */
+export function consumePendingPrompt() {
+  const prompt = sessionStorage.getItem(PENDING_PROMPT_KEY);
+  if (prompt) {
+    sessionStorage.removeItem(PENDING_PROMPT_KEY);
+  }
+  return prompt;
+}
+
+/**
+ * @param {{ onSubmit?: (prompt: string) => void, onSignIn?: () => void }} props
+ * - onSubmit: Called when authenticated user clicks "Build It"
+ * - onSignIn: Called when unauthenticated user clicks "Build It" (stores prompt first)
+ */
+export function LandingScreen({ onSubmit, onSignIn }) {
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -57,7 +82,19 @@ export function LandingScreen({ onSubmit }) {
     if (!trimmedPrompt) return;
 
     setIsSubmitting(true);
-    onSubmit(trimmedPrompt);
+
+    // If onSignIn is provided (unauthenticated), store prompt and trigger sign-in
+    if (onSignIn) {
+      storePendingPrompt(trimmedPrompt);
+      onSignIn();
+      // Don't set isSubmitting back to false - let the sign-in flow proceed
+      return;
+    }
+
+    // Authenticated flow - submit directly
+    if (onSubmit) {
+      onSubmit(trimmedPrompt);
+    }
   };
 
   const handleKeyDown = (/** @type {React.KeyboardEvent} */ e) => {
