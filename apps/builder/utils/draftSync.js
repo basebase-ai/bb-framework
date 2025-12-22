@@ -134,7 +134,7 @@ export function getPreviewUrl(appId) {
     // Local development - use same protocol, localhost with app subdomain
     return `${protocol}//${appId}.localhost:3000/?draft=true`;
   } else {
-    // Production - use basebase.dev domain
-    return `https://${appId}.basebase.dev/?draft=true`;
+    // Production - use basebase.com domain
+    return `https://${appId}.basebase.com/?draft=true`;
   }
 }

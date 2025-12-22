@@ -26,7 +26,7 @@ app.use((req, res, next) => {
       "script-src 'self' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://www.google.com https://www.gstatic.com; " +
       "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
       "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
-      "frame-src http://localhost:3000 http://*.localhost:3000 https://accounts.google.com https://*.firebaseapp.com https://*.basebase.dev https://www.google.com https://api.nango.dev https://connect.nango.dev https://live.airtop.ai; " +
+      "frame-src http://localhost:3000 http://*.localhost:3000 https://accounts.google.com https://*.firebaseapp.com https://*.basebase.com https://www.google.com https://api.nango.dev https://connect.nango.dev https://live.airtop.ai; " +
       "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net wss://*.firebaseio.com https://api.nango.dev wss://api.nango.dev; " +
       "img-src 'self' data: https:;"
   );

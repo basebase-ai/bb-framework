@@ -209,7 +209,7 @@ export function AppControls() {
             Publish "{currentAppId}" to Firestore. This will make it accessible
             at{" "}
             <Text component="span" fw={500}>
-              {currentAppId}.basebase.dev
+              {currentAppId}.basebase.com
             </Text>
           </Text>
 
