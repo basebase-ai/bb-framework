@@ -32,6 +32,8 @@ import {
   IconEye,
   IconFiles,
   IconX,
+  IconRefresh,
+  IconExternalLink,
 } from "@tabler/icons-react";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
@@ -51,6 +53,8 @@ import { writeDraft } from "./utils/draftSync.js";
 import { useLLMAgent } from "./hooks/useLLMAgent.js";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../framework/core/firebase-init.js";
+import { CURATED_EXAMPLE_APP_IDS, loadCuratedExamples } from "./utils/appExamples.js";
+import { getPreviewUrl } from "./utils/draftSync.js";
 
 // Mantine CSS imports
 import "@mantine/core/styles.css";
@@ -189,9 +193,18 @@ function BuilderContent() {
     setCurrentApp,
     clearCurrentApp,
     setLintErrors,
+    lintErrors,
+    refreshPreview,
+    setExampleApps,
+    setExampleAppsLoading,
+    setExampleAppsError,
   } = useBuilderStore();
 
   const { sendMessage } = useLLMAgent();
+
+  const previewUrl = currentAppId ? getPreviewUrl(currentAppId) : null;
+  const criticalErrors = (lintErrors || []).filter((e) => e.severity === "error");
+  const hasErrors = criticalErrors.length > 0;
 
   // Handle URL params and initialization on mount
   useEffect(() => {
@@ -263,6 +276,36 @@ function BuilderContent() {
 
     handleInit();
   }, [user]);
+
+  // Load curated example apps once per session (for agent search/tools)
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        setExampleAppsLoading(true);
+        setExampleAppsError(null);
+        const examples = await loadCuratedExamples(db, CURATED_EXAMPLE_APP_IDS);
+        if (!cancelled) {
+          setExampleApps(examples);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setExampleAppsError(e instanceof Error ? e.message : "Failed to load examples");
+        }
+      } finally {
+        if (!cancelled) {
+          setExampleAppsLoading(false);
+        }
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, setExampleApps, setExampleAppsLoading, setExampleAppsError]);
 
   // Send pending prompt after initialization
   useEffect(() => {
@@ -562,6 +605,30 @@ function BuilderContent() {
                 <Tabs.Tab value="files" leftSection={<IconFiles size={14} />}>
                   Files
                 </Tabs.Tab>
+                <Group gap="xs" style={{ marginLeft: "auto" }}>
+                  <Tooltip label="Refresh preview">
+                    <ActionIcon
+                      variant="subtle"
+                      size="sm"
+                      onClick={refreshPreview}
+                      disabled={hasErrors}
+                    >
+                      <IconRefresh size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                  <Tooltip label="Open in new tab">
+                    <ActionIcon
+                      variant="subtle"
+                      size="sm"
+                      onClick={() => {
+                        if (previewUrl) window.open(previewUrl, "_blank");
+                      }}
+                      disabled={!previewUrl || hasErrors}
+                    >
+                      <IconExternalLink size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
               </Tabs.List>
 
               <Tabs.Panel value="preview" style={{ flex: 1, minHeight: 0 }}>

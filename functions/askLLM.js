@@ -3,13 +3,24 @@
  * @param {Object} params - Function parameters
  * @param {string} params.provider - LLM provider ('openai', 'anthropic', etc.)
  * @param {string} params.model - Model name (e.g., 'gpt-4', 'claude-3')
- * @param {string} params.message - User message/prompt
+ * @param {string} [params.message] - User message/prompt (legacy)
+ * @param {{role: 'system'|'user'|'assistant'|'tool', content: string, tool_call_id?: string}[]} [params.messages] - Structured chat messages
+ * @param {Array<{type:'function', function:{name:string, description?:string, parameters?:any}}>} [params.tools] - Tool definitions (OpenAI tool calling)
+ * @param {'auto'|'none'|{type:'function', function:{name:string}}} [params.toolChoice] - Tool choice behavior
  * @param {Object} [params.options] - Additional options
  * @param {Object} context - Function context
  * @returns {Promise<Object>} LLM response
  */
 module.exports = async function (params, context) {
-  const { provider, model, message, options = {} } = params;
+  const {
+    provider,
+    model,
+    message,
+    messages,
+    tools,
+    toolChoice,
+    options = {},
+  } = params;
 
   // Validate required parameters
   if (!provider) {
@@ -18,14 +29,27 @@ module.exports = async function (params, context) {
   if (!model) {
     throw new Error("Model parameter is required");
   }
-  if (!message) {
-    throw new Error("Message parameter is required");
+  if (
+    (!messages || !Array.isArray(messages) || messages.length === 0) &&
+    !message
+  ) {
+    throw new Error("Either messages[] or message is required");
   }
+
+  /** @type {{role: 'system'|'user'|'assistant'|'tool', content: string, tool_call_id?: string}[]} */
+  const finalMessages =
+    messages && Array.isArray(messages) && messages.length > 0
+      ? messages
+      : [{ role: "user", content: message }];
 
   context.log("Asking LLM", {
     provider,
     model,
-    message: message.substring(0, 100) + "...",
+    messagePreview:
+      finalMessages?.[finalMessages.length - 1]?.content?.substring(0, 100) +
+      "...",
+    messageCount: finalMessages.length,
+    hasTools: Array.isArray(tools) && tools.length > 0,
   });
 
   // Get API key from secrets
@@ -44,12 +68,7 @@ module.exports = async function (params, context) {
       endpoint = "https://api.openai.com/v1/chat/completions";
       requestPayload = {
         model,
-        messages: [
-          {
-            role: "user",
-            content: message,
-          },
-        ],
+        messages: finalMessages,
         max_completion_tokens: options.maxTokens || 1000, // Changed from max_tokens for newer models
         // Note: GPT-5 models don't support custom temperature (only default 1)
         // Older models like gpt-4o still support it
@@ -58,6 +77,8 @@ module.exports = async function (params, context) {
           !model.startsWith("gpt-5") && {
             temperature: options.temperature,
           }),
+        ...(Array.isArray(tools) && tools.length > 0 ? { tools } : {}),
+        ...(toolChoice ? { tool_choice: toolChoice } : {}),
       };
       break;
 
@@ -66,12 +87,10 @@ module.exports = async function (params, context) {
       requestPayload = {
         model,
         max_tokens: options.maxTokens || 1000,
-        messages: [
-          {
-            role: "user",
-            content: message,
-          },
-        ],
+        // Anthropic format differs; we accept structured messages but only pass user/assistant content.
+        messages: (finalMessages || [])
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .map((m) => ({ role: m.role, content: m.content })),
       };
       break;
 
@@ -106,6 +125,25 @@ module.exports = async function (params, context) {
     if (provider.toLowerCase() === "openai") {
       const choice = response.data.choices[0];
       const message = choice.message;
+      /** @type {{id:string, name:string, arguments:Record<string, any>}[]} */
+      const toolCalls = [];
+
+      if (Array.isArray(message?.tool_calls)) {
+        for (const tc of message.tool_calls) {
+          if (tc?.type !== "function") continue;
+          const name = tc.function?.name;
+          const argsStr = tc.function?.arguments;
+          if (!name) continue;
+          let args = {};
+          try {
+            args = argsStr ? JSON.parse(argsStr) : {};
+          } catch (e) {
+            // If parsing fails, return raw string so the client can surface it
+            args = { __raw: argsStr || "" };
+          }
+          toolCalls.push({ id: tc.id, name, arguments: args });
+        }
+      }
 
       // Log for debugging GPT-5 response structure
       context.log("OpenAI Response Structure:", {
@@ -115,16 +153,21 @@ module.exports = async function (params, context) {
         hasContent: !!message.content,
         contentLength: message.content?.length || 0,
         hasRefusal: !!message.refusal,
+        toolCallCount: toolCalls.length,
       });
 
       parsedResponse = {
         response: message.content || "",
+        toolCalls,
         usage: response.data.usage,
+        finishReason: choice.finish_reason,
       };
     } else if (provider.toLowerCase() === "anthropic") {
       parsedResponse = {
         response: response.data.content[0].text,
+        toolCalls: [],
         usage: response.data.usage,
+        finishReason: response.data.stop_reason,
       };
     }
 
@@ -133,6 +176,8 @@ module.exports = async function (params, context) {
       provider,
       model,
       response: parsedResponse.response,
+      toolCalls: parsedResponse.toolCalls || [],
+      finishReason: parsedResponse.finishReason,
       usage: parsedResponse.usage,
       timestamp: new Date().toISOString(),
     };

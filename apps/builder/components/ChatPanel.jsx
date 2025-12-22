@@ -6,7 +6,7 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   Stack,
   Group,
-  TextInput,
+  Textarea,
   ActionIcon,
   ScrollArea,
   Text,
@@ -23,7 +23,7 @@ import { MessageItem } from "./MessageItem.jsx";
 export function ChatPanel() {
   const [input, setInput] = useState("");
   const scrollRef = useRef(/** @type {HTMLDivElement | null} */ (null));
-  const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
+  const inputRef = useRef(/** @type {HTMLTextAreaElement | null} */ (null));
 
   const { messages, currentAppId, isAgentThinking, clearMessages } =
     useBuilderStore();
@@ -52,6 +52,7 @@ export function ChatPanel() {
   };
 
   const handleKeyDown = (/** @type {React.KeyboardEvent} */ e) => {
+    // Enter sends, Shift+Enter inserts newline
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -119,7 +120,13 @@ export function ChatPanel() {
           )}
 
           {messages
-            .filter((msg) => msg.role === "user" || msg.role === "assistant")
+            .filter(
+              (msg) =>
+                msg.role === "user" ||
+                msg.role === "assistant" ||
+                msg.role === "tool_request"
+            )
+            .filter((msg) => !(msg.role === "assistant" && !msg.content?.trim()))
             .map((message) => (
               <MessageItem key={message.id} message={message} />
             ))}
@@ -140,7 +147,7 @@ export function ChatPanel() {
       {/* Input */}
       <Paper p="sm" withBorder style={{ borderBottom: 0, borderLeft: 0, borderRight: 0 }}>
         <Group gap="xs">
-          <TextInput
+          <Textarea
             ref={inputRef}
             placeholder={`Message the assistant about ${currentAppId}...`}
             value={input}
@@ -148,6 +155,9 @@ export function ChatPanel() {
             onKeyDown={handleKeyDown}
             style={{ flex: 1 }}
             disabled={isProcessing}
+            autosize
+            minRows={3}
+            maxRows={8}
           />
           {isProcessing ? (
             <ActionIcon

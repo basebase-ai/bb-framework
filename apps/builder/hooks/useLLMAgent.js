@@ -19,8 +19,95 @@ import {
  * @property {'user' | 'assistant' | 'system' | 'tool'} role
  * @property {string} content
  * @property {number} timestamp
- * @property {Object} [toolCalls]
+ * @property {{ name: string, success: boolean, id?: string }} [toolCall]
+ * @property {{ id: string, name: string, arguments: Record<string, any> }[]} [toolCalls] - tool calls produced by assistant
  */
+
+/**
+ * @typedef {{ role: 'system'|'user'|'assistant'|'tool', content: string, tool_call_id?: string }} LLMMessage
+ */
+
+/**
+ * @typedef {{ id: string, name: string, arguments: Record<string, any> }} LLMToolCall
+ */
+
+/**
+ * Convert parsed tool call args to a JSON string for OpenAI tool_calls.
+ * @param {Record<string, any>} args
+ * @returns {string}
+ */
+function toolArgsToJson(args) {
+  if (!args || typeof args !== "object") return "{}";
+  if (typeof args.__raw === "string" && args.__raw.trim()) return args.__raw;
+  try {
+    return JSON.stringify(args);
+  } catch {
+    return "{}";
+  }
+}
+
+/**
+ * Human-friendly message for a tool call when the model returns no text.
+ * @param {string} toolName
+ * @returns {string}
+ */
+function getToolCallAnnouncement(toolName) {
+  switch (toolName) {
+    case "readFiles":
+      return "Let me read the current files so I understand what we're working with.";
+    case "createFile":
+      return "I’m going to create/update a file to implement this.";
+    case "replaceLines":
+      return "I’m going to edit the relevant file(s) to implement this change.";
+    case "deleteFile":
+      return "I’m going to remove the unnecessary file.";
+    default:
+      return "I’m going to make a code change now.";
+  }
+}
+
+/**
+ * Tiny status indicator for showing tool calls in chat.
+ * @param {string} toolName
+ * @returns {string}
+ */
+function getToolCallIndicator(toolName) {
+  switch (toolName) {
+    case "readFiles":
+      return "Reading files…";
+    case "searchCurrentApp":
+      return "Searching current app…";
+    case "searchExampleApps":
+      return "Searching examples…";
+    case "readExampleApp":
+      return "Reading example…";
+    case "createFile":
+      return "Creating file…";
+    case "replaceLines":
+      return "Replacing lines…";
+    case "deleteFile":
+      return "Deleting file…";
+    default:
+      return "Running tool…";
+  }
+}
+
+/**
+ * Truncate a long tool output so it doesn't blow token budgets.
+ * Keeps the head + tail with a clear marker.
+ * @param {string} text
+ * @param {number} maxChars
+ * @returns {string}
+ */
+function truncateToolOutput(text, maxChars) {
+  if (typeof text !== "string") return "";
+  if (text.length <= maxChars) return text;
+  const head = text.slice(0, Math.floor(maxChars * 0.6));
+  const tail = text.slice(text.length - Math.floor(maxChars * 0.3));
+  return `${head}\n\n[...TRUNCATED ${
+    text.length - head.length - tail.length
+  } chars...]\n\n${tail}`;
+}
 
 /**
  * Hook for managing LLM agent conversation with tool calling
@@ -34,8 +121,6 @@ export function useLLMAgent() {
 
   const {
     currentAppId,
-    files,
-    messages,
     addMessage,
     updateFiles,
     setLintErrors,
@@ -43,22 +128,27 @@ export function useLLMAgent() {
   } = useBuilderStore();
 
   /**
-   * Build the message history for the LLM
-   * Reads directly from store to get fresh messages (not stale closure)
-   * @returns {Array<{role: string, content: string}>}
+   * Build structured messages for the LLM (system/user/assistant/tool).
+   * Reads directly from the store to avoid stale closure.
+   * @returns {LLMMessage[]}
    */
   const buildMessageHistory = useCallback(() => {
+    /** @type {LLMMessage[]} */
     const history = [];
 
     // Get fresh messages from store (not from closure which may be stale)
+    /** @type {Message[]} */
     const currentMessages = useBuilderStore.getState().messages;
+    /** @type {string | null} */
     const appId = useBuilderStore.getState().currentAppId;
 
     // Add system prompt
     if (appId) {
       history.push({
         role: "system",
-        content: getSystemPrompt(appId),
+        content:
+          getSystemPrompt(appId) +
+          `\n\n## Tool Calling\nWhen you need to modify files, call the provided tools (do NOT paste tool JSON blocks).\nIf you call a tool, also include a brief explanation for the user in your message content.\nAfter tool results are provided, continue until the task is complete.`,
       });
     }
 
@@ -67,51 +157,45 @@ export function useLLMAgent() {
       if (msg.role === "user") {
         history.push({ role: "user", content: msg.content });
       } else if (msg.role === "assistant") {
-        history.push({ role: "assistant", content: msg.content });
+        // If this assistant message included tool calls, we must include them
+        // so that subsequent role:"tool" messages are valid.
+        if (Array.isArray(msg.toolCalls) && msg.toolCalls.length > 0) {
+          history.push({
+            role: "assistant",
+            content: msg.content || "",
+            tool_calls: msg.toolCalls.map((tc) => ({
+              id: tc.id,
+              type: "function",
+              function: {
+                name: tc.name,
+                arguments: toolArgsToJson(tc.arguments),
+              },
+            })),
+          });
+        } else {
+          history.push({ role: "assistant", content: msg.content });
+        }
       } else if (msg.role === "tool") {
-        // Tool results are included as user context (so LLM sees them as input)
-        history.push({
-          role: "user",
-          content: `[Tool Result: ${msg.toolCall?.name}]\n${msg.content}`,
-        });
+        // Preferred: OpenAI tool message with tool_call_id
+        if (msg.toolCall?.id) {
+          history.push({
+            role: "tool",
+            tool_call_id: msg.toolCall.id,
+            content: truncateToolOutput(msg.content, 12000),
+          });
+        } else {
+          // Back-compat for older stored tool messages
+          history.push({
+            role: "user",
+            content: `[Tool Result: ${
+              msg.toolCall?.name || "tool"
+            }]\n${truncateToolOutput(msg.content, 12000)}`,
+          });
+        }
       }
     }
 
     return history;
-  }, []);
-
-  /**
-   * Parse tool calls from assistant response
-   * The assistant should format tool calls as JSON blocks
-   * @param {string} content
-   * @returns {{ text: string, toolCalls: Array<{name: string, arguments: Object}> }}
-   */
-  const parseToolCalls = useCallback((content) => {
-    const toolCalls = [];
-    let text = content;
-
-    // Look for tool call blocks in the format:
-    // ```tool
-    // {"name": "toolName", "arguments": {...}}
-    // ```
-    const toolBlockRegex = /```tool\s*\n([\s\S]*?)\n```/g;
-    let match;
-
-    while ((match = toolBlockRegex.exec(content)) !== null) {
-      try {
-        const toolCall = JSON.parse(match[1].trim());
-        if (toolCall.name && toolCall.arguments !== undefined) {
-          toolCalls.push(toolCall);
-        }
-      } catch (e) {
-        console.warn("Failed to parse tool call:", match[1], e);
-      }
-    }
-
-    // Remove tool blocks from text
-    text = content.replace(toolBlockRegex, "").trim();
-
-    return { text, toolCalls };
   }, []);
 
   /**
@@ -142,37 +226,6 @@ export function useLLMAgent() {
         content: userMessage,
       });
 
-      /** @type {Array<{role: string, content: string}>} */
-      let conversationHistory = [];
-
-      // Tool instructions (included in every call)
-      const toolInstructions = `
-You have access to these tools to modify the app. To use a tool, include a JSON block like this:
-
-\`\`\`tool
-{"name": "toolName", "arguments": {"arg1": "value1"}}
-\`\`\`
-
-Available tools:
-${toolDefinitions
-  .map((t) => `- ${t.function.name}: ${t.function.description}`)
-  .join("\n")}
-
-IMPORTANT RULES:
-1. ALWAYS write a brief message to the user explaining what you're about to do BEFORE each tool call
-2. After receiving tool results, continue working until the task is complete
-3. Always read the files first if you haven't seen them yet
-4. When you're done and ready to respond to the user, write your response without any tool blocks
-
-Example of good response format:
-"Let me read the current files to understand the app structure.
-
-\`\`\`tool
-{"name": "readFiles", "arguments": {}}
-\`\`\`"
-
-Never output just a tool call without explaining what you're doing first.`;
-
       // Maximum iterations to prevent infinite loops
       const MAX_ITERATIONS = 10;
       let iteration = 0;
@@ -183,46 +236,81 @@ Never output just a tool call without explaining what you're doing first.`;
           iteration++;
           console.log(`🔄 Agent iteration ${iteration}`);
 
-          // Build fresh history from store (includes new tool results)
-          conversationHistory = buildMessageHistory();
+          // Build fresh structured history from store (includes new tool results)
+          const conversationHistory = buildMessageHistory();
 
-          // On first iteration, add the user message
-          if (iteration === 1) {
-            conversationHistory.push({ role: "user", content: userMessage });
+          /**
+           * @param {number} maxTokens
+           * @returns {Promise<{response?: string, toolCalls?: LLMToolCall[], finishReason?: string}>}
+           */
+          const callOnce = async (maxTokens) => {
+            return await callLLM({
+              provider: "openai",
+              model: "gpt-5.2",
+              messages: conversationHistory,
+              tools: toolDefinitions,
+              toolChoice: "auto",
+              options: { maxTokens },
+            });
+          };
+
+          // First attempt: moderate budget; retry once if we get empty output with length stop.
+          let result = await callOnce(2048);
+          const firstResponse = (result?.response || "").trim();
+          const firstToolCalls = Array.isArray(result?.toolCalls)
+            ? result.toolCalls
+            : [];
+          if (
+            !abortRef.current &&
+            firstToolCalls.length === 0 &&
+            !firstResponse &&
+            result?.finishReason === "length"
+          ) {
+            console.warn(
+              "⚠️ Empty response with finishReason=length; retrying with higher maxTokens"
+            );
+            result = await callOnce(4096);
           }
-
-          // Build prompt
-          const fullPrompt = `${conversationHistory
-            .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
-            .join("\n\n")}\n\n${toolInstructions}`;
-
-          // Call LLM
-          const result = await callLLM({
-            provider: "openai",
-            model: "gpt-5.2",
-            message: fullPrompt,
-            options: { maxTokens: 4096 },
-          });
 
           if (abortRef.current) break;
 
-          const responseContent =
-            result?.response ||
-            "I encountered an error processing your request.";
+          const responseContent = result?.response || "";
+          const toolCalls = Array.isArray(result?.toolCalls)
+            ? result.toolCalls
+            : [];
 
-          // Parse for tool calls
-          const { text, toolCalls } = parseToolCalls(responseContent);
+          const trimmedResponse = (responseContent || "").trim();
 
-          // Add assistant message (the text part) if there is any
-          if (text) {
+          // If the model returned tool calls but no user-facing text (common),
+          // add a small synthesized message so the UI doesn't look "stuck".
+          const shouldAnnounceToolCalls =
+            toolCalls.length > 0 && trimmedResponse.length === 0;
+
+          // Persist assistant message. If toolCalls exist, store them so we can build
+          // the required assistant tool_calls message in the next iteration.
+          if (trimmedResponse.length > 0 || toolCalls.length > 0) {
             addMessage({
               role: "assistant",
-              content: text,
+              content:
+                trimmedResponse.length > 0
+                  ? trimmedResponse
+                  : shouldAnnounceToolCalls
+                  ? getToolCallAnnouncement(toolCalls[0].name)
+                  : "",
+              toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
             });
           }
 
-          // If no tool calls, we're done!
+          // If no tool calls, we're done
           if (toolCalls.length === 0) {
+            // If we also got no text, surface an explicit failure instead of silently completing.
+            if (!trimmedResponse) {
+              addMessage({
+                role: "assistant",
+                content:
+                  "I didn’t get a usable response back from the model. Please try again (or shorten the request).",
+              });
+            }
             console.log(`✅ Agent completed after ${iteration} iteration(s)`);
             break;
           }
@@ -233,6 +321,13 @@ Never output just a tool call without explaining what you're doing first.`;
 
             console.log(`🔧 Executing tool: ${toolCall.name}`);
 
+            // Show tool call in the user-visible chat (but keep tool results hidden)
+            addMessage({
+              role: "tool_request",
+              content: getToolCallIndicator(toolCall.name),
+              toolCall: { id: toolCall.id, name: toolCall.name, success: true },
+            });
+
             // Execute the tool (async - syncs draft to Firestore)
             const toolResult = await executeTool(
               toolCall.name,
@@ -242,6 +337,7 @@ Never output just a tool call without explaining what you're doing first.`;
                 currentAppId,
                 userId: user?.uid || null,
                 userEmail: user?.email || null,
+                exampleApps: useBuilderStore.getState().exampleApps,
               }),
               (newFiles) => {
                 updateFiles(newFiles);
@@ -257,7 +353,11 @@ Never output just a tool call without explaining what you're doing first.`;
             addMessage({
               role: "tool",
               content: toolResult.output,
-              toolCall: { name: toolCall.name, success: toolResult.success },
+              toolCall: {
+                id: toolCall.id,
+                name: toolCall.name,
+                success: toolResult.success,
+              },
             });
           }
 
@@ -289,7 +389,6 @@ Never output just a tool call without explaining what you're doing first.`;
       addMessage,
       buildMessageHistory,
       callLLM,
-      parseToolCalls,
       updateFiles,
       setLintErrors,
       setAgentThinking,

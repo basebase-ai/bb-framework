@@ -8,10 +8,11 @@ import { persist } from "zustand/middleware";
 /**
  * @typedef {Object} Message
  * @property {string} id
- * @property {'user' | 'assistant' | 'system' | 'tool'} role
+ * @property {'user' | 'assistant' | 'system' | 'tool' | 'tool_request'} role
  * @property {string} content
  * @property {number} timestamp
  * @property {Object} [toolCall] - Tool call info if this is a tool response
+ * @property {{ id: string, name: string, arguments: Record<string, any> }[]} [toolCalls] - tool calls produced by assistant
  */
 
 /**
@@ -37,6 +38,9 @@ import { persist } from "zustand/middleware";
  * @property {boolean} isAgentThinking - Is the agent processing
  * @property {number} previewKey - Key to force iframe refresh
  * @property {boolean} showPreview - Whether preview panel is visible
+ * @property {Record<string, { files: Record<string, string>, versionHash: string | null, loadedAt: number }>} exampleApps - Curated example apps loaded from Firestore
+ * @property {boolean} exampleAppsLoading - Whether examples are loading
+ * @property {string | null} exampleAppsError - Error loading examples
  */
 
 /** @type {import('zustand').StateCreator<BuilderState & BuilderActions>} */
@@ -50,6 +54,9 @@ const storeCreator = (set, get) => ({
   isAgentThinking: false,
   previewKey: 0,
   showPreview: true,
+  exampleApps: {},
+  exampleAppsLoading: false,
+  exampleAppsError: null,
 
   // Actions
   setCurrentApp: (appId, files) =>
@@ -113,6 +120,10 @@ const storeCreator = (set, get) => ({
   refreshPreview: () => set((state) => ({ previewKey: state.previewKey + 1 })),
 
   togglePreview: () => set((state) => ({ showPreview: !state.showPreview })),
+
+  setExampleApps: (exampleApps) => set({ exampleApps }),
+  setExampleAppsLoading: (loading) => set({ exampleAppsLoading: loading }),
+  setExampleAppsError: (error) => set({ exampleAppsError: error }),
 });
 
 export const useBuilderStore = create(

@@ -6,16 +6,13 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Stack,
-  Group,
   Text,
-  Paper,
   ActionIcon,
   Tooltip,
   Center,
   Loader,
-  Badge,
 } from "@mantine/core";
-import { IconRefresh, IconExternalLink, IconCode } from "@tabler/icons-react";
+import { IconRefresh, IconCode } from "@tabler/icons-react";
 import { useBuilderStore } from "../stores/builderStore.js";
 import { getPreviewUrl } from "../utils/draftSync.js";
 
@@ -60,11 +57,7 @@ export function PreviewPanel() {
   }, []);
 
   // Open in new tab
-  const handleOpenExternal = useCallback(() => {
-    if (previewUrl) {
-      window.open(previewUrl, "_blank");
-    }
-  }, [previewUrl]);
+  // (moved to tabs header)
 
   if (!currentAppId) {
     return (
@@ -93,49 +86,6 @@ export function PreviewPanel() {
 
   return (
     <Stack h="100%" gap={0}>
-      {/* Header */}
-      <Paper
-        p="xs"
-        withBorder
-        style={{ borderTop: 0, borderLeft: 0, borderRight: 0 }}
-      >
-        <Group justify="space-between">
-          <Group gap="xs">
-            <Text size="sm" fw={500}>
-              Preview
-            </Text>
-            {hasErrors && (
-              <Badge size="xs" color="red" variant="light">
-                {criticalErrors.length} error(s)
-              </Badge>
-            )}
-          </Group>
-          <Group gap="xs">
-            <Tooltip label="Refresh preview">
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                onClick={handleRefresh}
-                loading={isLoading}
-                disabled={hasErrors}
-              >
-                <IconRefresh size={14} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Open in new tab">
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                onClick={handleOpenExternal}
-                disabled={!previewUrl || hasErrors}
-              >
-                <IconExternalLink size={14} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-        </Group>
-      </Paper>
-
       {/* Preview Frame */}
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
         {isLoading && !hasErrors && (

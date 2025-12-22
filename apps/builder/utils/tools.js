@@ -6,6 +6,7 @@
 import { lintAllFiles, formatLintErrors } from "./linter.js";
 import { formatFilesWithLineNumbers, saveAppFiles } from "./fileSystem.js";
 import { writeDraft } from "./draftSync.js";
+import { formatFileWithLineNumbers, searchExampleApps } from "./appExamples.js";
 
 /**
  * @typedef {Object} ToolResult
@@ -29,6 +30,29 @@ export const toolDefinitions = [
         type: "object",
         properties: {},
         required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "searchCurrentApp",
+      description:
+        "Search the currently loaded app files using a regex pattern. Returns matches with line numbers and ~10 lines of context.",
+      parameters: {
+        type: "object",
+        properties: {
+          pattern: {
+            type: "string",
+            description:
+              'Regex pattern string, e.g. "AuthProvider|landingPage"',
+          },
+          flags: {
+            type: "string",
+            description: 'Regex flags (default: i). Example: "im"',
+          },
+        },
+        required: ["pattern"],
       },
     },
   },
@@ -102,45 +126,127 @@ export const toolDefinitions = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "searchExampleApps",
+      description:
+        "Search a curated set of published Basebase apps (latest version) using a regex pattern. Returns matches with context lines and line numbers.",
+      parameters: {
+        type: "object",
+        properties: {
+          pattern: {
+            type: "string",
+            description: 'Regex pattern string, e.g. ".*login.*|.*signin.*"',
+          },
+          flags: {
+            type: "string",
+            description: 'Regex flags (default: i). Example: "im"',
+          },
+        },
+        required: ["pattern"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "readExampleApp",
+      description:
+        "Read an example app file from the curated published apps list. If fileName is omitted, returns all files for that app. Always returns with line numbers.",
+      parameters: {
+        type: "object",
+        properties: {
+          appId: { type: "string", description: "Example app ID" },
+          fileName: {
+            type: "string",
+            description:
+              "Optional file path (e.g. 'app.jsx'). If omitted, returns all files.",
+          },
+        },
+        required: ["appId"],
+      },
+    },
+  },
 ];
 
 /**
  * Execute a tool call
  * @param {string} toolName
  * @param {Record<string, any>} args
- * @param {() => { files: Record<string, string>, currentAppId: string | null, userId: string | null, userEmail: string | null }} getState
+ * @param {() => { files: Record<string, string>, currentAppId: string | null, userId: string | null, userEmail: string | null, exampleApps?: Record<string, { files: Record<string, string>, versionHash: string | null, loadedAt: number }> }} getState
  * @param {(files: Record<string, string>) => void} updateFiles
  * @returns {Promise<ToolResult>}
  */
 export async function executeTool(toolName, args, getState, updateFiles) {
-  const { files, currentAppId, userId, userEmail } = getState();
-
-  if (!currentAppId) {
-    return {
-      success: false,
-      output:
-        "Error: No app is currently selected. Please init or checkout an app first.",
-    };
-  }
+  const { files, currentAppId, userId, userEmail, exampleApps } = getState();
 
   /** @type {ToolResult} */
   let result;
 
   switch (toolName) {
     case "readFiles":
+      if (!currentAppId) {
+        return {
+          success: false,
+          output:
+            "Error: No app is currently selected. Please create or open an app first.",
+        };
+      }
       result = executeReadFiles(files);
       break;
 
+    case "searchCurrentApp":
+      if (!currentAppId) {
+        return {
+          success: false,
+          output:
+            "Error: No app is currently selected. Please create or open an app first.",
+        };
+      }
+      result = executeSearchCurrentApp(files, args);
+      break;
+
     case "createFile":
+      if (!currentAppId) {
+        return {
+          success: false,
+          output:
+            "Error: No app is currently selected. Please create or open an app first.",
+        };
+      }
       result = executeCreateFile(files, args, currentAppId, updateFiles);
       break;
 
     case "replaceLines":
+      if (!currentAppId) {
+        return {
+          success: false,
+          output:
+            "Error: No app is currently selected. Please create or open an app first.",
+        };
+      }
       result = executeReplaceLines(files, args, currentAppId, updateFiles);
       break;
 
     case "deleteFile":
+      if (!currentAppId) {
+        return {
+          success: false,
+          output:
+            "Error: No app is currently selected. Please create or open an app first.",
+        };
+      }
       result = executeDeleteFile(files, args, currentAppId, updateFiles);
+      break;
+
+    // Example tools (preferred names)
+    case "searchExampleApps":
+      result = executeSearchAppExamples(exampleApps || {}, args);
+      break;
+
+    case "readExampleApp":
+      result = executeReadAppExample(exampleApps || {}, args);
       break;
 
     default:
@@ -168,6 +274,73 @@ export async function executeTool(toolName, args, getState, updateFiles) {
 }
 
 /**
+ * Search curated example apps using regex.
+ * @param {Record<string, { files: Record<string, string>, versionHash: string | null, loadedAt: number }>} exampleApps
+ * @param {{ pattern?: string, flags?: string }} args
+ * @returns {ToolResult}
+ */
+function executeSearchAppExamples(exampleApps, args) {
+  const pattern = args?.pattern;
+  const flags = args?.flags;
+  if (!pattern) {
+    return { success: false, output: "Error: pattern is required" };
+  }
+  if (!exampleApps || Object.keys(exampleApps).length === 0) {
+    return {
+      success: false,
+      output:
+        "No curated examples are loaded yet. Please wait a moment and try again.",
+    };
+  }
+
+  const res = searchExampleApps(exampleApps, pattern, {
+    contextLines: 10,
+    maxMatches: 30,
+    flags: typeof flags === "string" ? flags : "i",
+  });
+
+  if (!res.ok) return { success: false, output: res.error };
+  return { success: true, output: res.output };
+}
+
+/**
+ * Read an example app file (or all files) with line numbers.
+ * @param {Record<string, { files: Record<string, string>, versionHash: string | null, loadedAt: number }>} exampleApps
+ * @param {{ appId?: string, fileName?: string }} args
+ * @returns {ToolResult}
+ */
+function executeReadAppExample(exampleApps, args) {
+  const appId = args?.appId;
+  const fileName = args?.fileName;
+  if (!appId) return { success: false, output: "Error: appId is required" };
+
+  const app = exampleApps[appId];
+  if (!app) {
+    return {
+      success: false,
+      output: `Error: Example app '${appId}' not found in curated examples.`,
+    };
+  }
+
+  if (fileName) {
+    const content = app.files[fileName];
+    if (typeof content !== "string") {
+      return {
+        success: false,
+        output: `Error: File '${fileName}' not found in example app '${appId}'.`,
+      };
+    }
+    return {
+      success: true,
+      output: formatFileWithLineNumbers(fileName, content),
+    };
+  }
+
+  // All files
+  return { success: true, output: formatFilesWithLineNumbers(app.files) };
+}
+
+/**
  * Read all files - returns formatted content with line numbers
  * @param {Record<string, string>} files
  * @returns {ToolResult}
@@ -190,6 +363,71 @@ function executeReadFiles(files) {
     files,
     errors: lintErrors,
   };
+}
+
+/**
+ * Search current app files using regex and return context with line numbers.
+ * @param {Record<string, string>} files
+ * @param {{ pattern?: string, flags?: string }} args
+ * @returns {ToolResult}
+ */
+function executeSearchCurrentApp(files, args) {
+  const pattern = args?.pattern;
+  const flags = typeof args?.flags === "string" ? args.flags : "i";
+  const contextLines = 10;
+  const maxMatches = 50;
+
+  if (!pattern) {
+    return { success: false, output: "Error: pattern is required" };
+  }
+
+  let re;
+  try {
+    re = new RegExp(pattern, flags);
+  } catch (e) {
+    return { success: false, output: `Invalid regex: ${e.message}` };
+  }
+
+  /** @type {string[]} */
+  const chunks = [];
+  let matchCount = 0;
+
+  for (const [fileName, content] of Object.entries(files || {})) {
+    const lines = String(content || "").split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      if (!re.test(lines[i])) continue;
+
+      const start = Math.max(0, i - contextLines);
+      const end = Math.min(lines.length - 1, i + contextLines);
+
+      const excerpt = lines
+        .slice(start, end + 1)
+        .map(
+          (line, idx) => `${String(start + idx + 1).padStart(4, " ")} | ${line}`
+        )
+        .join("\n");
+
+      chunks.push(
+        `--- CURRENT :: ${fileName} :: lines ${start + 1}-${
+          end + 1
+        } ---\n${excerpt}`
+      );
+
+      matchCount++;
+      if (matchCount >= maxMatches) {
+        chunks.push(
+          `\n[TRUNCATED] Reached maxMatches=${maxMatches}. Refine your regex for more specific results.`
+        );
+        return { success: true, output: chunks.join("\n\n") };
+      }
+    }
+  }
+
+  if (matchCount === 0) {
+    return { success: true, output: "No matches found in current app files." };
+  }
+
+  return { success: true, output: chunks.join("\n\n") };
 }
 
 /**
@@ -396,15 +634,31 @@ Always use relative paths to framework:
 
 You have these tools available:
 1. \`readFiles()\` - See all current files with line numbers
-2. \`createFile(fileName, content)\` - Create or overwrite a file
-3. \`replaceLines(fileName, startLine, endLine, replacement)\` - Edit specific lines
-4. \`deleteFile(fileName)\` - Remove a file
+2. \`searchCurrentApp(pattern, flags?)\` - Search the current app files with regex, returning matches with line numbers and ~10 lines of context
+3. \`createFile(fileName, content)\` - Create or overwrite a file
+4. \`replaceLines(fileName, startLine, endLine, replacement)\` - Edit specific lines
+5. \`deleteFile(fileName)\` - Remove a file
+6. \`searchExampleApps(pattern, flags?)\` - Search curated published apps (latest versions) with regex, returning matches with line numbers and ~10 lines of context
+7. \`readExampleApp(appId, fileName?)\` - Read an example app file (or all files) from curated published apps, with line numbers
 
 After each edit, you'll see the updated files and any lint errors. Fix lint errors before continuing.
 
 ## Guidelines
 
 1. Always start by reading the current files to understand the app state
+2. If you're unsure about a Basebase-specific pattern, you MUST search curated examples first (and then read the relevant file) before implementing. This is especially important for:
+   - Authentication / landing pages / access control (AuthProvider, roles, membership)
+   - Firestore collection access patterns (namespacing via APP_ID, useCollection/useDocument queries)
+   - File/image/video storage patterns (useStorage, FileUploader, CDN URLs)
+   - Getting auth user info and profiles (useAuth, useUserProfile/useUserProfiles)
+   - Secrets and server functions (useFunction, server-side context, API keys)
+   - Third-party integrations (OAuth via useNangoOAuth, API keys, external requests)
+   Use \`searchExampleApps(...)\` to find the pattern, then \`readExampleApp(appId, fileName)\` to copy it precisely.
+3. Prefer copying the exact working pattern from curated examples over inventing a new approach.
+4. If you create a logged-out/unauthenticated page, wire it through \`AuthProvider\`'s \`landingPage\` prop (do not rely on checking \`user\` inside children only).
+5. When adding external dependencies, do not assume they are available in production unless they are registered in the framework's production exports.
+   - Use \`searchExampleApps("landingPage|AuthProvider|signIn|login")\` or similar
+   - Then use \`readExampleApp("starter-app", "app.jsx")\` (or other relevant file) to copy the exact working pattern
 2. Make incremental changes and verify they work
 3. Use Mantine components for UI (Button, TextInput, Stack, Group, Paper, etc.)
 4. Follow React best practices (hooks, functional components)
