@@ -58,16 +58,14 @@ export function MessageItem({ message }) {
   if (isTool || isToolRequest) {
     if (isToolRequest) {
       return (
-        <Paper
-          p="xs"
-          radius="md"
-          withBorder
+        <Group
+          gap="xs"
+          justify="space-between"
           style={{
-            backgroundColor: "#f8f9fa",
-            borderColor: "#e9ecef",
+            padding: "4px 8px",
+            margin: "2px 0",
           }}
         >
-          <Group gap="xs" justify="space-between">
             <Group gap="xs">
               <ThemeIcon size="sm" variant="light" color="gray">
                 <IconTool size={14} />
@@ -79,8 +77,7 @@ export function MessageItem({ message }) {
             <Text size="xs" c="dimmed">
               {time}
             </Text>
-          </Group>
-        </Paper>
+        </Group>
       );
     }
 
