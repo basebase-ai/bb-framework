@@ -7,7 +7,7 @@ import { createRoot } from "react-dom/client";
 import { MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
-import AppStudio from "./components/AppStudio.jsx";
+import AppGallery from "./components/AppGallery.jsx";
 import PublicHomepage from "./components/PublicHomepage.jsx";
 import TermsOfService from "./components/TermsOfService.jsx";
 import PrivacyPolicy from "./components/PrivacyPolicy.jsx";
@@ -182,22 +182,15 @@ function App() {
           <IntegrationsPage onBack={navigateToHome} />
         </AuthProvider>
       )}
-      {/* Main app - requires auth for studio, shows landing for unauthenticated */}
+      {/* Main app - gallery and home are viewable without auth via landingPage */}
       {!publicPage && (
         <AuthProvider 
           appId={APP_ID}
-          landingPage={(props) => (
-            <PublicHomepage 
-              {...props} 
-              onNavigateToTerms={navigateToTerms}
-              onNavigateToPrivacy={navigateToPrivacy}
-              onNavigateToAbout={navigateToAbout}
-              onNavigateToPricing={navigateToPricing}
-              onNavigateToIntegrations={navigateToIntegrations}
-            />
+          landingPage={(authProps) => (
+            <AppGallery {...authProps} />
           )}
         >
-          <AppStudio />
+          <AppGallery />
         </AuthProvider>
       )}
     </MantineProvider>

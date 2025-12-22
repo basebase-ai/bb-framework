@@ -472,7 +472,7 @@ export default function Pricing({ onBack, onSignIn }) {
                 border: "none",
               }}
             >
-              Start building free
+              Browse App Gallery
             </Button>
           </Stack>
         </Container>

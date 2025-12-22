@@ -15,12 +15,13 @@ import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useUserProfiles } from "../../../framework/hooks/useUserProfiles.js";
 import AppCard from "./AppCard.jsx";
 
+const BUILDER_URL = "https://builder.basebase.com";
+
 export default function AppGrid({ 
   apps, 
   loading, 
-  onOpenApp, 
-  onShowDetails, 
-  onCreateApp 
+  onShowDetails,
+  onCreateApp,
 }) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,7 +80,7 @@ export default function AppGrid({
               letterSpacing: "-0.02em",
             }}
           >
-            Basebase Studio
+            Basebase Gallery
           </Title>
           <Text size="xs" style={{ color: "#5a7a7e" }} weight={400}>
             Discover and build amazing apps
@@ -108,7 +109,7 @@ export default function AppGrid({
             variant="filled"
             color="coral"
             leftSection={<IconPlus size={14} />}
-            onClick={onCreateApp}
+            onClick={() => onCreateApp?.()}
           >
             Create App
           </Button>
@@ -218,16 +219,23 @@ export default function AppGrid({
         </Card>
       ) : (
         <Grid gutter="xs">
-          {filteredApps.map((app) => (
-            <Grid.Col key={app.id} span={{ base: 12, sm: 6, md: 4, lg: 3, xl: 2 }}>
-              <AppCard 
-                app={app}
-                ownerProfile={ownerProfiles.get(app.owner)}
-                onOpen={onOpenApp} 
-                onDetails={onShowDetails}
-              />
-            </Grid.Col>
-          ))}
+          {filteredApps.map((app) => {
+            const ownerProfile = ownerProfiles.get(app.owner);
+            const ownerDisplayName = user
+              ? (ownerProfile?.displayName || "Unknown User")
+              : "Sign in to view";
+            return (
+              <Grid.Col key={app.id} span={{ base: 12, sm: 6, md: 4, lg: 3, xl: 2 }}>
+                <AppCard 
+                  app={app}
+                  ownerProfile={ownerProfile}
+                  ownerDisplayName={ownerDisplayName}
+                  onDetails={onShowDetails}
+                  onFork={() => window.open(`${BUILDER_URL}/?fork=${app.id}`, "_blank")}
+                />
+              </Grid.Col>
+            );
+          })}
         </Grid>
       )}
     </>

@@ -19,33 +19,33 @@ import PublicHomepage from "./PublicHomepage.jsx";
 import { APP_ID } from "../schema.js";
 
 /**
- * Check if current path is the studio section
+ * Check if current path is the gallery section
  * @returns {boolean}
  */
-function isStudioPath() {
+function isGalleryPath() {
   const path = window.location.pathname;
-  return path === "/studio" || path.startsWith("/studio/");
+  return path === "/gallery" || path.startsWith("/gallery/");
 }
 
 /**
- * Get app ID from URL path (e.g., /studio/app/my-app-id -> my-app-id)
+ * Get app ID from URL path (e.g., /gallery/app/my-app-id -> my-app-id)
  * @returns {string | null}
  */
 function getAppIdFromPath() {
   const path = window.location.pathname;
-  const match = path.match(/^\/studio\/app\/([^/]+)/);
+  const match = path.match(/^\/gallery\/app\/([^/]+)/);
   return match ? match[1] : null;
 }
 
-export default function AppStudio() {
+export default function AppGallery() {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   
   const { data: allApps = [], loading, update: updateItem, remove: removeItem } = useCollection("apps");
   
-  // Track current view (homepage or studio)
+  // Track current view (homepage or gallery)
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
-  const isInStudio = isStudioPath();
+  const isInGallery = isGalleryPath();
   
   // Get this app's logo from the apps collection
   const appLogo = useMemo(() => {
@@ -80,10 +80,10 @@ export default function AppStudio() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
   
-  // Navigate to studio
-  const navigateToStudio = useCallback(() => {
-    setCurrentPath('/studio');
-    window.history.pushState({}, '', '/studio');
+  // Navigate to gallery
+  const navigateToGallery = useCallback(() => {
+    setCurrentPath('/gallery');
+    window.history.pushState({}, '', '/gallery');
   }, []);
   
   // Navigate to homepage
@@ -97,11 +97,11 @@ export default function AppStudio() {
   const navigateToApp = useCallback((/** @type {string | null} */ appId) => {
     setSelectedAppId(appId);
     if (appId) {
-      setCurrentPath(`/studio/app/${appId}`);
-      window.history.pushState({ appId }, '', `/studio/app/${appId}`);
+      setCurrentPath(`/gallery/app/${appId}`);
+      window.history.pushState({ appId }, '', `/gallery/app/${appId}`);
     } else {
-      setCurrentPath('/studio');
-      window.history.pushState({}, '', '/studio');
+      setCurrentPath('/gallery');
+      window.history.pushState({}, '', '/gallery');
     }
   }, []);
 
@@ -152,16 +152,16 @@ export default function AppStudio() {
   };
 
   // Show homepage for root path (for all users)
-  if (!isInStudio) {
+  if (!isInGallery) {
     return (
       <PublicHomepage 
-        onSignIn={navigateToStudio}
+        onSignIn={navigateToGallery}
         isAuthenticated={!!user}
       />
     );
   }
 
-  // Studio content (only for authenticated users - AuthProvider handles this)
+  // Gallery content (only for authenticated users - AuthProvider handles this)
   return (
     <AppShell
       header={{ height: 48 }}

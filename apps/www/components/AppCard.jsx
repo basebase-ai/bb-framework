@@ -9,8 +9,7 @@ import {
   Avatar,
   Rating,
 } from "@mantine/core";
-import { IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
-import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { IconGitFork, IconInfoCircle } from "@tabler/icons-react";
 
 // Helper function to format relative time
 function formatRelativeTime(timestamp) {
@@ -29,7 +28,16 @@ function formatRelativeTime(timestamp) {
   return date.toLocaleDateString();
 }
 
-export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
+/**
+ * @param {{
+ *   app: Record<string, any>;
+ *   ownerProfile: Record<string, any> | undefined;
+ *   ownerDisplayName: string;
+ *   onDetails: (app: Record<string, any>) => void;
+ *   onFork: (app: Record<string, any>) => void;
+ * }} props
+ */
+export default function AppCard({ app, ownerProfile, ownerDisplayName, onDetails, onFork }) {
   return (
     <Card
       shadow="xs"
@@ -41,6 +49,7 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
         borderColor: "#f5f3eb",
         transition: "all 0.2s ease",
         background: "#FFFFFF",
+        cursor: "pointer",
       }}
       sx={(theme) => ({
         "&:hover": {
@@ -49,6 +58,7 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
           boxShadow: `0 4px 16px rgba(255, 113, 91, 0.12)`,
         },
       })}
+      onClick={() => onDetails(app)}
     >
       <Card.Section
         withBorder
@@ -131,7 +141,7 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
         </Avatar>
         <div style={{ flex: 1, minWidth: 0 }}>
           <Text size="xs" style={{ color: "#5a7a7e" }}>
-            {ownerProfile?.displayName || "Unknown User"}
+            {ownerDisplayName}
           </Text>
           {app.updatedAt && (
             <Text size="xs" style={{ color: "#a49966", opacity: 0.8 }}>
@@ -143,20 +153,26 @@ export default function AppCard({ app, ownerProfile, onOpen, onDetails }) {
 
       <Group gap="xs" mt="xs" grow>
         <Button
-          variant="filled"
-          color="coral"
-          leftSection={<IconExternalLink size={12} />}
-          onClick={() => onOpen(app)}
-        >
-          Open
-        </Button>
-        <Button
           variant="light"
           color="slate"
           leftSection={<IconInfoCircle size={12} />}
-          onClick={() => onDetails(app)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDetails(app);
+          }}
         >
           Details
+        </Button>
+        <Button
+          variant="filled"
+          color="coral"
+          leftSection={<IconGitFork size={12} />}
+          onClick={(event) => {
+            event.stopPropagation();
+            onFork(app);
+          }}
+        >
+          Fork
         </Button>
       </Group>
     </Card>

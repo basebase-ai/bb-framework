@@ -149,7 +149,7 @@ export function LandingScreen({ onSubmit }) {
             size="md"
             leftSection={<IconEdit size={18} />}
             component="a"
-            href="https://studio.basebase.com"
+            href="https://www.basebase.com/gallery"
             target="_blank"
           >
             Edit existing...
@@ -160,7 +160,7 @@ export function LandingScreen({ onSubmit }) {
             size="md"
             leftSection={<IconGitFork size={18} />}
             component="a"
-            href="https://studio.basebase.com"
+            href="https://www.basebase.com/gallery"
             target="_blank"
           >
             Fork existing...

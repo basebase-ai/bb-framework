@@ -33,6 +33,7 @@ import {
   IconDownload,
 } from "@tabler/icons-react";
 import { showNotification } from "@mantine/notifications";
+import { useAuth } from "../../../../framework/hooks/useAuth.js";
 
 /**
  * Format date to readable string
@@ -100,10 +101,14 @@ function formatRelativeTime(timestamp) {
  */
 export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
   const [showAllScreenshots, setShowAllScreenshots] = useState(false);
+  const { user } = useAuth();
   
   const appUrl = `https://${app.id}.basebase.com`;
   const screenshots = app.screenshots || [];
   const hasScreenshots = screenshots.length > 0;
+  const ownerDisplayName = user
+    ? (ownerProfile?.displayName || "Unknown Developer")
+    : "Sign in to view";
   
   return (
     <Stack gap="xl">
@@ -143,30 +148,7 @@ export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
             </Group>
           </Stack>
           
-          <Stack align="center" gap="xs">
-            <Button
-              size="lg"
-              radius="xl"
-              color="dark"
-              leftSection={<IconExternalLink size={18} />}
-              onClick={() => window.open(appUrl, '_blank')}
-              style={{ minWidth: 140 }}
-            >
-              Open
-            </Button>
-            <Tooltip label="Copy app URL">
-              <ActionIcon 
-                variant="subtle" 
-                color="gray"
-                onClick={() => {
-                  navigator.clipboard.writeText(appUrl);
-                  showNotification({ message: "URL copied!", color: "teal" });
-                }}
-              >
-                <IconCopy size={16} />
-              </ActionIcon>
-            </Tooltip>
-          </Stack>
+
         </Group>
       </Card>
       
@@ -324,15 +306,15 @@ export default function InfoTab({ app, ownerProfile, collaboratorProfiles }) {
           <Group gap="md">
             <Avatar
               src={ownerProfile?.photoURL}
-              alt={ownerProfile?.displayName}
+              alt={ownerProfile?.displayName || ownerDisplayName}
               size={56}
               radius="xl"
               color="gray"
             >
-              {(ownerProfile?.displayName || "?").charAt(0).toUpperCase()}
+              {(ownerProfile?.displayName || ownerDisplayName || "?").charAt(0).toUpperCase()}
             </Avatar>
             <Stack gap={2} style={{ flex: 1 }}>
-              <Text fw={500}>{ownerProfile?.displayName || "Unknown Developer"}</Text>
+              <Text fw={500}>{ownerDisplayName}</Text>
               {ownerProfile?.bio && (
                 <Text size="xs" c="dimmed" lineClamp={2}>{ownerProfile.bio}</Text>
               )}

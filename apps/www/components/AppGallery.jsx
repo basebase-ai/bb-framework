@@ -6,6 +6,7 @@ import {
   Avatar,
   Text,
   LoadingOverlay,
+  Button,
 } from "@mantine/core";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
@@ -15,7 +16,6 @@ import { showNotification } from "@mantine/notifications";
 import { ProfileModal } from "./ProfileModal.jsx";
 import AppGrid from "./AppGrid.jsx";
 import AppDetailsPage from "./AppDetailsPage.jsx";
-import CreateAppModal from "./CreateAppModal.jsx";
 import PublicHomepage from "./PublicHomepage.jsx";
 import TermsOfService from "./TermsOfService.jsx";
 import PrivacyPolicy from "./PrivacyPolicy.jsx";
@@ -27,7 +27,7 @@ import { APP_ID } from "../schema.js";
 /**
  * Parse route from URL path
  * @param {string} path
- * @returns {{ view: "home" | "studio" | "terms" | "privacy" | "about" | "pricing" | "integrations" | "app-details"; appId?: string }}
+ * @returns {{ view: "home" | "gallery" | "terms" | "privacy" | "about" | "pricing" | "integrations" | "app-details"; appId?: string }}
  */
 function parseRoute(path) {
   if (path === "/terms") return { view: "terms" };
@@ -35,10 +35,10 @@ function parseRoute(path) {
   if (path === "/about") return { view: "about" };
   if (path === "/pricing") return { view: "pricing" };
   if (path === "/integrations") return { view: "integrations" };
-  if (path === "/studio") return { view: "studio" };
+  if (path === "/gallery") return { view: "gallery" };
   
-  // Check for /studio/app/{appId}
-  const appMatch = path.match(/^\/studio\/app\/([^/]+)/);
+  // Check for /gallery/app/{appId}
+  const appMatch = path.match(/^\/gallery\/app\/([^/]+)/);
   if (appMatch) {
     return { view: "app-details", appId: appMatch[1] };
   }
@@ -47,8 +47,11 @@ function parseRoute(path) {
   return { view: "home" };
 }
 
-export default function AppStudio() {
-  const { user } = useAuth();
+/**
+ * @param {{ onSignIn?: () => void }} props
+ */
+export default function AppGallery({ onSignIn }) {
+  const { user, promptSignIn } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   const { path, navigate } = useRouter();
   
@@ -63,7 +66,6 @@ export default function AppStudio() {
     return thisApp?.logoURL;
   }, [allApps]);
   
-  const [createModalOpened, setCreateModalOpened] = useState(false);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
   
   // Get selected app from route
@@ -74,39 +76,33 @@ export default function AppStudio() {
   }, [selectedAppId, allApps]);
   
   // Navigation helpers
-  const navigateToStudio = () => {
-    console.log("[AppStudio] navigateToStudio called");
-    navigate("/studio");
+  const navigateToGallery = () => {
+    console.log("[AppGallery] navigateToGallery called");
+    navigate("/gallery");
   };
   const navigateToHome = () => {
-    console.log("[AppStudio] navigateToHome called");
     navigate("/");
   };
   const navigateToTerms = () => {
-    console.log("[AppStudio] navigateToTerms called");
     navigate("/terms");
   };
   const navigateToPrivacy = () => {
-    console.log("[AppStudio] navigateToPrivacy called");
     navigate("/privacy");
   };
   const navigateToAbout = () => {
-    console.log("[AppStudio] navigateToAbout called");
     navigate("/about");
   };
   const navigateToPricing = () => {
-    console.log("[AppStudio] navigateToPricing called");
     navigate("/pricing");
   };
   const navigateToIntegrations = () => {
-    console.log("[AppStudio] navigateToIntegrations called");
     navigate("/integrations");
   };
   const navigateToApp = (/** @type {string | null} */ appId) => {
     if (appId) {
-      navigate(`/studio/app/${appId}`);
+      navigate(`/gallery/app/${appId}`);
     } else {
-      navigate("/studio");
+      navigate("/gallery");
     }
   };
 
@@ -144,10 +140,6 @@ export default function AppStudio() {
     });
   };
 
-  const handleOpenApp = (/** @type {{ id: string }} */ app) => {
-    window.open(`https://${app.id}.basebase.com`, '_blank');
-  };
-
   const handleShowDetails = (/** @type {{ id: string }} */ app) => {
     navigateToApp(app.id);
   };
@@ -157,7 +149,6 @@ export default function AppStudio() {
   };
 
   // Debug logging
-  console.log("[AppStudio] Current path:", path, "Route:", route);
 
   // Route to appropriate view
   if (route.view === "terms") {
@@ -170,7 +161,7 @@ export default function AppStudio() {
     return <AboutUs onBack={navigateToHome} />;
   }
   if (route.view === "pricing") {
-    return <Pricing onBack={navigateToHome} onSignIn={navigateToStudio} />;
+    return <Pricing onBack={navigateToHome} onSignIn={navigateToGallery} />;
   }
   if (route.view === "integrations") {
     return <IntegrationsPage onBack={navigateToHome} />;
@@ -178,7 +169,7 @@ export default function AppStudio() {
   if (route.view === "home") {
     return (
       <PublicHomepage 
-        onSignIn={navigateToStudio}
+        onSignIn={navigateToGallery}
         isAuthenticated={!!user}
         onNavigateToTerms={navigateToTerms}
         onNavigateToPrivacy={navigateToPrivacy}
@@ -189,7 +180,7 @@ export default function AppStudio() {
     );
   }
 
-  // Studio content (only for authenticated users - AuthProvider handles this)
+  // Gallery content (only for authenticated users - AuthProvider handles this)
   return (
     <AppShell
       header={{ height: 64 }}
@@ -221,7 +212,7 @@ export default function AppStudio() {
               Basebase
             </Text>
           </Group>
-          {user && (
+          {user ? (
             <Group 
               gap="xs"
               style={{ cursor: 'pointer' }}
@@ -238,6 +229,15 @@ export default function AppStudio() {
                 {profile?.displayName || user.email}
               </Text>
             </Group>
+          ) : (
+            <Button
+              variant="light"
+              color="coral"
+              size="xs"
+              onClick={() => (onSignIn || promptSignIn)()}
+            >
+              Sign in
+            </Button>
           )}
         </Group>
       </AppShell.Header>
@@ -263,19 +263,14 @@ export default function AppStudio() {
             <AppGrid
               apps={allApps}
               loading={loading}
-              onOpenApp={handleOpenApp}
               onShowDetails={handleShowDetails}
-              onCreateApp={() => setCreateModalOpened(true)}
+              onCreateApp={() => window.open("https://builder.basebase.com/?new=true", "_blank")}
             />
           )}
         </Box>
       </AppShell.Main>
 
       {/* Modals */}
-      <CreateAppModal
-        opened={createModalOpened}
-        onClose={() => setCreateModalOpened(false)}
-      />
       <ProfileModal
         opened={profileModalOpened}
         onClose={() => setProfileModalOpened(false)}

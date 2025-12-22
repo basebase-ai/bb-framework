@@ -113,8 +113,8 @@ export default function PublicHomepage({
   onNavigateToIntegrations,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const ctaText = isAuthenticated ? "Go to Studio" : "Start building free";
-  const navCtaText = isAuthenticated ? "Studio" : "Get Started";
+  const ctaText = "Browse Apps";
+  const navCtaText = "Get Started";
 
   /** @type {React.CSSProperties} */
   const navLinkStyle = { color: COLORS.slate, textDecoration: "none", cursor: "pointer" };

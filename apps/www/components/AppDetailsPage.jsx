@@ -18,6 +18,9 @@ import {
   IconStar,
   IconSettings,
   IconHistory,
+  IconPencil,
+  IconHammer,
+  IconGitFork,
 } from "@tabler/icons-react";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
@@ -32,7 +35,7 @@ import VersionsTab from "./tabs/VersionsTab.jsx";
 import SettingsTab from "./tabs/SettingsTab.jsx";
 
 export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
-  const { user } = useAuth();
+  const { user, promptSignIn } = useAuth();
   const [activeTab, setActiveTab] = useState("info");
   
   const { profile: ownerProfile } = useUserProfile(app?.owner);
@@ -40,6 +43,14 @@ export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
   
   const isOwner = user && app?.owner === user.uid;
   const isCollaborator = user && app?.collaborators?.includes(user.uid);
+  const canEdit = !!user && (isOwner || isCollaborator);
+  const handleFork = () => {
+    if (!user) {
+      promptSignIn();
+      return;
+    }
+    window.open(`https://builder.basebase.com/?fork=${app.id}`, "_blank");
+  };
   
   if (!app) return null;
   
@@ -55,14 +66,34 @@ export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
         >
           Back
         </Button>
-        <Button
-          variant="filled"
-          color="coral"
-          leftSection={<IconExternalLink size={14} />}
-          onClick={() => window.open(`https://${app.id}.basebase.com`, '_blank')}
-        >
-          Open App
-        </Button>
+        <Group gap="xs">
+          {canEdit && (
+            <Button
+              variant="light"
+              color="dark"
+              leftSection={<IconHammer size={14} />}
+              onClick={() => window.open(`https://builder.basebase.com/?edit=${app.id}`, "_blank")}
+            >
+              Build
+            </Button>
+          )}
+          <Button
+            variant="light"
+            color="coral"
+            leftSection={<IconGitFork size={14} />}
+            onClick={handleFork}
+          >
+            Fork
+          </Button>
+          <Button
+            variant="filled"
+            color="coral"
+            leftSection={<IconExternalLink size={14} />}
+            onClick={() => window.open(`https://${app.id}.basebase.com`, '_blank')}
+          >
+            Open App
+          </Button>
+        </Group>
       </Group>
       
       {/* App Header */}

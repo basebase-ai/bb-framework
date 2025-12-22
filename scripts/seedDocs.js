@@ -86,7 +86,7 @@ Basebase is great for building workflows and tools for your team:
 
 ## The Development Flow
 
-1. **Create an app** in the Basebase Studio
+1. **Create an app** in the Basebase Gallery
 2. **Connect your data sources** via OAuth integrations
 3. **Build your app** using Cursor or Claude Code with the Basebase framework
 4. **Test locally** with \`npm run dev\`
@@ -118,11 +118,11 @@ Ready to start? Check out the [Quick Start Guide](/getting-started).
 
 1. Go to [www.basebase.com](https://www.basebase.com)
 2. Click **"Get Started"** and sign in with your Google account
-3. You'll land in the **Basebase Studio**—your workspace for building apps
+3. You'll land in the **Basebase Gallery**—your workspace for building apps
 
-## Step 2: Explore the Studio
+## Step 2: Explore the Gallery
 
-The Studio is where you create and manage all your apps. You'll see:
+The Gallery is where you create and manage all your apps. You'll see:
 
 - **Your Apps** — All the apps you've created
 - **Templates** — Pre-built apps you can customize
@@ -130,7 +130,7 @@ The Studio is where you create and manage all your apps. You'll see:
 
 ## Step 3: Create Your First App
 
-1. Click **"Create New App"** in the Studio
+1. Click **"Create New App"** in the Gallery
 2. Give your app a name (e.g., "Sales Dashboard")
 3. Choose a template or start from scratch
 
@@ -189,7 +189,7 @@ If you get stuck, don't hesitate to reach out:
 
 ## Creating an App
 
-From the Studio, click **"Create New App"** to get started. You'll need to provide:
+From the Gallery, click **"Create New App"** to get started. You'll need to provide:
 
 - **App Name** — A descriptive name (e.g., "Q4 Pipeline Tracker")
 - **App ID** — A unique identifier used in URLs (auto-generated from name)
@@ -322,7 +322,7 @@ Share early with one or two users to get feedback before rolling out broadly.
 
 ## Accessing the Editor
 
-1. Go to the **Studio**
+1. Go to the **Gallery**
 2. Click on the app you want to edit
 3. Click **"Edit"** to enter edit mode
 
