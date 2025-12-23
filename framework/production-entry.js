@@ -21,8 +21,10 @@ import { useFunction } from "./hooks/useFunction.js";
 import { useNangoOAuth, NangoIntegrations } from "./hooks/useNangoOAuth.js";
 import { useStorage } from "./hooks/useStorage.js";
 import { AuthProvider, SignOutButton } from "./components/AuthProvider.jsx";
+import { AppRouter, RouteContent } from "./components/AppRouter.jsx";
 import { FileUploader } from "./components/FileUploader.jsx";
 import { EditImage } from "./components/EditImage.jsx";
+import { useRoute } from "./hooks/useRoute.js";
 import {
   app as firebaseAppInstance,
   auth as firebaseAuthInstance,
@@ -279,6 +281,9 @@ async function init() {
       "framework/hooks/useStorage.js": { useStorage },
       "../framework/hooks/useStorage.js": { useStorage },
       "../../framework/hooks/useStorage.js": { useStorage },
+      "framework/hooks/useRoute.js": { useRoute },
+      "../framework/hooks/useRoute.js": { useRoute },
+      "../../framework/hooks/useRoute.js": { useRoute },
 
       // Framework components (with path variants)
       "framework/components/AuthProvider.js": {
@@ -305,6 +310,12 @@ async function init() {
         AuthProvider,
         SignOutButton,
       },
+      "framework/components/AppRouter.js": { AppRouter, RouteContent },
+      "../framework/components/AppRouter.js": { AppRouter, RouteContent },
+      "../../framework/components/AppRouter.js": { AppRouter, RouteContent },
+      "framework/components/AppRouter.jsx": { AppRouter, RouteContent },
+      "../framework/components/AppRouter.jsx": { AppRouter, RouteContent },
+      "../../framework/components/AppRouter.jsx": { AppRouter, RouteContent },
       "framework/components/FileUploader.js": { FileUploader },
       "../framework/components/FileUploader.js": { FileUploader },
       "../../framework/components/FileUploader.js": { FileUploader },
