@@ -19,20 +19,27 @@ import {
 import { IconSearch, IconPlus } from "@tabler/icons-react";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useUserProfiles } from "../../../framework/hooks/useUserProfiles.js";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { useRoute } from "../../../framework/hooks/useRoute.js";
+import { CreatePageModal } from "./CreatePageModal.jsx";
 import { collections } from "../schema.js";
 
-export function PageList({ onNavigate, onCreatePage }) {
+export function PageList() {
+  const { authenticated, promptSignIn } = useAuth();
+  const { navigate } = useRoute();
   const { data: pages, loading } = useCollection(collections.pages);
   const [searchQuery, setSearchQuery] = useState("");
+  const [createModalOpened, setCreateModalOpened] = useState(false);
 
   // Get all unique user IDs from pages
   const userIds = useMemo(() => {
     if (!pages) return [];
+    /** @type {Set<string>} */
     const ids = new Set();
     pages.forEach((page) => {
       if (page.createdBy) ids.add(page.createdBy);
       if (page.contributors) {
-        page.contributors.forEach((id) => ids.add(id));
+        page.contributors.forEach((/** @type {string} */ id) => ids.add(id));
       }
     });
     return Array.from(ids);
@@ -60,9 +67,22 @@ export function PageList({ onNavigate, onCreatePage }) {
     });
   }, [filteredPages]);
 
-  const getDisplayName = (uid) => {
+  const getDisplayName = (/** @type {string} */ uid) => {
     const profile = profiles.get(uid);
     return profile?.displayName || profile?.email || "Unknown";
+  };
+
+  const handleCreatePage = () => {
+    if (!authenticated) {
+      promptSignIn();
+      return;
+    }
+    setCreateModalOpened(true);
+  };
+
+  const handlePageCreated = (/** @type {string} */ slug) => {
+    setCreateModalOpened(false);
+    navigate(`/${slug}`);
   };
 
   if (loading) {
@@ -80,7 +100,7 @@ export function PageList({ onNavigate, onCreatePage }) {
           <Title order={1}>Basepedia</Title>
           <Button
             leftSection={<IconPlus size={16} />}
-            onClick={onCreatePage}
+            onClick={handleCreatePage}
           >
             Create Page
           </Button>
@@ -112,7 +132,7 @@ export function PageList({ onNavigate, onCreatePage }) {
                 p="md"
                 withBorder
                 style={{ cursor: "pointer" }}
-                onClick={() => onNavigate(page.slug)}
+                onClick={() => navigate(`/${page.slug}`)}
               >
                 <Stack gap="xs">
                   <Group justify="space-between" align="flex-start">
@@ -141,7 +161,13 @@ export function PageList({ onNavigate, onCreatePage }) {
           )}
         </Stack>
       </Stack>
+
+      {/* Create Page Modal */}
+      <CreatePageModal
+        opened={createModalOpened}
+        onClose={() => setCreateModalOpened(false)}
+        onPageCreated={handlePageCreated}
+      />
     </Container>
   );
 }
-

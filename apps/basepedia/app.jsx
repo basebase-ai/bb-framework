@@ -1,5 +1,9 @@
 /**
  * Main app entry point - Basepedia
+ * 
+ * Routes:
+ * - / (public): Page list with search
+ * - /:slug (public): View/edit page (editing requires auth)
  */
 
 import React, { useState } from "react";
@@ -8,47 +12,36 @@ import { MantineProvider, AppShell, Group, Title, Text, Avatar } from "@mantine/
 import { Notifications } from "@mantine/notifications";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
-import { useRouter } from "../../framework/hooks/useRouter.js";
+import { AppRouter, RouteContent } from "../../framework/components/AppRouter.jsx";
+import { useRoute } from "../../framework/hooks/useRoute.js";
 import { PageList } from "./components/PageList.jsx";
 import { PageEditor } from "./components/PageEditor.jsx";
-import { CreatePageModal } from "./components/CreatePageModal.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
-import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import { APP_ID } from "./schema.js";
 
 // Mantine CSS imports
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
-function AppContent() {
-  const { user } = useAuth();
+// ============================================================================
+// Route Definitions
+// ============================================================================
+
+/** @type {import("../../framework/components/AppRouter.jsx").RouteDefinition[]} */
+const routes = [
+  { path: "/", component: PageList },
+  { path: "/:slug", component: PageEditor },
+];
+
+// ============================================================================
+// App Layout
+// ============================================================================
+
+function AppLayout() {
+  const { user, authenticated } = useAuth();
   const { profile } = useUserProfile(user?.uid);
-  const { path, navigate } = useRouter();
+  const { navigate } = useRoute();
   const [profileModalOpened, setProfileModalOpened] = useState(false);
-  const [createPageModalOpened, setCreatePageModalOpened] = useState(false);
-  
-  // Extract page slug from URL path
-  const currentPage = path === "/" || path === "" ? null : path.slice(1);
-
-  const handleNavigateHome = () => {
-    navigate("/");
-  };
-
-  const handleNavigateToPage = (slug) => {
-    navigate(`/${slug}`);
-  };
-
-  const handleCreatePage = () => {
-    if (!user) {
-      alert("Please sign in to create pages");
-      return;
-    }
-    setCreatePageModalOpened(true);
-  };
-
-  const handlePageCreated = (slug) => {
-    navigate(`/${slug}`);
-  };
 
   return (
     <AppShell header={{ height: 60 }} padding="md">
@@ -57,11 +50,11 @@ function AppContent() {
           <Title 
             order={3} 
             style={{ cursor: 'pointer' }}
-            onClick={handleNavigateHome}
+            onClick={() => navigate("/")}
           >
             Basepedia
           </Title>
-          {user && (
+          {authenticated && (
             <Group 
               gap="xs"
               style={{ cursor: 'pointer' }}
@@ -69,12 +62,12 @@ function AppContent() {
             >
               <Avatar
                 src={profile?.photoURL}
-                alt={profile?.displayName || user.email}
+                alt={profile?.displayName || user?.email}
                 size="sm"
                 radius="xl"
               />
               <Text size="sm" c="dimmed">
-                {profile?.displayName || user.email}
+                {profile?.displayName || user?.email}
               </Text>
             </Group>
           )}
@@ -82,18 +75,7 @@ function AppContent() {
       </AppShell.Header>
 
       <AppShell.Main>
-        {currentPage ? (
-          <PageEditor
-            slug={currentPage}
-            onNavigateHome={handleNavigateHome}
-            onPageDeleted={handleNavigateHome}
-          />
-        ) : (
-          <PageList
-            onNavigate={handleNavigateToPage}
-            onCreatePage={handleCreatePage}
-          />
-        )}
+        <RouteContent />
       </AppShell.Main>
 
       {/* Profile Modal */}
@@ -101,31 +83,29 @@ function AppContent() {
         opened={profileModalOpened} 
         onClose={() => setProfileModalOpened(false)} 
       />
-
-      {/* Create Page Modal */}
-      <CreatePageModal
-        opened={createPageModalOpened}
-        onClose={() => setCreatePageModalOpened(false)}
-        onPageCreated={handlePageCreated}
-      />
     </AppShell>
   );
 }
+
+// ============================================================================
+// Main App
+// ============================================================================
 
 function App() {
   return (
     <MantineProvider defaultColorScheme="light">
       <Notifications position="top-right" />
-      <AuthProvider appId={APP_ID}>
-        <AppContent />
-      </AuthProvider>
+      <AppRouter appId={APP_ID} routes={routes}>
+        <AppLayout />
+      </AppRouter>
     </MantineProvider>
   );
 }
 
 // Mount app (only once)
 const container = document.getElementById("app");
-let root;
+/** @type {import('react-dom/client').Root | null} */
+let root = null;
 
 function render() {
   if (!root) {
@@ -144,4 +124,3 @@ if (import.meta.hot) {
 }
 
 export default App;
-

@@ -2,7 +2,7 @@
  * CRM Landing Page - Shown to unauthenticated users
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Container,
   Title,
@@ -27,6 +27,8 @@ import {
   IconShieldCheck,
   IconDeviceFloppy,
 } from "@tabler/icons-react";
+import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { useRoute } from "../../../framework/hooks/useRoute.js";
 
 /**
  * @typedef {Object} FeatureCardProps
@@ -55,9 +57,23 @@ function FeatureCard({ icon, title, description }) {
 }
 
 /**
- * @param {{ onSignIn: () => void }} props
+ * CRM Landing Page - now uses useAuth for sign-in
+ * Supports legacy prop for backward compatibility
+ * @param {{ onSignIn?: () => void }} [props]
  */
-export function LandingPage({ onSignIn }) {
+export function LandingPage({ onSignIn } = {}) {
+  const { authenticated, promptSignIn } = useAuth();
+  const { navigate } = useRoute();
+  
+  // If user becomes authenticated while on landing page, redirect to dashboard
+  useEffect(() => {
+    if (authenticated) {
+      navigate("/dashboard");
+    }
+  }, [authenticated, navigate]);
+  
+  // Use provided onSignIn or fall back to promptSignIn
+  const handleSignIn = onSignIn || promptSignIn;
   return (
     <Box
       style={{
@@ -91,7 +107,7 @@ export function LandingPage({ onSignIn }) {
               size="lg"
               variant="white"
               color="dark"
-              onClick={onSignIn}
+              onClick={handleSignIn}
               leftSection={<IconRocket size={20} />}
             >
               Get Started Free
@@ -100,7 +116,7 @@ export function LandingPage({ onSignIn }) {
               size="lg"
               variant="outline"
               color="white"
-              onClick={onSignIn}
+              onClick={handleSignIn}
             >
               Sign In
             </Button>
@@ -212,7 +228,7 @@ export function LandingPage({ onSignIn }) {
             </Text>
             <Button
               size="lg"
-              onClick={onSignIn}
+              onClick={handleSignIn}
               leftSection={<IconRocket size={20} />}
             >
               Get Started Now

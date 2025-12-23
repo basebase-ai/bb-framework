@@ -26,6 +26,7 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { useRoute } from "../../../framework/hooks/useRoute.js";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useUserProfiles } from "../../../framework/hooks/useUserProfiles.js";
 import { collections } from "../schema.js";
@@ -39,8 +40,11 @@ marked.setOptions({
   gfm: true,
 });
 
-export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
-  const { user } = useAuth();
+export function PageEditor() {
+  const { user, authenticated, promptSignIn } = useAuth();
+  const { params, navigate } = useRoute();
+  const slug = params.slug || "";
+  
   const { data: pages, loading } = useCollection(collections.pages);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
@@ -62,15 +66,11 @@ export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
   }, [page, isEditing]);
 
   const handleStartEdit = () => {
-    if (!user) {
-      notifications.show({
-        title: "Authentication required",
-        message: "Please sign in to edit pages",
-        color: "red",
-      });
+    if (!authenticated) {
+      promptSignIn();
       return;
     }
-    setEditContent(page.content || "");
+    setEditContent(page?.content || "");
     setIsEditing(true);
   };
 
@@ -82,6 +82,7 @@ export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
       const pageRef = doc(db, collections.pages, page.id);
       
       // Add current user to contributors if not already there
+      /** @type {Record<string, unknown>} */
       const updates = {
         content: editContent,
         updatedAt: new Date(),
@@ -138,7 +139,7 @@ export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
         color: "green",
       });
 
-      onPageDeleted();
+      navigate("/");
     } catch (error) {
       console.error("Error deleting page:", error);
       notifications.show({
@@ -150,12 +151,12 @@ export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
     }
   };
 
-  const getDisplayName = (uid) => {
+  const getDisplayName = (/** @type {string} */ uid) => {
     const profile = profiles.get(uid);
     return profile?.displayName || profile?.email || "Unknown";
   };
 
-  const renderMarkdown = (content) => {
+  const renderMarkdown = (/** @type {string | undefined} */ content) => {
     if (!content) return "<p><em>This page is empty. Click Edit to add content.</em></p>";
     return marked(content);
   };
@@ -176,7 +177,7 @@ export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
             <Text size="lg" c="dimmed">
               Page not found
             </Text>
-            <Button onClick={onNavigateHome}>Back to Home</Button>
+            <Button onClick={() => navigate("/")}>Back to Home</Button>
           </Stack>
         </Paper>
       </Container>
@@ -192,7 +193,7 @@ export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
             <ActionIcon
               variant="subtle"
               size="lg"
-              onClick={onNavigateHome}
+              onClick={() => navigate("/")}
             >
               <IconArrowLeft size={20} />
             </ActionIcon>
@@ -208,7 +209,7 @@ export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
           </Group>
 
           <Group>
-            {!isEditing && user && (
+            {!isEditing && (
               <>
                 <Button
                   leftSection={<IconEdit size={16} />}
@@ -217,7 +218,7 @@ export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
                 >
                   Edit
                 </Button>
-                {page.createdBy === user.uid && (
+                {authenticated && page.createdBy === user?.uid && (
                   <ActionIcon
                     color="red"
                     variant="light"
@@ -258,7 +259,7 @@ export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
             <Text size="sm" c="dimmed">
               Contributors:
             </Text>
-            {page.contributors.map((uid) => (
+            {page.contributors.map((/** @type {string} */ uid) => (
               <Badge key={uid} variant="light" size="sm">
                 {getDisplayName(uid)}
               </Badge>
@@ -345,4 +346,3 @@ export function PageEditor({ slug, onNavigateHome, onPageDeleted }) {
     </Container>
   );
 }
-

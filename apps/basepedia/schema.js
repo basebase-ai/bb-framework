@@ -27,7 +27,8 @@ export const collections = {
   users: "users",
 
   // Your app-specific collections (automatically namespaced)
-  pages: `${APP_ID}_pages`,
+  // Using _public suffix for publicly readable pages (no auth required to view)
+  pages: `${APP_ID}_pages_public`,
 };
 
 /**
@@ -40,7 +41,7 @@ export function getCollection(name) {
 
 // Schema definitions for type generation and documentation
 export const schema = {
-  [`${APP_ID}_pages`]: {
+  [`${APP_ID}_pages_public`]: {
     fields: {
       title: { type: "string", required: true },
       slug: { type: "string", required: true }, // URL-friendly identifier
