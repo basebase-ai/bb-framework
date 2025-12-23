@@ -5,7 +5,7 @@
  * - ?edit=app-id  - Checkout and edit an existing app
  * - ?fork=app-id  - Fork an existing app (checkout with new ID)
  * - ?new=true     - Start fresh with landing screen
- * - ?prompt=...   - Pre-fill initial prompt (used with edit/fork)
+ * - ?prompt=...   - Create a new app with this prompt (goes directly to editor)
  */
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -578,8 +578,20 @@ function BuilderContent({ initialPrompt, onClose }) {
  * Check if URL params indicate we should go directly to editor
  */
 function shouldStartInEditorMode() {
-  const { edit, fork } = parseUrlParams();
-  return !!(edit || fork);
+  const { edit, fork, prompt } = parseUrlParams();
+  return !!(edit || fork || prompt);
+}
+
+/**
+ * Get the initial prompt from URL params (for creating new apps)
+ */
+function getInitialPromptFromUrl() {
+  const { edit, fork, prompt } = parseUrlParams();
+  // Only use prompt for new app creation (not with edit/fork)
+  if (prompt && !edit && !fork) {
+    return prompt;
+  }
+  return null;
 }
 
 function App() {
@@ -589,7 +601,7 @@ function App() {
     shouldStartInEditorMode() ? "editor" : "landing"
   );
   const [pendingPrompt, setPendingPrompt] = useState(
-    /** @type {string | null} */ (null)
+    /** @type {string | null} */ (getInitialPromptFromUrl())
   );
 
   // Handle "Build It" from landing screen

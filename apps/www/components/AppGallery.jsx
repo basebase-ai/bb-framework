@@ -7,7 +7,12 @@ import {
   Text,
   LoadingOverlay,
   Button,
+  Stack,
+  Title,
+  Textarea,
+  Paper,
 } from "@mantine/core";
+import { IconArrowRight } from "@tabler/icons-react";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
@@ -54,6 +59,7 @@ export default function AppGallery({ onSignIn }) {
   const { user, promptSignIn } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   const { path, navigate } = useRouter();
+  const [builderPrompt, setBuilderPrompt] = useState("");
   
   const { data: allApps = [], loading, update: updateItem, remove: removeItem } = useCollection("apps");
   
@@ -146,6 +152,14 @@ export default function AppGallery({ onSignIn }) {
 
   const handleBackFromDetails = () => {
     navigateToApp(null);
+  };
+
+  const handleBuildIt = () => {
+    const trimmed = builderPrompt.trim();
+    const promptParam = encodeURIComponent(trimmed);
+    const baseUrl = "https://builder.basebase.com/";
+    const target = trimmed ? `${baseUrl}?prompt=${promptParam}` : baseUrl;
+    window.open(target, "_blank");
   };
 
   // Debug logging
@@ -251,7 +265,73 @@ export default function AppGallery({ onSignIn }) {
           py={{ base: 0, sm: 'md' }}
         >
           <LoadingOverlay visible={loading} />
-        
+          
+          {/* Hero builder CTA */}
+          <Paper
+            shadow="xs"
+            radius="md"
+            p={{ base: "lg", sm: "xl" }}
+            mb="md"
+            style={{
+              backgroundColor: "#f8f9fa",
+              border: "1px solid #e9ecef",
+              maxWidth: 760,
+              margin: "0 auto",
+            }}
+          >
+            <Stack gap="md" align="center" w="100%">
+              <Title order={3} style={{ color: "#1D1D1F", letterSpacing: "-0.02em" }} ta="center">
+                What do you want to build?
+              </Title>
+              <Textarea
+                placeholder="Describe your app idea... (e.g., CRM that pulls Salesforce + HubSpot, shows renewals, health scores, and reminders)"
+                size="md"
+                minRows={3}
+                maxRows={6}
+                autosize
+                value={builderPrompt}
+                onChange={(e) => setBuilderPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    handleBuildIt();
+                  }
+                }}
+                w="100%"
+                styles={{
+                  input: {
+                    backgroundColor: "#fdfefe",
+                    border: "1px solid #dee2e6",
+                  },
+                }}
+              />
+              <Group justify="space-between" w="100%" align="center" wrap="wrap" gap="xs">
+                <Text size="xs" c="dimmed">
+                  Press ⌘+Enter to start building
+                </Text>
+                <Button
+                  size="md"
+                  variant="filled"
+                  color="coral"
+                  radius="md"
+                  onClick={handleBuildIt}
+                  rightSection={<IconArrowRight size={16} />}
+                  disabled={!builderPrompt.trim()}
+                >
+                  Build it
+                </Button>
+              </Group>
+            </Stack>
+          </Paper>
+          
+        <Text
+          size="xs"
+          style={{ color: "#5a7a7e", padding: "24px 8px", textAlign: "center" }}
+          weight={400}
+        >
+          Or select one of the apps below to use, edit, or fork
+        </Text>
+
           {selectedAppDetails ? (
             <AppDetailsPage
               app={selectedAppDetails}

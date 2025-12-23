@@ -84,15 +84,15 @@ export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
             onClick={handleFork}
           >
             Fork
-          </Button>
-          <Button
-            variant="filled"
-            color="coral"
-            leftSection={<IconExternalLink size={14} />}
-            onClick={() => window.open(`https://${app.id}.basebase.com`, '_blank')}
-          >
-            Open App
-          </Button>
+        </Button>
+        <Button
+          variant="filled"
+          color="coral"
+          leftSection={<IconExternalLink size={14} />}
+          onClick={() => window.open(`https://${app.id}.basebase.com`, '_blank')}
+        >
+          Open App
+        </Button>
         </Group>
       </Group>
       

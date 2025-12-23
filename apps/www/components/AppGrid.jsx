@@ -20,7 +20,7 @@ const BUILDER_URL = "https://builder.basebase.com";
 export default function AppGrid({ 
   apps, 
   loading, 
-  onShowDetails,
+  onShowDetails, 
   onCreateApp,
 }) {
   const { user } = useAuth();
@@ -70,23 +70,6 @@ export default function AppGrid({
     <>
       {/* Header */}
       <Stack gap="sm" mb={rem(20)}>
-        <Stack gap={4} align="center">
-          <Title
-            order={2}
-            size={rem(28)}
-            weight={700}
-            style={{
-              color: "#416165",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Basebase Gallery
-          </Title>
-          <Text size="xs" style={{ color: "#5a7a7e" }} weight={400}>
-            Discover and build amazing apps
-          </Text>
-        </Stack>
-
         {/* Search and Create */}
         <Group gap="xs">
           <TextInput
@@ -225,15 +208,15 @@ export default function AppGrid({
               ? (ownerProfile?.displayName || "Unknown User")
               : "Sign in to view";
             return (
-              <Grid.Col key={app.id} span={{ base: 12, sm: 6, md: 4, lg: 3, xl: 2 }}>
-                <AppCard 
-                  app={app}
+            <Grid.Col key={app.id} span={{ base: 12, sm: 6, md: 4, lg: 3, xl: 2 }}>
+              <AppCard 
+                app={app}
                   ownerProfile={ownerProfile}
                   ownerDisplayName={ownerDisplayName}
-                  onDetails={onShowDetails}
+                onDetails={onShowDetails}
                   onFork={() => window.open(`${BUILDER_URL}/?fork=${app.id}`, "_blank")}
-                />
-              </Grid.Col>
+              />
+            </Grid.Col>
             );
           })}
         </Grid>
