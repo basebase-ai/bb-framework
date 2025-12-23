@@ -1,5 +1,6 @@
 /**
  * LandingScreen - Initial screen for new users to start building
+ * This screen is shown without authentication - auth is handled by the editor
  */
 
 import React, { useState } from "react";
@@ -14,7 +15,6 @@ import {
   Image,
 } from "@mantine/core";
 import { IconArrowRight, IconEdit, IconGitFork } from "@tabler/icons-react";
-import { AuthButton } from "./AuthButton.jsx";
 import {
   SiSlack,
   SiAirtable,
@@ -46,42 +46,10 @@ const INTEGRATIONS = [
   { icon: SiGithub, label: "GitHub", color: "#181717" },
 ];
 
-// Session storage key for pending prompt
-const PENDING_PROMPT_KEY = "builder_pending_prompt";
-
 /**
- * Store a prompt in session storage for use after sign-in
- * @param {string} prompt
+ * @param {{ onSubmit: (prompt: string) => void }} props
  */
-export function storePendingPrompt(prompt) {
-  sessionStorage.setItem(PENDING_PROMPT_KEY, prompt);
-}
-
-/**
- * Retrieve and clear the pending prompt from session storage
- * @returns {string | null}
- */
-export function consumePendingPrompt() {
-  const prompt = sessionStorage.getItem(PENDING_PROMPT_KEY);
-  if (prompt) {
-    sessionStorage.removeItem(PENDING_PROMPT_KEY);
-  }
-  return prompt;
-}
-
-/**
- * @typedef {Object} LandingScreenProps
- * @property {((prompt: string) => void)} [onSubmit] - Called when authenticated user clicks "Build It"
- * @property {(() => void)} [onSignIn] - Called when unauthenticated user clicks "Build It" (stores prompt first)
- * @property {import('firebase/auth').User | null} [user] - Current user (if authenticated)
- * @property {{ displayName?: string | null, photoURL?: string | null } | null} [profile] - User profile
- * @property {(() => void)} [onProfileClick] - Called when user clicks their avatar
- */
-
-/**
- * @param {LandingScreenProps} props
- */
-export function LandingScreen({ onSubmit, onSignIn, user, profile, onProfileClick }) {
+export function LandingScreen({ onSubmit }) {
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -90,19 +58,7 @@ export function LandingScreen({ onSubmit, onSignIn, user, profile, onProfileClic
     if (!trimmedPrompt) return;
 
     setIsSubmitting(true);
-
-    // If onSignIn is provided (unauthenticated), store prompt and trigger sign-in
-    if (onSignIn) {
-      storePendingPrompt(trimmedPrompt);
-      onSignIn();
-      // Don't set isSubmitting back to false - let the sign-in flow proceed
-      return;
-    }
-
-    // Authenticated flow - submit directly
-    if (onSubmit) {
-      onSubmit(trimmedPrompt);
-    }
+    onSubmit(trimmedPrompt);
   };
 
   const handleKeyDown = (/** @type {React.KeyboardEvent} */ e) => {
@@ -120,18 +76,8 @@ export function LandingScreen({ onSubmit, onSignIn, user, profile, onProfileClic
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        position: "relative",
       }}
     >
-      {/* Auth indicator - top right */}
-      <Box style={{ position: "absolute", top: 16, right: 16 }}>
-        <AuthButton
-          user={user}
-          profile={profile}
-          onSignIn={onSignIn}
-          onProfileClick={onProfileClick}
-        />
-      </Box>
       <Stack align="center" gap="xl" maw={700} w="100%" p="xl">
         {/* Logo */}
         <Group gap="sm" align="center">

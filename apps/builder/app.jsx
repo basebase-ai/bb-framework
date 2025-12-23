@@ -43,7 +43,7 @@ import { PreviewPanel } from "./components/PreviewPanel.jsx";
 import { FileTree } from "./components/FileTree.jsx";
 import { AppControls } from "./components/AppControls.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
-import { LandingScreen, consumePendingPrompt } from "./components/LandingScreen.jsx";
+import { LandingScreen } from "./components/LandingScreen.jsx";
 import { AuthButton } from "./components/AuthButton.jsx";
 import { getAppFiles, saveAppFiles } from "./utils/fileSystem.js";
 import { lintAllFiles } from "./utils/linter.js";
@@ -90,9 +90,10 @@ function clearUrlParams() {
 }
 
 /**
- * Main builder interface
+ * Main builder interface (requires authentication)
+ * @param {{ initialPrompt?: string | null, onClose?: () => void }} props
  */
-function BuilderContent() {
+function BuilderContent({ initialPrompt, onClose }) {
   const { user } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   const [profileModalOpened, setProfileModalOpened] = useState(false);
@@ -128,15 +129,7 @@ function BuilderContent() {
     initializedRef.current = true;
 
     const handleInit = async () => {
-      const { edit, fork, isNew, prompt } = parseUrlParams();
-
-      // ?new=true - Clear state and show landing
-      if (isNew) {
-        clearCurrentApp();
-        clearUrlParams();
-        setIsInitializing(false);
-        return;
-      }
+      const { edit, fork, prompt } = parseUrlParams();
 
       // ?edit=app-id - Checkout existing app
       if (edit) {
@@ -177,11 +170,9 @@ function BuilderContent() {
         return;
       }
 
-      // Check for pending prompt from pre-sign-in landing screen
-      const storedPrompt = consumePendingPrompt();
-      if (storedPrompt) {
-        // User signed in after entering a prompt - create app and submit
-        await handleNewApp(storedPrompt);
+      // Check for initial prompt passed from landing screen
+      if (initialPrompt) {
+        await handleNewApp(initialPrompt);
         setIsInitializing(false);
         return;
       }
@@ -200,7 +191,7 @@ function BuilderContent() {
     };
 
     handleInit();
-  }, [user]);
+  }, [user, initialPrompt]);
 
   // Load curated example apps once per session (for agent search/tools)
   useEffect(() => {
@@ -385,12 +376,14 @@ function BuilderContent() {
   const handleClose = () => {
     clearCurrentApp();
     setCloseModalOpened(false);
-    // Navigate to landing with ?new=true
-    window.history.replaceState({}, "", "?new=true");
+    // Go back to landing screen
+    if (onClose) {
+      onClose();
+    }
   };
 
   // Show loading while initializing
-  if (isInitializing) {
+  if (isInitializing || !currentAppId) {
     return (
       <Box
         style={{
@@ -403,27 +396,9 @@ function BuilderContent() {
       >
         <Stack align="center" gap="md">
           <img src={LOGO_URL} alt="Basebase" width={48} height={48} />
-          <Text c="dimmed">Loading...</Text>
+          <Text c="dimmed">Setting up your app...</Text>
         </Stack>
       </Box>
-    );
-  }
-
-  // Show landing screen if no app selected
-  if (!currentAppId) {
-    return (
-      <>
-        <LandingScreen
-          onSubmit={handleNewApp}
-          user={user}
-          profile={profile}
-          onProfileClick={() => setProfileModalOpened(true)}
-        />
-        <ProfileModal
-          opened={profileModalOpened}
-          onClose={() => setProfileModalOpened(false)}
-        />
-      </>
     );
   }
 
@@ -599,15 +574,57 @@ function BuilderContent() {
   );
 }
 
+/**
+ * Check if URL params indicate we should go directly to editor
+ */
+function shouldStartInEditorMode() {
+  const { edit, fork } = parseUrlParams();
+  return !!(edit || fork);
+}
+
 function App() {
+  // "landing" = show landing page (no auth required)
+  // "editor" = show editor (auth required)
+  const [mode, setMode] = useState(
+    shouldStartInEditorMode() ? "editor" : "landing"
+  );
+  const [pendingPrompt, setPendingPrompt] = useState(
+    /** @type {string | null} */ (null)
+  );
+
+  // Handle "Build It" from landing screen
+  const handleStartBuilding = (prompt) => {
+    setPendingPrompt(prompt);
+    setMode("editor");
+  };
+
+  // Handle closing the editor (go back to landing)
+  const handleCloseEditor = () => {
+    setPendingPrompt(null);
+    setMode("landing");
+    // Clear URL params
+    window.history.replaceState({}, "", window.location.pathname);
+  };
+
+  // Landing mode - no auth required
+  if (mode === "landing") {
+    return (
+      <MantineProvider defaultColorScheme="light">
+        <Notifications position="top-right" />
+        <LandingScreen onSubmit={handleStartBuilding} />
+      </MantineProvider>
+    );
+  }
+
+  // Editor mode - auth required
   return (
     <MantineProvider defaultColorScheme="light">
       <Notifications position="top-right" />
-      <AuthProvider 
-        appId={APP_ID}
-        landingPage={({ onSignIn }) => <LandingScreen onSignIn={onSignIn} />}
-      >
-        <BuilderContent />
+      <AuthProvider appId={APP_ID}>
+        <BuilderContent 
+          initialPrompt={pendingPrompt} 
+          onClose={handleCloseEditor}
+        />
       </AuthProvider>
     </MantineProvider>
   );
