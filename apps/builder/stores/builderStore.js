@@ -32,6 +32,7 @@ import { persist } from "zustand/middleware";
  * @typedef {Object} BuilderState
  * @property {string | null} currentAppId - Currently selected app ID
  * @property {Record<string, string>} files - Current app files (fileName -> content)
+ * @property {Record<string, string>} originalFiles - Files as they were when loaded (for dirty tracking)
  * @property {string | null} selectedFile - Currently selected file for viewing
  * @property {Message[]} messages - Chat history
  * @property {LintError[]} lintErrors - Current lint errors
@@ -48,6 +49,7 @@ const storeCreator = (set, get) => ({
   // State
   currentAppId: null,
   files: {},
+  originalFiles: {},
   selectedFile: null,
   messages: [],
   lintErrors: [],
@@ -63,6 +65,7 @@ const storeCreator = (set, get) => ({
     set({
       currentAppId: appId,
       files: files || {},
+      originalFiles: files || {},
       selectedFile: null,
       messages: [],
       lintErrors: [],
@@ -73,6 +76,7 @@ const storeCreator = (set, get) => ({
     set({
       currentAppId: null,
       files: {},
+      originalFiles: {},
       selectedFile: null,
       messages: [],
       lintErrors: [],
@@ -124,6 +128,29 @@ const storeCreator = (set, get) => ({
   setExampleApps: (exampleApps) => set({ exampleApps }),
   setExampleAppsLoading: (loading) => set({ exampleAppsLoading: loading }),
   setExampleAppsError: (error) => set({ exampleAppsError: error }),
+
+  // Mark current files as saved (reset originalFiles to match current files)
+  markAsSaved: () => set((state) => ({ originalFiles: { ...state.files } })),
+
+  // Check if there are unsaved changes
+  hasUnsavedChanges: () => {
+    const { files, originalFiles } = get();
+    const currentKeys = Object.keys(files).sort();
+    const originalKeys = Object.keys(originalFiles).sort();
+
+    // Different number of files
+    if (currentKeys.length !== originalKeys.length) return true;
+
+    // Different file names
+    if (currentKeys.join(",") !== originalKeys.join(",")) return true;
+
+    // Different content in any file
+    for (const key of currentKeys) {
+      if (files[key] !== originalFiles[key]) return true;
+    }
+
+    return false;
+  },
 });
 
 export const useBuilderStore = create(

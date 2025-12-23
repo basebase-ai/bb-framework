@@ -1,8 +1,13 @@
 /**
  * Blog - Multi-user blogging platform inspired by Ghost
  * A clean, professional blog system for Basebase's homepage
+ * 
+ * Routes:
+ *   /              - Post list (public)
+ *   /:slug         - View post (public)
+ *   /edit          - Create new post (auth required)
+ *   /edit/:slug    - Edit existing post (auth required)
  */
-
 
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
@@ -10,7 +15,6 @@ import {
   MantineProvider,
   AppShell,
   Group,
-  Title,
   Text,
   Avatar,
   Button,
@@ -19,9 +23,10 @@ import {
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { IconLogin, IconLogout, IconUser, IconEdit } from "@tabler/icons-react";
+import { AppRouter, RouteContent, SignOutButton } from "../../framework/components/AppRouter.jsx";
+import { useRoute } from "../../framework/hooks/useRoute.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
-import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { PostList } from "./components/PostList.jsx";
 import { PostView } from "./components/PostView.jsx";
@@ -34,100 +39,181 @@ import { APP_ID } from "./schema.js";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
+// ============================================================================
+// Route Components
+// ============================================================================
+
 /**
- * Parse the current route from URL
+ * Home page - shows list of posts
  */
-function parseRoute() {
-  const path = window.location.pathname;
+function HomePage() {
+  const { navigate } = useRoute();
+  const { user, promptSignIn } = useAuth();
 
-  // Match /edit/:slug or /edit (new post)
-  const editMatch = path.match(/^\/edit(?:\/(.+))?$/);
-  if (editMatch) {
-    return { view: "edit", slug: editMatch[1] || null };
-  }
+  const handleNavigate = (/** @type {string} */ slug) => {
+    navigate(`/${slug}`);
+  };
 
-  // Match /:slug (post view)
-  const postMatch = path.match(/^\/(.+)$/);
-  if (postMatch) {
-    return { view: "post", slug: postMatch[1] };
-  }
+  const handleCreatePost = () => {
+    if (!user) {
+      promptSignIn();
+      return;
+    }
+    navigate("/edit");
+  };
 
-  // Default: home
-  return { view: "home" };
+  const handleEditPost = (/** @type {{ slug: string }} */ post) => {
+    if (!user) {
+      promptSignIn();
+      return;
+    }
+    navigate(`/edit/${post.slug}`);
+  };
+
+  return (
+    <PostList
+      key={user?.uid || "anonymous"}
+      onNavigate={handleNavigate}
+      onCreatePost={handleCreatePost}
+      onEditPost={handleEditPost}
+    />
+  );
 }
 
 /**
- * Navigate to a route
+ * Post view page - shows a single post
  */
-function navigate(view, slug = null) {
-  let path = "/";
-  if (view === "home") {
-    path = "/";
-  } else if (view === "post" && slug) {
-    path = `/${slug}`;
-  } else if (view === "edit") {
-    path = slug ? `/edit/${slug}` : "/edit";
-  }
-  window.history.pushState(null, "", path);
-  window.dispatchEvent(new PopStateEvent("popstate"));
+function PostViewPage() {
+  const { params, navigate } = useRoute();
+  const { user, promptSignIn } = useAuth();
+
+  const handleNavigateHome = () => {
+    navigate("/");
+  };
+
+  const handleEdit = (/** @type {{ slug: string }} */ post) => {
+    if (!user) {
+      promptSignIn();
+      return;
+    }
+    navigate(`/edit/${post.slug}`);
+  };
+
+  return (
+    <PostView
+      slug={params.slug}
+      onNavigateHome={handleNavigateHome}
+      onEdit={handleEdit}
+    />
+  );
 }
 
 /**
- * Main app content
+ * Post editor page - create or edit posts
+ * Fetches post by slug when editing, passes null for new posts
  */
-function AppContent() {
+function PostEditorPage() {
+  const { params, navigate } = useRoute();
   const { user } = useAuth();
+  const [post, setPost] = useState(/** @type {Record<string, unknown> | null} */ (null));
+  const [loading, setLoading] = useState(!!params.slug);
+
+  // Fetch post by slug when editing
+  useEffect(() => {
+    if (!params.slug || !user) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchPost = async () => {
+      try {
+        // Import Firestore functions
+        const { collection, query, where, getDocs } = await import("firebase/firestore");
+        const { db } = await import("../../framework/core/firebase-init.js");
+        const { collections } = await import("./schema.js");
+        
+        // Query posts by slug for current user
+        const q = query(
+          collection(db, collections.posts),
+          where("slug", "==", params.slug),
+          where("authorId", "==", user.uid)
+        );
+        const snapshot = await getDocs(q);
+        
+        if (!snapshot.empty) {
+          const doc = snapshot.docs[0];
+          setPost({ id: doc.id, ...doc.data() });
+        }
+      } catch (err) {
+        console.error("Error fetching post:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPost();
+  }, [params.slug, user?.uid]);
+
+  const handleClose = () => {
+    navigate("/");
+  };
+
+  const handleSave = () => {
+    navigate("/");
+  };
+
+  if (loading) {
+    return (
+      <Box py="xl" ta="center">
+        <Text c="dimmed">Loading post...</Text>
+      </Box>
+    );
+  }
+
+  return (
+    <PostEditor
+      post={post}
+      onClose={handleClose}
+      onSave={handleSave}
+    />
+  );
+}
+
+// ============================================================================
+// Route Definitions
+// ============================================================================
+
+/** @type {import('../../framework/components/AppRouter.jsx').RouteDefinition[]} */
+const routes = [
+  { path: "/", component: HomePage },
+  { path: "/edit", component: PostEditorPage, auth: true },
+  { path: "/edit/:slug", component: PostEditorPage, auth: true },
+  { path: "/:slug", component: PostViewPage },
+];
+
+// ============================================================================
+// Layout Component
+// ============================================================================
+
+/**
+ * Blog layout with header
+ */
+function BlogLayout() {
+  const { user, promptSignIn } = useAuth();
   const { profile } = useUserProfile(user?.uid);
+  const { navigate } = useRoute();
   const [profileModalOpened, setProfileModalOpened] = useState(false);
-  const [currentView, setCurrentView] = useState("home");
-  const [currentSlug, setCurrentSlug] = useState(null);
-  const [editingPost, setEditingPost] = useState(null);
   const [debugMode, setDebugMode] = useState(false);
 
   // Sync author profile to public collection when signed in
   useSyncAuthorProfile();
 
-  // Parse route on mount and on browser back/forward
-  useEffect(() => {
-    const handleRouteChange = () => {
-      const route = parseRoute();
-      setCurrentView(route.view);
-      setCurrentSlug(route.slug);
-    };
-
-    handleRouteChange();
-    window.addEventListener("popstate", handleRouteChange);
-    return () => window.removeEventListener("popstate", handleRouteChange);
-  }, []);
-
-
   const handleNavigateHome = () => {
-    setEditingPost(null);
-    navigate("home");
-  };
-
-  const handleNavigateToPost = (slug) => {
-    setEditingPost(null);
-    navigate("post", slug);
+    navigate("/");
   };
 
   const handleCreatePost = () => {
-    setEditingPost(null);
-    navigate("edit");
-  };
-
-  const handleEditPost = (post) => {
-    setEditingPost(post);
-    navigate("edit", post.slug);
-  };
-
-  const handleSavePost = () => {
-    // Refresh and go home
-    handleNavigateHome();
-  };
-
-  const handleCloseEditor = () => {
-    handleNavigateHome();
+    navigate("/edit");
   };
 
   return (
@@ -135,9 +221,7 @@ function AppContent() {
       <AppShell
         header={{ height: 64 }}
         padding="xs"
-        style={{
-          background: "#faf9f7",
-        }}
+        style={{ background: "#faf9f7" }}
       >
         <AppShell.Header
           style={{
@@ -217,7 +301,11 @@ function AppContent() {
                     color="red"
                     onClick={() => {
                       if (confirm("Are you sure you want to sign out?")) {
-                        window.location.href = "/?signout=true";
+                        import("firebase/auth").then(({ signOut }) => {
+                          import("../../framework/core/firebase-init.js").then(({ auth }) => {
+                            signOut(auth);
+                          });
+                        });
                       }
                     }}
                   >
@@ -229,9 +317,7 @@ function AppContent() {
               <Button
                 variant="light"
                 leftSection={<IconLogin size={16} />}
-                onClick={() => {
-                  window.location.href = "/?signin=true";
-                }}
+                onClick={promptSignIn}
               >
                 Sign In
               </Button>
@@ -247,26 +333,7 @@ function AppContent() {
             p={{ base: 0, sm: "sm" }}
             py={{ base: 0, sm: "md" }}
           >
-            {currentView === "edit" ? (
-              <PostEditor
-                post={editingPost}
-                onClose={handleCloseEditor}
-                onSave={handleSavePost}
-              />
-            ) : currentView === "post" && currentSlug ? (
-              <PostView
-                slug={currentSlug}
-                onNavigateHome={handleNavigateHome}
-                onEdit={handleEditPost}
-              />
-            ) : (
-              <PostList
-                key={user?.uid || "anonymous"}
-                onNavigate={handleNavigateToPost}
-                onCreatePost={handleCreatePost}
-                onEditPost={handleEditPost}
-              />
-            )}
+            <RouteContent />
           </Box>
         </AppShell.Main>
       </AppShell>
@@ -279,144 +346,30 @@ function AppContent() {
         />
       )}
 
-      {/* Debug Panel (toggle with Debug button in header) */}
+      {/* Debug Panel */}
       {debugMode && <DebugPanel onClose={() => setDebugMode(false)} />}
     </>
   );
 }
 
-/**
- * Landing page for unauthenticated users
- */
-function LandingPage({ onSignIn }) {
-  const [debugMode, setDebugMode] = useState(false);
-  const [currentView, setCurrentView] = useState("home");
-  const [currentSlug, setCurrentSlug] = useState(null);
-
-  // Parse route on mount and on browser back/forward
-  useEffect(() => {
-    const handleRouteChange = () => {
-      const route = parseRoute();
-      setCurrentView(route.view);
-      setCurrentSlug(route.slug);
-    };
-
-    handleRouteChange();
-    window.addEventListener("popstate", handleRouteChange);
-    return () => window.removeEventListener("popstate", handleRouteChange);
-  }, []);
-
-  const handleNavigateHome = () => {
-    navigate("home");
-  };
-
-  const handleNavigateToPost = (slug) => {
-    navigate("post", slug);
-  };
-
-  return (
-    <>
-      <AppShell
-        header={{ height: 64 }}
-        padding="xs"
-        style={{
-          background: "#faf9f7",
-        }}
-      >
-        <AppShell.Header
-          style={{
-            background: "rgba(255, 255, 255, 0.9)",
-            backdropFilter: "blur(20px)",
-            borderBottom: "1px solid #e8eced",
-          }}
-        >
-          <Group h="100%" px="md" justify="space-between" maw={1400} mx="auto">
-            <Group gap="md">
-              <Group
-                gap="xs"
-                style={{ cursor: "pointer" }}
-                onClick={handleNavigateHome}
-              >
-                <img
-                  src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695"
-                  alt="Basebase"
-                  style={{ height: 32, width: 32 }}
-                />
-                <Text fw={700} size="lg" style={{ color: "#416165", letterSpacing: "-0.02em" }}>
-                  Basebase
-                </Text>
-                <Text size="sm" style={{ color: "#5a7a7e" }}>
-                  Blog
-                </Text>
-              </Group>
-              {import.meta.env.DEV && (
-                <Button
-                  size="xs"
-                  variant={debugMode ? "filled" : "light"}
-                  onClick={() => setDebugMode(!debugMode)}
-                >
-                  {debugMode ? "Close Debug" : "Debug"}
-                </Button>
-              )}
-            </Group>
-
-            <Button
-              variant="light"
-              leftSection={<IconLogin size={16} />}
-              onClick={onSignIn}
-            >
-              Sign In
-            </Button>
-          </Group>
-        </AppShell.Header>
-
-        <AppShell.Main>
-          <Box
-            maw={1400}
-            mx="auto"
-            w="100%"
-            p={{ base: 0, sm: "sm" }}
-            py={{ base: 0, sm: "md" }}
-          >
-            {currentView === "post" && currentSlug ? (
-              <PostView
-                slug={currentSlug}
-                onNavigateHome={handleNavigateHome}
-                onEdit={onSignIn}
-              />
-            ) : (
-              <PostList
-                onNavigate={handleNavigateToPost}
-                onCreatePost={onSignIn}
-                onEditPost={onSignIn}
-              />
-            )}
-          </Box>
-        </AppShell.Main>
-      </AppShell>
-
-      {/* Debug Panel (toggle with Debug button in header) */}
-      {debugMode && <DebugPanel onClose={() => setDebugMode(false)} />}
-    </>
-  );
-}
+// ============================================================================
+// Main App
+// ============================================================================
 
 function App() {
   return (
     <MantineProvider defaultColorScheme="light">
       <Notifications position="top-right" />
-      <AuthProvider
-        appId={APP_ID}
-        landingPage={(props) => <LandingPage {...props} />}
-      >
-        <AppContent />
-      </AuthProvider>
+      <AppRouter appId={APP_ID} routes={routes}>
+        <BlogLayout />
+      </AppRouter>
     </MantineProvider>
   );
 }
 
 // Mount app (only once)
 const container = document.getElementById("app");
+/** @type {import('react-dom/client').Root | null} */
 let root = null;
 
 function render() {

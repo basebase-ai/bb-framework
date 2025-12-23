@@ -425,7 +425,7 @@ function BuilderContent({ initialPrompt, onClose }) {
                 </Text>
                 <Text c="dark" size="sm" fw={500}>
                   {currentAppId}
-                </Text>
+              </Text>
               </>
             )}
           </Group>
@@ -450,7 +450,7 @@ function BuilderContent({ initialPrompt, onClose }) {
               profile={profile}
               onProfileClick={() => setProfileModalOpened(true)}
             />
-          </Group>
+            </Group>
         </Group>
       </AppShell.Header>
 
@@ -517,7 +517,7 @@ function BuilderContent({ initialPrompt, onClose }) {
                         if (previewUrl) window.open(previewUrl, "_blank");
                       }}
                       disabled={!previewUrl || hasErrors}
-                    >
+                >
                       <IconExternalLink size={14} />
                     </ActionIcon>
                   </Tooltip>

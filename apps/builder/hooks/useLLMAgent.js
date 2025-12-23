@@ -53,8 +53,18 @@ function toolArgsToJson(args) {
  */
 function getToolCallAnnouncement(toolName) {
   switch (toolName) {
+    case "listFiles":
+      return "Let me see what files are in this app.";
+    case "readFile":
+      return "Let me read that file to understand the current code.";
     case "readFiles":
-      return "Let me read the current files so I understand what we're working with.";
+      return "Let me read all the files so I understand what we're working with.";
+    case "searchCurrentApp":
+      return "Let me search the current code for relevant patterns.";
+    case "searchExampleApps":
+      return "Let me search the example apps for a working pattern to follow.";
+    case "readExampleApp":
+      return "Let me read an example to see how this is done.";
     case "createFile":
       return "I’m going to create/update a file to implement this.";
     case "replaceLines":
@@ -67,26 +77,48 @@ function getToolCallAnnouncement(toolName) {
 }
 
 /**
- * Tiny status indicator for showing tool calls in chat.
+ * Informative status indicator for showing tool calls in chat.
  * @param {string} toolName
+ * @param {Record<string, any>} args
  * @returns {string}
  */
-function getToolCallIndicator(toolName) {
+function getToolCallIndicator(toolName, args) {
+  const fileName = args?.fileName || "";
+  const appId = args?.appId || "";
+  const pattern = args?.pattern || "";
+
   switch (toolName) {
+    case "listFiles":
+      return "Listing files…";
+    case "readFile":
+      return fileName ? `Reading ${fileName}…` : "Reading file…";
     case "readFiles":
-      return "Reading files…";
+      return "Reading all files…";
     case "searchCurrentApp":
-      return "Searching current app…";
+      return pattern ? `Searching for "${pattern}"…` : "Searching app…";
     case "searchExampleApps":
-      return "Searching examples…";
+      return pattern
+        ? `Searching examples for "${pattern}"…`
+        : "Searching examples…";
     case "readExampleApp":
+      if (appId && fileName) return `Reading ${appId}/${fileName}…`;
+      if (appId) return `Reading example ${appId}…`;
       return "Reading example…";
     case "createFile":
-      return "Creating file…";
-    case "replaceLines":
+      return fileName ? `Creating ${fileName}…` : "Creating file…";
+    case "replaceLines": {
+      const start = args?.startLine;
+      const end = args?.endLine;
+      const lineCount = start && end ? end - start + 1 : null;
+      if (fileName && lineCount)
+        return `Replacing ${lineCount} line${
+          lineCount > 1 ? "s" : ""
+        } in ${fileName}…`;
+      if (fileName) return `Editing ${fileName}…`;
       return "Replacing lines…";
+    }
     case "deleteFile":
-      return "Deleting file…";
+      return fileName ? `Deleting ${fileName}…` : "Deleting file…";
     default:
       return "Running tool…";
   }
@@ -227,7 +259,7 @@ export function useLLMAgent() {
       });
 
       // Maximum iterations to prevent infinite loops
-      const MAX_ITERATIONS = 10;
+      const MAX_ITERATIONS = 15;
       let iteration = 0;
 
       try {
@@ -254,31 +286,31 @@ export function useLLMAgent() {
             });
           };
 
-          // First attempt: moderate budget; retry once if we get empty output with length stop.
-          let result = await callOnce(2048);
-          const firstResponse = (result?.response || "").trim();
-          const firstToolCalls = Array.isArray(result?.toolCalls)
+          // First attempt with moderate token budget
+          let result = await callOnce(4096);
+          let toolCalls = Array.isArray(result?.toolCalls)
             ? result.toolCalls
             : [];
+
+          // Retry with higher budget if we got cut off (finishReason='length') without tool calls
+          // This catches cases where model says "I'm going to..." but gets cut off before emitting tools
           if (
             !abortRef.current &&
-            firstToolCalls.length === 0 &&
-            !firstResponse &&
+            toolCalls.length === 0 &&
             result?.finishReason === "length"
           ) {
             console.warn(
-              "⚠️ Empty response with finishReason=length; retrying with higher maxTokens"
+              "⚠️ No tool calls with finishReason=length; retrying with higher maxTokens"
             );
-            result = await callOnce(4096);
+            result = await callOnce(8192);
+            toolCalls = Array.isArray(result?.toolCalls)
+              ? result.toolCalls
+              : [];
           }
 
           if (abortRef.current) break;
 
           const responseContent = result?.response || "";
-          const toolCalls = Array.isArray(result?.toolCalls)
-            ? result.toolCalls
-            : [];
-
           const trimmedResponse = (responseContent || "").trim();
 
           // If the model returned tool calls but no user-facing text (common),
@@ -324,7 +356,10 @@ export function useLLMAgent() {
             // Show tool call in the user-visible chat (but keep tool results hidden)
             addMessage({
               role: "tool_request",
-              content: getToolCallIndicator(toolCall.name),
+              content: getToolCallIndicator(
+                toolCall.name,
+                toolCall.arguments || {}
+              ),
               toolCall: { id: toolCall.id, name: toolCall.name, success: true },
             });
 

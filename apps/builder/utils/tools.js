@@ -23,9 +23,41 @@ export const toolDefinitions = [
   {
     type: "function",
     function: {
+      name: "listFiles",
+      description:
+        "List all files in the current app with line counts. Use this for a quick overview before reading specific files.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "readFile",
+      description:
+        "Read a single file with line numbers. Prefer this over readFiles when you only need one file.",
+      parameters: {
+        type: "object",
+        properties: {
+          fileName: {
+            type: "string",
+            description:
+              "Path to the file, e.g. 'app.jsx' or 'components/Todo.jsx'",
+          },
+        },
+        required: ["fileName"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "readFiles",
       description:
-        "Read all files in the current app. Returns all file contents with line numbers. Use this to see the current state of the app.",
+        "Read ALL files in the current app. Returns all file contents with line numbers. Only use when you need to see everything at once.",
       parameters: {
         type: "object",
         properties: {},
@@ -38,7 +70,7 @@ export const toolDefinitions = [
     function: {
       name: "searchCurrentApp",
       description:
-        "Search the currently loaded app files using a regex pattern. Returns matches with line numbers and ~10 lines of context.",
+        "Search the currently loaded app files using a regex pattern. Returns matches with line numbers and ~5 lines of context.",
       parameters: {
         type: "object",
         properties: {
@@ -61,7 +93,7 @@ export const toolDefinitions = [
     function: {
       name: "createFile",
       description:
-        "Create a new file in the app. If the file already exists, it will be overwritten.",
+        "Create a new file in the app. If the file already exists, it will be overwritten. Returns only the created file (not all files).",
       parameters: {
         type: "object",
         properties: {
@@ -84,7 +116,7 @@ export const toolDefinitions = [
     function: {
       name: "replaceLines",
       description:
-        "Replace specific lines in a file. Line numbers are 1-indexed. The replacement text replaces lines from startLine to endLine (inclusive).",
+        "Replace specific lines in a file. Line numbers are 1-indexed. Returns only the edited file (not all files).",
       parameters: {
         type: "object",
         properties: {
@@ -113,7 +145,7 @@ export const toolDefinitions = [
     type: "function",
     function: {
       name: "deleteFile",
-      description: "Delete a file from the app.",
+      description: "Delete a file from the app. Returns confirmation only.",
       parameters: {
         type: "object",
         properties: {
@@ -131,7 +163,7 @@ export const toolDefinitions = [
     function: {
       name: "searchExampleApps",
       description:
-        "Search a curated set of published Basebase apps (latest version) using a regex pattern. Returns matches with context lines and line numbers.",
+        "Search a curated set of published Basebase apps (latest version) using a regex pattern. Returns matches with ~5 lines of context and line numbers.",
       parameters: {
         type: "object",
         properties: {
@@ -185,6 +217,28 @@ export async function executeTool(toolName, args, getState, updateFiles) {
   let result;
 
   switch (toolName) {
+    case "listFiles":
+      if (!currentAppId) {
+        return {
+          success: false,
+          output:
+            "Error: No app is currently selected. Please create or open an app first.",
+        };
+      }
+      result = executeListFiles(files);
+      break;
+
+    case "readFile":
+      if (!currentAppId) {
+        return {
+          success: false,
+          output:
+            "Error: No app is currently selected. Please create or open an app first.",
+        };
+      }
+      result = executeReadFile(files, args);
+      break;
+
     case "readFiles":
       if (!currentAppId) {
         return {
@@ -274,6 +328,60 @@ export async function executeTool(toolName, args, getState, updateFiles) {
 }
 
 /**
+ * List all files with line counts (lightweight)
+ * @param {Record<string, string>} files
+ * @returns {ToolResult}
+ */
+function executeListFiles(files) {
+  const fileNames = Object.keys(files);
+  if (fileNames.length === 0) {
+    return {
+      success: true,
+      output: "The app is empty. No files found.",
+    };
+  }
+
+  const listing = fileNames
+    .sort()
+    .map((name) => {
+      const lineCount = (files[name] || "").split("\n").length;
+      return `${name} (${lineCount} lines)`;
+    })
+    .join("\n");
+
+  return {
+    success: true,
+    output: `Files in app:\n${listing}`,
+  };
+}
+
+/**
+ * Read a single file with line numbers
+ * @param {Record<string, string>} files
+ * @param {{ fileName?: string }} args
+ * @returns {ToolResult}
+ */
+function executeReadFile(files, args) {
+  const fileName = args?.fileName;
+  if (!fileName) {
+    return { success: false, output: "Error: fileName is required" };
+  }
+
+  const content = files[fileName];
+  if (typeof content !== "string") {
+    return {
+      success: false,
+      output: `Error: File '${fileName}' not found. Use listFiles() to see available files.`,
+    };
+  }
+
+  return {
+    success: true,
+    output: formatFileWithLineNumbers(fileName, content),
+  };
+}
+
+/**
  * Search curated example apps using regex.
  * @param {Record<string, { files: Record<string, string>, versionHash: string | null, loadedAt: number }>} exampleApps
  * @param {{ pattern?: string, flags?: string }} args
@@ -294,7 +402,7 @@ function executeSearchAppExamples(exampleApps, args) {
   }
 
   const res = searchExampleApps(exampleApps, pattern, {
-    contextLines: 10,
+    contextLines: 5,
     maxMatches: 30,
     flags: typeof flags === "string" ? flags : "i",
   });
@@ -374,7 +482,7 @@ function executeReadFiles(files) {
 function executeSearchCurrentApp(files, args) {
   const pattern = args?.pattern;
   const flags = typeof args?.flags === "string" ? args.flags : "i";
-  const contextLines = 10;
+  const contextLines = 5;
   const maxMatches = 50;
 
   if (!pattern) {
@@ -456,14 +564,14 @@ function executeCreateFile(files, args, appId, updateFiles) {
   const lintErrors = lintAllFiles(newFiles);
   const lintOutput = formatLintErrors(lintErrors);
 
-  // Format output
+  // Format output - only show the created/updated file, not all files
   const action = isNew ? "Created" : "Updated";
   const lineCount = content.split("\n").length;
-  const formatted = formatFilesWithLineNumbers(newFiles);
+  const fileFormatted = formatFileWithLineNumbers(fileName, content);
 
   return {
     success: true,
-    output: `${action} ${fileName} (${lineCount} lines)\n\n${formatted}\n\n--- Lint Status ---\n${lintOutput}`,
+    output: `${action} ${fileName} (${lineCount} lines)\n\n${fileFormatted}\n\n--- Lint Status ---\n${lintOutput}`,
     files: newFiles,
     errors: lintErrors,
   };
@@ -523,14 +631,14 @@ function executeReplaceLines(files, args, appId, updateFiles) {
   const lintErrors = lintAllFiles(newFiles);
   const lintOutput = formatLintErrors(lintErrors);
 
-  // Format output
+  // Format output - only show the edited file, not all files
   const linesReplaced = endLine - startLine + 1;
   const linesInserted = replacementLines.length;
-  const formatted = formatFilesWithLineNumbers(newFiles);
+  const fileFormatted = formatFileWithLineNumbers(fileName, newContent);
 
   return {
     success: true,
-    output: `Replaced lines ${startLine}-${endLine} (${linesReplaced} lines) with ${linesInserted} lines in ${fileName}\n\n${formatted}\n\n--- Lint Status ---\n${lintOutput}`,
+    output: `Replaced lines ${startLine}-${endLine} (${linesReplaced} lines) with ${linesInserted} lines in ${fileName}\n\n${fileFormatted}\n\n--- Lint Status ---\n${lintOutput}`,
     files: newFiles,
     errors: lintErrors,
   };
@@ -566,15 +674,16 @@ function executeDeleteFile(files, args, appId, updateFiles) {
   const lintErrors = lintAllFiles(newFiles);
   const lintOutput = formatLintErrors(lintErrors);
 
-  // Format output
-  const formatted =
-    Object.keys(newFiles).length > 0
-      ? formatFilesWithLineNumbers(newFiles)
+  // Format output - just confirmation + remaining file list (no content)
+  const remainingFiles = Object.keys(newFiles);
+  const remainingList =
+    remainingFiles.length > 0
+      ? `Remaining files: ${remainingFiles.sort().join(", ")}`
       : "No files remaining.";
 
   return {
     success: true,
-    output: `Deleted ${fileName}\n\n${formatted}\n\n--- Lint Status ---\n${lintOutput}`,
+    output: `Deleted ${fileName}\n\n${remainingList}\n\n--- Lint Status ---\n${lintOutput}`,
     files: newFiles,
     errors: lintErrors,
   };
@@ -632,16 +741,27 @@ Always use relative paths to framework:
 
 ## Your Tools
 
-You have these tools available:
-1. \`readFiles()\` - See all current files with line numbers
-2. \`searchCurrentApp(pattern, flags?)\` - Search the current app files with regex, returning matches with line numbers and ~10 lines of context
-3. \`createFile(fileName, content)\` - Create or overwrite a file
-4. \`replaceLines(fileName, startLine, endLine, replacement)\` - Edit specific lines
-5. \`deleteFile(fileName)\` - Remove a file
-6. \`searchExampleApps(pattern, flags?)\` - Search curated published apps (latest versions) with regex, returning matches with line numbers and ~10 lines of context
-7. \`readExampleApp(appId, fileName?)\` - Read an example app file (or all files) from curated published apps, with line numbers
+You have these tools available (prefer lightweight tools first!):
 
-After each edit, you'll see the updated files and any lint errors. Fix lint errors before continuing.
+**Reading (prefer specific over broad):**
+1. \`listFiles()\` - Quick overview: file names + line counts (use this first!)
+2. \`readFile(fileName)\` - Read ONE file with line numbers (prefer this)
+3. \`readFiles()\` - Read ALL files (only when you need everything)
+4. \`searchCurrentApp(pattern, flags?)\` - Regex search with ~5 lines context
+
+**Writing (returns only the affected file):**
+5. \`createFile(fileName, content)\` - Create or overwrite a file
+6. \`replaceLines(fileName, startLine, endLine, replacement)\` - Edit specific lines
+7. \`deleteFile(fileName)\` - Remove a file
+
+**Examples (for learning patterns):**
+8. \`searchExampleApps(pattern, flags?)\` - Search curated apps with ~5 lines context
+9. \`readExampleApp(appId, fileName?)\` - Read example app file(s)
+
+**Efficiency tips:**
+- Start with \`listFiles()\` to see what exists, then \`readFile()\` for specific files
+- After edits, you only see the edited file - use \`readFile()\` if you need to check another file
+- Fix lint errors before continuing
 
 ## Guidelines
 

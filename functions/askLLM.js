@@ -69,7 +69,7 @@ module.exports = async function (params, context) {
       requestPayload = {
         model,
         messages: finalMessages,
-        max_completion_tokens: options.maxTokens || 1000, // Changed from max_tokens for newer models
+        max_completion_tokens: options.maxTokens || 1000,
         // Note: GPT-5 models don't support custom temperature (only default 1)
         // Older models like gpt-4o still support it
         ...(options.temperature !== undefined &&

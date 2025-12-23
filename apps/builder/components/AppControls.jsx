@@ -1,5 +1,5 @@
 /**
- * AppControls - Commit button for publishing apps
+ * AppControls - Publish button for publishing app changes
  */
 
 import React, { useState } from "react";
@@ -23,7 +23,7 @@ import { transform } from "sucrase";
 
 export function AppControls() {
   const { user } = useAuth();
-  const { currentAppId, files, lintErrors } = useBuilderStore();
+  const { currentAppId, files, lintErrors, hasUnsavedChanges, markAsSaved } = useBuilderStore();
 
   // Modal states
   const [commitModalOpen, setCommitModalOpen] = useState(false);
@@ -163,10 +163,13 @@ export function AppControls() {
       );
 
       notifications.show({
-        title: "Commit Successful",
-        message: `Published "${currentAppId}" (version: ${versionHash})`,
+        title: "Published!",
+        message: `"${currentAppId}" is now live (version: ${versionHash})`,
         color: "green",
       });
+
+      // Mark files as saved so button becomes inactive again
+      markAsSaved();
 
       setCommitModalOpen(false);
       setCommitMessage("");
@@ -183,6 +186,7 @@ export function AppControls() {
   };
 
   const criticalErrors = lintErrors.filter((e) => e.severity === "error");
+  const isDirty = hasUnsavedChanges();
 
   return (
     <>
@@ -192,17 +196,17 @@ export function AppControls() {
           variant="filled"
           leftSection={<IconUpload size={14} />}
           onClick={() => setCommitModalOpen(true)}
-          disabled={!currentAppId || Object.keys(files).length === 0}
+          disabled={!currentAppId || Object.keys(files).length === 0 || !isDirty}
         >
-          Commit
+          Publish Changes
         </Button>
       </Group>
 
-      {/* Commit Modal */}
+      {/* Publish Modal */}
       <Modal
         opened={commitModalOpen}
         onClose={() => setCommitModalOpen(false)}
-        title="Commit App"
+        title="Publish Changes"
       >
         <Stack gap="md">
           <Text size="sm" c="dimmed">
@@ -215,13 +219,13 @@ export function AppControls() {
 
           {criticalErrors.length > 0 && (
             <Alert color="red" icon={<IconAlertCircle size={16} />}>
-              Cannot commit: {criticalErrors.length} syntax error(s) must be
+              Cannot publish: {criticalErrors.length} syntax error(s) must be
               fixed first.
             </Alert>
           )}
 
           <TextInput
-            label="Commit Message"
+            label="Description (optional)"
             placeholder="Describe your changes..."
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
@@ -229,7 +233,7 @@ export function AppControls() {
 
           <Paper p="sm" bg="gray.0" radius="sm">
             <Text size="xs" fw={500} mb="xs">
-              Files to commit:
+              Files to publish:
             </Text>
             <Text size="xs" c="dimmed">
               {Object.keys(files).join(", ")}
@@ -249,7 +253,7 @@ export function AppControls() {
               disabled={criticalErrors.length > 0}
               color="green"
             >
-              Commit & Publish
+              Publish
             </Button>
           </Group>
         </Stack>
