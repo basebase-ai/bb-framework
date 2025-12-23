@@ -110,7 +110,7 @@ module.exports = async function (params, context) {
           "anthropic-version": "2023-06-01",
         }),
       },
-      timeout: 30000, // 30 second timeout
+      timeout: 120000, // 120 second timeout (LLM calls with tools can be slow)
     });
 
     // Debug logging
