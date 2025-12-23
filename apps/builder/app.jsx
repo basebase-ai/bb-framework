@@ -63,91 +63,8 @@ import "@mantine/notifications/styles.css";
 const LOGO_URL =
   "https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914379318_basebase_orange_32.png?alt=media&token=d2f927fb-a1b4-43ec-a078-69bdc462974e";
 
-// Starter app template
-const STARTER_TEMPLATE = {
-  "app.jsx": `/**
- * My App
- */
-
-import React, { useState } from "react";
-import { createRoot } from "react-dom/client";
-import {
-  MantineProvider,
-  Container,
-  Title,
-  Text,
-  Button,
-  Stack,
-} from "@mantine/core";
-import { Notifications } from "@mantine/notifications";
-import { useAuth } from "../../framework/hooks/useAuth.js";
-import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
-import { APP_ID } from "./schema.js";
-
-import "@mantine/core/styles.css";
-import "@mantine/notifications/styles.css";
-
-function AppContent() {
-  const { user } = useAuth();
-  const [count, setCount] = useState(0);
-
-  return (
-    <Container size="sm" py="xl">
-      <Stack align="center" gap="lg">
-        <Title>Welcome to My App</Title>
-        <Text c="dimmed">
-          {user ? \`Signed in as \${user.email}\` : "Not signed in"}
-        </Text>
-        <Text size="4rem" fw={700}>{count}</Text>
-        <Button onClick={() => setCount(c => c + 1)}>
-          Click me!
-        </Button>
-      </Stack>
-    </Container>
-  );
-}
-
-function App() {
-  return (
-    <MantineProvider defaultColorScheme="light">
-      <Notifications position="top-right" />
-      <AuthProvider appId={APP_ID}>
-        <AppContent />
-      </AuthProvider>
-    </MantineProvider>
-  );
-}
-
-const container = document.getElementById("app");
-let root = null;
-
-function render() {
-  if (!root) {
-    root = createRoot(container);
-  }
-  root.render(<App />);
-}
-
-render();
-
-if (import.meta.hot) {
-  import.meta.hot.accept(() => render());
-}
-
-export default App;
-`,
-  "schema.js": `/**
- * App Schema
- */
-
-export const APP_ID = "__APP_ID__";
-
-export const collections = {
-  // Define your collections here
-  // items: \`\${APP_ID}_items\`,
-};
-`,
-};
+// The app ID to use as template for new apps
+const STARTER_APP_ID = "starter-app";
 
 /**
  * Parse URL parameters
@@ -379,6 +296,8 @@ function BuilderContent() {
    * @param {string} newAppId
    */
   const forkApp = async (sourceAppId, newAppId) => {
+    console.log(`📦 Forking "${sourceAppId}" to "${newAppId}"...`);
+    
     // Fetch source app
     const appRef = doc(db, "apps", sourceAppId);
     const appSnap = await getDoc(appRef);
@@ -389,6 +308,7 @@ function BuilderContent() {
 
     const appData = appSnap.data();
     const versionHash = appData.currentVersion;
+    console.log(`📦 Source app currentVersion: ${versionHash}`);
 
     if (!versionHash) {
       throw new Error(`App "${sourceAppId}" has no published version`);
@@ -405,20 +325,26 @@ function BuilderContent() {
     const versionData = versionSnap.data();
     /** @type {Record<string, string>} */
     const sourceFiles = versionData.source || {};
+    console.log(`📦 Source files from Firestore:`, Object.keys(sourceFiles));
 
-    // Update APP_ID in schema.js
+    // Update APP_ID in schema.js, skip internal files
     /** @type {Record<string, string>} */
     const newFiles = {};
     for (const [fileName, content] of Object.entries(sourceFiles)) {
+      // Skip internal/metadata files
+      if (fileName.startsWith(".")) {
+        continue;
+      }
       if (fileName === "schema.js") {
         newFiles[fileName] = content.replace(
-          /export const APP_ID = "[^"]+"/,
+          /export const APP_ID = ['"][^'"]+['"]/,
           `export const APP_ID = "${newAppId}"`
         );
       } else {
         newFiles[fileName] = content;
       }
     }
+    console.log(`📦 New app files:`, Object.keys(newFiles));
 
     // Save to localStorage
     saveAppFiles(newAppId, newFiles);
@@ -440,37 +366,14 @@ function BuilderContent() {
   };
 
   /**
-   * Initialize a new app with the given prompt
+   * Initialize a new app by forking starter-app
    * @param {string} prompt
    */
   const handleNewApp = async (prompt) => {
     const appId = generateAppId();
-
-    // Create files from template
-    /** @type {Record<string, string>} */
-    const newFiles = {};
-    for (const [fileName, content] of Object.entries(STARTER_TEMPLATE)) {
-      newFiles[fileName] = content.replace(/__APP_ID__/g, appId);
-    }
-
-    // Save to localStorage
-    saveAppFiles(appId, newFiles);
-
-    // Sync draft to Firestore BEFORE setting currentAppId
-    // (otherwise preview iframe loads before draft exists)
-    if (user) {
-      await writeDraft(appId, newFiles, user.uid, user.email);
-    }
-
-    // Now set current app - this triggers preview iframe to load
-    setCurrentApp(appId, newFiles);
-    setLintErrors(lintAllFiles(newFiles));
-
-    notifications.show({
-      title: "App created",
-      message: `Created new app "${appId}"`,
-      color: "green",
-    });
+    
+    // Fork starter-app to create the new app
+    await forkApp(STARTER_APP_ID, appId);
 
     // Set pending prompt to be sent after render
     setPendingPrompt(prompt);
