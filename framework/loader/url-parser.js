@@ -16,9 +16,12 @@ export function getAppIdFromURL() {
   const hostname = url.hostname;
   const parts = hostname.split(".");
 
+  // Sub-brands with singular domain names  will go here. Starting with sole revtops.com
+  const isRevTopsDomain = hostname.includes("revtops.com");
+  
   // Check if this is a basebase domain (where www is a valid app ID)
   const isBasebaseDomain =
-    hostname.includes("basebase.com") || hostname.includes("basebase.io") || hostname.includes("revtops.com");
+    hostname.includes("basebase.com") || hostname.includes("basebase.io") || isRevTopsDomain;
 
   // Check for localhost subdomains (e.g., teg-app.localhost or www.localhost)
   // www.localhost loads the "www" app for local testing
@@ -29,6 +32,10 @@ export function getAppIdFromURL() {
   // Check for production subdomains (e.g., teg-app.basebase.io or www.basebase.com)
   // On basebase domains, "www" is treated as a valid app ID (the landing page app)
   if (parts.length > 2 && parts[0] !== "localhost") {
+    // For sub-brands
+    if (isRevTopsDomain || parts[0] == "www") {
+      return "revtops";
+    }
     // For basebase domains, always use the subdomain (including www)
     // For other domains, skip www as it's just the standard prefix
     if (isBasebaseDomain || parts[0] !== "www") {
