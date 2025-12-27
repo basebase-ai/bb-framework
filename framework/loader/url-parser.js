@@ -18,7 +18,7 @@ export function getAppIdFromURL() {
 
   // Check if this is a basebase domain (where www is a valid app ID)
   const isBasebaseDomain =
-    hostname.includes("basebase.com") || hostname.includes("basebase.io");
+    hostname.includes("basebase.com") || hostname.includes("basebase.io") || hostname.includes("revtops.com");
 
   // Check for localhost subdomains (e.g., teg-app.localhost or www.localhost)
   // www.localhost loads the "www" app for local testing
