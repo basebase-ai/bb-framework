@@ -32,8 +32,8 @@ export function getAppIdFromURL() {
   // Check for production subdomains (e.g., teg-app.basebase.io or www.basebase.com)
   // On basebase domains, "www" is treated as a valid app ID (the landing page app)
   if (parts.length > 2 && parts[0] !== "localhost") {
-    // For sub-brands
-    if (isRevTopsDomain || parts[0] == "www") {
+    // For sub-brands (revtops.com loads revtops app regardless of subdomain)
+    if (isRevTopsDomain) {
       return "revtops";
     }
     // For basebase domains, always use the subdomain (including www)

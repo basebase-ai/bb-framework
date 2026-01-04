@@ -95,6 +95,7 @@ const PAIN_POINTS = [
 /**
  * @param {{
  *   onSignIn: () => void;
+ *   onCreateApp?: () => void;
  *   isAuthenticated?: boolean;
  *   onNavigateToTerms?: () => void;
  *   onNavigateToPrivacy?: () => void;
@@ -105,6 +106,7 @@ const PAIN_POINTS = [
  */
 export default function PublicHomepage({
   onSignIn,
+  onCreateApp,
   isAuthenticated = false,
   onNavigateToTerms,
   onNavigateToPrivacy,
@@ -113,7 +115,6 @@ export default function PublicHomepage({
   onNavigateToIntegrations,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const ctaText = "Browse Apps";
   const navCtaText = "Get Started";
 
   /** @type {React.CSSProperties} */
@@ -313,7 +314,22 @@ export default function PublicHomepage({
             <Group gap="md">
               <Button 
                 size="lg" 
+                variant="outline"
                 onClick={onSignIn}
+                style={{ 
+                  borderRadius: 980,
+                  padding: "14px 36px",
+                  height: "auto",
+                  borderColor: COLORS.coral,
+                  color: COLORS.coral,
+                  fontWeight: 600,
+                }}
+              >
+                Browse Apps
+              </Button>
+              <Button 
+                size="lg" 
+                onClick={() => onCreateApp?.()}
                 style={{ 
                   borderRadius: 980,
                   padding: "14px 36px",
@@ -323,7 +339,7 @@ export default function PublicHomepage({
                   fontWeight: 600,
                 }}
               >
-                {ctaText}
+                Create App
               </Button>
             </Group>
 
@@ -681,7 +697,7 @@ export default function PublicHomepage({
             </Text>
             <Button
               size="lg"
-              onClick={onSignIn}
+              onClick={() => onCreateApp?.()}
               style={{
                 borderRadius: 980,
                 padding: "14px 36px",
@@ -692,7 +708,7 @@ export default function PublicHomepage({
                 border: "none",
               }}
             >
-              {ctaText} <IconArrowRight size={16} style={{ marginLeft: 8 }} />
+              Create App <IconArrowRight size={16} style={{ marginLeft: 8 }} />
             </Button>
             <Text size="xs" style={{ color: COLORS.coralLight }}>
               No credit card required · Free forever for individuals

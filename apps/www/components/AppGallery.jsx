@@ -184,6 +184,7 @@ export default function AppGallery({ onSignIn }) {
     return (
       <PublicHomepage 
         onSignIn={navigateToGallery}
+        onCreateApp={() => window.open("https://builder.basebase.com/?new=true", "_blank")}
         isAuthenticated={!!user}
         onNavigateToTerms={navigateToTerms}
         onNavigateToPrivacy={navigateToPrivacy}
