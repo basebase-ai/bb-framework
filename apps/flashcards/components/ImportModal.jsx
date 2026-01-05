@@ -23,7 +23,11 @@ import {
   Badge,
   Box,
   Code,
+  TypographyStylesProvider,
 } from "@mantine/core";
+import { marked } from "marked";
+
+marked.setOptions({ breaks: true, gfm: true });
 import {
   IconUpload,
   IconFile,
@@ -35,6 +39,34 @@ import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 
+const ANKI_MEDIA_BASE = "https://ankiuser.net/study/media/";
+
+/**
+ * Extract audio file URLs from HTML
+ * @param {string} html
+ * @returns {string[]}
+ */
+function extractAudioUrls(html) {
+  /** @type {string[]} */
+  const urls = [];
+  
+  // Match src attributes in audio/source tags
+  const srcRegex = /src=["']([^"']*\.mp3)["']/gi;
+  let match;
+  
+  while ((match = srcRegex.exec(html)) !== null) {
+    const filename = match[1];
+    // Convert to full AnkiWeb URL if it's just a filename
+    if (!filename.startsWith("http")) {
+      urls.push(ANKI_MEDIA_BASE + filename);
+    } else {
+      urls.push(filename);
+    }
+  }
+  
+  return urls;
+}
+
 /**
  * Convert HTML to readable plain text, preserving structure
  * @param {string} html
@@ -42,6 +74,23 @@ import { collections } from "../schema.js";
  */
 function stripHtml(html) {
   let text = html;
+  
+  // Remove style tags AND their contents (CSS)
+  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+  
+  // Remove script tags AND their contents (JS)
+  text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+  
+  // Remove audio tags entirely (we extract them separately)
+  text = text.replace(/<audio[^>]*>[\s\S]*?<\/audio>/gi, "");
+  
+  // Remove table styling classes and attributes
+  text = text.replace(/class="[^"]*"/gi, "");
+  text = text.replace(/style="[^"]*"/gi, "");
+  
+  // Convert table cells to readable format
+  text = text.replace(/<\/td>/gi, " | ");
+  text = text.replace(/<\/th>/gi, " | ");
   
   // Convert block elements to line breaks BEFORE stripping tags
   text = text.replace(/<br\s*\/?>/gi, "\n");
@@ -82,10 +131,10 @@ function stripHtml(html) {
  * Parse Anki text format into cards
  * @param {string} text
  * @param {boolean} stripHtmlContent
- * @returns {{ cards: { front: string, back: string }[], metadata: { separator: string, isHtml: boolean } }}
+ * @returns {{ cards: { front: string, back: string, frontAudio: string[], backAudio: string[] }[], metadata: { separator: string, isHtml: boolean } }}
  */
 function parseAnkiText(text, stripHtmlContent) {
-  /** @type {{ front: string, back: string }[]} */
+  /** @type {{ front: string, back: string, frontAudio: string[], backAudio: string[] }[]} */
   const cards = [];
   
   let separator = "\t";
@@ -132,8 +181,15 @@ function parseAnkiText(text, stripHtmlContent) {
   let skipped = 0;
   for (const record of records) {
     if (record.length >= 2) {
-      let front = record[0];
-      let back = record.slice(1).join(separator);
+      const rawFront = record[0];
+      const rawBack = record.slice(1).join(separator);
+      
+      // Extract audio URLs before stripping HTML
+      const frontAudio = isHtml ? extractAudioUrls(rawFront) : [];
+      const backAudio = isHtml ? extractAudioUrls(rawBack) : [];
+      
+      let front = rawFront;
+      let back = rawBack;
       
       if (stripHtmlContent && isHtml) {
         front = stripHtml(front);
@@ -141,7 +197,7 @@ function parseAnkiText(text, stripHtmlContent) {
       }
       
       if (front && back) {
-        cards.push({ front, back });
+        cards.push({ front, back, frontAudio, backAudio });
       } else {
         skipped++;
       }
@@ -150,7 +206,8 @@ function parseAnkiText(text, stripHtmlContent) {
     }
   }
   
-  console.log(`[Import] Parsed ${cards.length} cards` + (skipped > 0 ? `, skipped ${skipped}` : ""));
+  const audioCount = cards.reduce((sum, c) => sum + c.frontAudio.length + c.backAudio.length, 0);
+  console.log(`[Import] Parsed ${cards.length} cards` + (audioCount > 0 ? ` with ${audioCount} audio files` : "") + (skipped > 0 ? `, skipped ${skipped}` : ""));
   
   return { cards, metadata: { separator, isHtml } };
 }
@@ -243,6 +300,8 @@ export function ImportModal({ opened, onClose }) {
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [success, setSuccess] = useState(false);
   const [previewCards, setPreviewCards] = useState(/** @type {{ front: string, back: string }[]} */ ([]));
+  const [totalCardCount, setTotalCardCount] = useState(0);
+  const [importProgress, setImportProgress] = useState(0);
   const [detectedFormat, setDetectedFormat] = useState(/** @type {{ separator: string, isHtml: boolean } | null} */ (null));
 
   const { add: addDeck } = useCollection(collections.decks);
@@ -276,6 +335,7 @@ export function ImportModal({ opened, onClose }) {
   const updatePreview = (text, stripHtml) => {
     const { cards, metadata } = parseAnkiText(text, stripHtml);
     setPreviewCards(cards.slice(0, 5));
+    setTotalCardCount(cards.length);
     setDetectedFormat(metadata);
   };
 
@@ -313,35 +373,54 @@ export function ImportModal({ opened, onClose }) {
 
       const deckId = await addDeck({
         name: deckName.trim(),
-        description: `Imported ${cards.length} cards`,
+        description: `Importing ${cards.length} cards...`,
         owner: user.uid,
-        cardCount: cards.length,
+        cardCount: 0,
         masteredCount: 0,
         isPublic: false,
         tags: ["imported"],
       });
 
       const now = new Date();
+      let successCount = 0;
+      let errorCount = 0;
 
       console.log(`[Import] Adding ${cards.length} cards...`);
       for (let i = 0; i < cards.length; i++) {
         const card = cards[i];
-        if ((i + 1) % 50 === 0 || i === cards.length - 1) {
-          console.log(`[Import] ${i + 1}/${cards.length}`);
+        try {
+          await addCard({
+            deckId,
+            front: card.front,
+            back: card.back,
+            frontAudio: card.frontAudio,
+            backAudio: card.backAudio,
+            owner: user.uid,
+            box: 1,
+            nextReviewAt: now,
+            lastReviewedAt: null,
+            correctCount: 0,
+            incorrectCount: 0,
+            importOrder: i,
+          });
+          successCount++;
+        } catch (err) {
+          errorCount++;
+          console.error(`[Import] Error adding card ${i + 1}:`, err);
         }
-        await addCard({
-          deckId,
-          front: card.front,
-          back: card.back,
-          owner: user.uid,
-          box: 1,
-          nextReviewAt: now,
-          lastReviewedAt: null,
-          correctCount: 0,
-          incorrectCount: 0,
-        });
+        
+        setImportProgress(i + 1);
       }
 
+      // Update deck with final count using Firestore directly
+      const { doc, updateDoc } = await import("firebase/firestore");
+      const { db } = await import("../../../framework/core/firebase-init.js");
+      await updateDoc(doc(db, collections.decks, deckId), {
+        cardCount: successCount,
+        description: `Imported ${successCount} cards` + (errorCount > 0 ? ` (${errorCount} failed)` : ""),
+      });
+
+      console.log(`[Import] Complete: ${successCount} cards added, ${errorCount} errors`);
       setSuccess(true);
       setTimeout(() => {
         handleClose();
@@ -361,11 +440,14 @@ export function ImportModal({ opened, onClose }) {
     setError(null);
     setSuccess(false);
     setPreviewCards([]);
+    setTotalCardCount(0);
+    setImportProgress(0);
     setDetectedFormat(null);
     onClose();
   };
 
-  const totalCards = textContent ? parseAnkiText(textContent, stripHtmlEnabled).cards.length : 0;
+  // Use the cached count from updatePreview instead of re-parsing
+  const totalCards = totalCardCount;
 
   return (
     <Modal opened={opened} onClose={handleClose} title="Import from Anki" size="lg">
@@ -449,15 +531,15 @@ export function ImportModal({ opened, onClose }) {
                 >
                   <Box>
                     <Text size="xs" c="dimmed" mb={2}>Front</Text>
-                    <Text size="sm" c="white" lineClamp={2} style={{ whiteSpace: "pre-wrap" }}>
-                      {card.front}
-                    </Text>
+                    <TypographyStylesProvider fz="sm" c="white" style={{ maxHeight: 50, overflow: "hidden" }}>
+                      <div dangerouslySetInnerHTML={{ __html: marked(card.front || "") }} />
+                    </TypographyStylesProvider>
                   </Box>
                   <Box>
                     <Text size="xs" c="dimmed" mb={2}>Back</Text>
-                    <Text size="sm" c="gray.5" lineClamp={2} style={{ whiteSpace: "pre-wrap" }}>
-                      {card.back}
-                    </Text>
+                    <TypographyStylesProvider fz="sm" c="gray.5" style={{ maxHeight: 50, overflow: "hidden" }}>
+                      <div dangerouslySetInnerHTML={{ __html: marked(card.back || "") }} />
+                    </TypographyStylesProvider>
                   </Box>
                 </Box>
               ))}
@@ -468,6 +550,12 @@ export function ImportModal({ opened, onClose }) {
               )}
             </Stack>
           </Paper>
+        )}
+
+        {importing && importProgress > 0 && (
+          <Alert icon={<IconUpload size={16} />} color="blue" variant="light">
+            Inserted {importProgress} of {totalCards} cards...
+          </Alert>
         )}
 
         {success && (

@@ -23,14 +23,23 @@ import {
   ActionIcon,
   Transition,
   RingProgress,
+  TypographyStylesProvider,
 } from "@mantine/core";
+import { marked } from "marked";
 import {
   IconArrowLeft,
   IconRefresh,
   IconCheck,
   IconX,
   IconRotate,
+  IconVolume,
 } from "@tabler/icons-react";
+
+// Configure marked for better rendering
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
@@ -57,6 +66,19 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   const [sessionStats, setSessionStats] = useState({ correct: 0, incorrect: 0, reviewed: 0 });
   const [reviewedCardIds, setReviewedCardIds] = useState(/** @type {Set<string>} */ (new Set()));
   const [isAnimating, setIsAnimating] = useState(false);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+
+  /**
+   * Play an audio URL
+   * @param {string} url
+   */
+  const playAudio = useCallback((url) => {
+    const audio = new Audio(url);
+    setAudioPlaying(true);
+    audio.onended = () => setAudioPlaying(false);
+    audio.onerror = () => setAudioPlaying(false);
+    audio.play().catch(() => setAudioPlaying(false));
+  }, []);
 
   const { data: deck, loading: deckLoading, update: updateDeck } = useDocument(collections.decks, deckId);
 
@@ -75,17 +97,38 @@ export function StudyMode({ deckId, onBack, onComplete }) {
 
   const dueCards = useMemo(() => {
     const now = new Date();
-    return allCards.filter((card) => {
+    const filtered = allCards.filter((card) => {
       if (reviewedCardIds.has(card.id)) return false;
       if (!card.nextReviewAt) return true;
       const reviewDate = card.nextReviewAt.toDate ? card.nextReviewAt.toDate() : new Date(card.nextReviewAt);
       return reviewDate <= now;
+    });
+    // Sort by importOrder (asc) to preserve original file order
+    return filtered.sort((a, b) => {
+      if (a.importOrder !== undefined && b.importOrder !== undefined) {
+        return a.importOrder - b.importOrder;
+      }
+      if (a.importOrder !== undefined) return -1;
+      if (b.importOrder !== undefined) return 1;
+      const aTime = a.createdAt?.seconds || 0;
+      const bTime = b.createdAt?.seconds || 0;
+      return bTime - aTime;
     });
   }, [allCards, reviewedCardIds]);
 
   const currentCard = dueCards[currentIndex];
   const totalDue = dueCards.length + sessionStats.reviewed;
   const progress = totalDue > 0 ? (sessionStats.reviewed / totalDue) * 100 : 0;
+
+  // Auto-play audio when flipping to back
+  useEffect(() => {
+    if (showBack && currentCard) {
+      const backAudio = currentCard.backAudio;
+      if (backAudio && backAudio.length > 0) {
+        playAudio(backAudio[0]);
+      }
+    }
+  }, [showBack, currentCard?.id, playAudio]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -136,6 +179,9 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     const nextReviewAt = getNextReviewDate(newBox);
 
     try {
+      // Set showBack to false FIRST to prevent flash of next card's back
+      setShowBack(false);
+      
       await updateCard(currentCard.id, {
         box: newBox,
         nextReviewAt,
@@ -150,7 +196,6 @@ export function StudyMode({ deckId, onBack, onComplete }) {
         incorrect: prev.incorrect + (isCorrect ? 0 : 1),
         reviewed: prev.reviewed + 1,
       }));
-      setShowBack(false);
 
       if (currentIndex >= dueCards.length - 1) {
         setCurrentIndex(0);
@@ -288,15 +333,50 @@ export function StudyMode({ deckId, onBack, onComplete }) {
               {showBack ? "Back" : "Front"} • Box {currentCard?.box || 1}
             </Badge>
 
-            <Text
-              size="1.5rem"
-              fw={500}
-              c="white"
-              ta="center"
-              style={{ lineHeight: 1.6, whiteSpace: "pre-wrap", maxHeight: "60vh", overflow: "auto" }}
+            <TypographyStylesProvider
+              style={{
+                fontSize: "1.25rem",
+                lineHeight: 1.6,
+                maxHeight: "50vh",
+                overflow: "auto",
+                textAlign: "center",
+                color: "white",
+              }}
             >
-              {showBack ? currentCard?.back : currentCard?.front}
-            </Text>
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: marked(showBack ? currentCard?.back || "" : currentCard?.front || ""),
+                }}
+              />
+            </TypographyStylesProvider>
+
+            {/* Audio play buttons */}
+            {(() => {
+              const audioUrls = showBack ? currentCard?.backAudio : currentCard?.frontAudio;
+              if (audioUrls && audioUrls.length > 0) {
+                return (
+                  <Group gap="xs" mt="md" justify="center">
+                    {audioUrls.map((url, idx) => (
+                      <Button
+                        key={idx}
+                        size="xs"
+                        variant="light"
+                        color="pink"
+                        leftSection={<IconVolume size={14} />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playAudio(url);
+                        }}
+                        loading={audioPlaying}
+                      >
+                        {audioUrls.length > 1 ? `Audio ${idx + 1}` : "Play Audio"}
+                      </Button>
+                    ))}
+                  </Group>
+                );
+              }
+              return null;
+            })()}
 
             <Group gap="xs" mt="xl">
               <IconRotate size={16} color="#666" />

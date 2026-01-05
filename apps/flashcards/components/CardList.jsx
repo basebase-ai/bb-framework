@@ -20,7 +20,11 @@ import {
   Tooltip,
   Loader,
   TextInput,
+  TypographyStylesProvider,
 } from "@mantine/core";
+import { marked } from "marked";
+
+marked.setOptions({ breaks: true, gfm: true });
 import {
   IconPlus,
   IconArrowLeft,
@@ -76,9 +80,17 @@ export function CardList({ deckId, onBack, onStudy }) {
     remove,
   } = useCollection(collections.cards, cardQueryOptions);
 
-  // Sort client-side
+  // Sort client-side: imported cards by importOrder (asc), manual cards by createdAt (desc)
   const cards = useMemo(() => {
     return [...cardsRaw].sort((a, b) => {
+      // If both have importOrder, sort by it (ascending = file order)
+      if (a.importOrder !== undefined && b.importOrder !== undefined) {
+        return a.importOrder - b.importOrder;
+      }
+      // Cards with importOrder come before cards without
+      if (a.importOrder !== undefined) return -1;
+      if (b.importOrder !== undefined) return 1;
+      // For manually created cards, sort by createdAt descending (newest first)
       const aTime = a.createdAt?.seconds || 0;
       const bTime = b.createdAt?.seconds || 0;
       return bTime - aTime;
@@ -300,12 +312,16 @@ export function CardList({ deckId, onBack, onStudy }) {
 
               <Box mb="sm">
                 <Text size="xs" c="dimmed" mb={4}>Front</Text>
-                <Text size="sm" c="white" lineClamp={3} style={{ whiteSpace: "pre-wrap" }}>{card.front}</Text>
+                <TypographyStylesProvider fz="sm" c="white" style={{ maxHeight: 80, overflow: "hidden" }}>
+                  <div dangerouslySetInnerHTML={{ __html: marked(card.front || "") }} />
+                </TypographyStylesProvider>
               </Box>
 
               <Box>
                 <Text size="xs" c="dimmed" mb={4}>Back</Text>
-                <Text size="sm" c="gray.5" lineClamp={3} style={{ whiteSpace: "pre-wrap" }}>{card.back}</Text>
+                <TypographyStylesProvider fz="sm" c="gray.5" style={{ maxHeight: 80, overflow: "hidden" }}>
+                  <div dangerouslySetInnerHTML={{ __html: marked(card.back || "") }} />
+                </TypographyStylesProvider>
               </Box>
 
               {(card.correctCount > 0 || card.incorrectCount > 0) && (

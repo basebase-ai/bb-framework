@@ -138,11 +138,28 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
 
   /** @param {string} deckId */
   const handleDeleteDeck = async (deckId) => {
-    if (!confirm("Are you sure you want to delete this deck? All cards will be lost.")) {
+    if (!confirm("Are you sure you want to delete this deck? All cards will be permanently deleted.")) {
       return;
     }
     try {
+      // First, delete all cards belonging to this deck
+      const { collection, query, where, getDocs, deleteDoc, doc } = await import("firebase/firestore");
+      const { db } = await import("../../../framework/core/firebase-init.js");
+      
+      const cardsQuery = query(
+        collection(db, collections.cards),
+        where("deckId", "==", deckId)
+      );
+      const cardsSnapshot = await getDocs(cardsQuery);
+      
+      console.log(`[Delete] Removing ${cardsSnapshot.size} cards from deck...`);
+      for (const cardDoc of cardsSnapshot.docs) {
+        await deleteDoc(doc(db, collections.cards, cardDoc.id));
+      }
+      
+      // Then delete the deck itself
       await remove(deckId);
+      console.log(`[Delete] Deck and cards deleted successfully`);
     } catch (err) {
       console.error("Error deleting deck:", err);
     }

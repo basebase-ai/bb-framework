@@ -126,6 +126,8 @@ export const schema = {
       deckId: { type: "string", required: true },
       front: { type: "string", required: true },
       back: { type: "string", required: true },
+      frontAudio: { type: "array", items: { type: "string" } },
+      backAudio: { type: "array", items: { type: "string" } },
       owner: { type: "string", required: true },
       box: { type: "number", default: 1 },
       nextReviewAt: { type: "timestamp" },
