@@ -41,7 +41,7 @@ export function VocabularyPanel({ onClose }) {
     [user?.uid]
   );
 
-  const { data: vocabulary, loading } = useCollection(collections.vocabulary, vocabQueryOptions);
+  const { data: vocabulary, loading, remove: removeVocab } = useCollection(collections.vocabulary, vocabQueryOptions);
 
   // Count cards due for review
   const dueCount = useMemo(() => (vocabulary || []).filter((v) => {
@@ -73,6 +73,17 @@ export function VocabularyPanel({ onClose }) {
    */
   const handleSpeak = (word) => {
     speak(word, sourceLanguage);
+  };
+
+  /**
+   * Remove a vocabulary word
+   * @param {string} id
+   * @param {string} word
+   */
+  const handleRemove = (id, word) => {
+    if (confirm(`Remove "${word}" from vocabulary?`)) {
+      removeVocab(id);
+    }
   };
 
   return (
@@ -138,38 +149,45 @@ export function VocabularyPanel({ onClose }) {
               >
                 <Group justify="space-between" wrap="nowrap" gap="xs">
                   <Box style={{ minWidth: 0, flex: 1 }}>
-                    <Group gap={4} wrap="nowrap">
-                      <Text
-                        size="sm"
-                        fw={500}
-                        c="blue.4"
-                        truncate
-                        style={{ flex: 1 }}
-                      >
-                        {vocab.word}
-                      </Text>
-                      {speechSupported && (
-                        <ActionIcon
-                          variant="subtle"
-                          size="xs"
-                          color="gray"
-                          onClick={() => handleSpeak(vocab.word)}
-                        >
-                          <IconVolume size={12} />
-                        </ActionIcon>
-                      )}
-                    </Group>
+                    <Text
+                      size="sm"
+                      fw={500}
+                      c="blue.4"
+                      truncate
+                    >
+                      {vocab.word}
+                    </Text>
                     <Text size="xs" c="dimmed" truncate>
                       {vocab.translation}
                     </Text>
                   </Box>
-                  {vocab.masteryLevel > 0 && (
-                    <Tooltip label={`Mastery: ${vocab.masteryLevel}/5`}>
-                      <Badge size="xs" variant="dot" color="green">
-                        {vocab.masteryLevel}
-                      </Badge>
-                    </Tooltip>
-                  )}
+                  <Group gap={2} wrap="nowrap">
+                    {vocab.masteryLevel > 0 && (
+                      <Tooltip label={`Mastery: ${vocab.masteryLevel}/5`}>
+                        <Badge size="xs" variant="dot" color="green">
+                          {vocab.masteryLevel}
+                        </Badge>
+                      </Tooltip>
+                    )}
+                    {speechSupported && (
+                      <ActionIcon
+                        variant="subtle"
+                        size="xs"
+                        color="gray"
+                        onClick={() => handleSpeak(vocab.word)}
+                      >
+                        <IconVolume size={12} />
+                      </ActionIcon>
+                    )}
+                    <ActionIcon
+                      variant="subtle"
+                      size="xs"
+                      color="red"
+                      onClick={() => handleRemove(vocab.id, vocab.word)}
+                    >
+                      <IconX size={12} />
+                    </ActionIcon>
+                  </Group>
                 </Group>
               </Box>
             ))

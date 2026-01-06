@@ -1,7 +1,7 @@
 /**
  * FlashcardPractice - Spaced repetition flashcard practice mode
  */
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   Box,
   Stack,
@@ -58,7 +58,7 @@ export function FlashcardPractice({ onBack }) {
     [user?.uid]
   );
 
-  const { data: vocabulary, update: updateVocab } = useCollection(
+  const { data: vocabulary, loading: vocabLoading, update: updateVocab } = useCollection(
     collections.vocabulary,
     vocabQueryOptions
   );
@@ -67,21 +67,31 @@ export function FlashcardPractice({ onBack }) {
   const [showAnswer, setShowAnswer] = useState(false);
   const [sessionStats, setSessionStats] = useState({ correct: 0, incorrect: 0 });
   const [sessionComplete, setSessionComplete] = useState(false);
+  const [practiceMode, setPracticeMode] = useState(/** @type {"due" | "all"} */ ("due"));
+  
+  // Session cards - captured once at start to prevent flickering during review
+  const [sessionCards, setSessionCards] = useState(/** @type {typeof vocabulary} */ (null));
+  const sessionInitialized = useRef(false);
 
-  // Get cards due for review (sorted by priority)
-  const dueCards = useMemo(() => {
+  // Calculate cards for session
+  const calculateSessionCards = useCallback((mode = "due") => {
     if (!vocabulary) return [];
 
     const now = new Date();
-    return vocabulary
-      .filter((v) => {
-        // Include if never reviewed or due for review
+    let cards = vocabulary;
+
+    // Filter to due cards only if in "due" mode
+    if (mode === "due") {
+      cards = vocabulary.filter((v) => {
         if (!v.nextReviewAt) return true;
         const nextReview = v.nextReviewAt.toDate ? v.nextReviewAt.toDate() : new Date(v.nextReviewAt);
         return nextReview <= now;
-      })
+      });
+    }
+
+    // Sort by mastery level (lower first = needs more practice)
+    return cards
       .sort((a, b) => {
-        // Prioritize: new words (no masteryLevel), then by mastery level (lower first)
         const aLevel = a.masteryLevel || 0;
         const bLevel = b.masteryLevel || 0;
         return aLevel - bLevel;
@@ -89,8 +99,20 @@ export function FlashcardPractice({ onBack }) {
       .slice(0, 20); // Limit to 20 cards per session
   }, [vocabulary]);
 
-  const currentCard = dueCards[currentIndex];
-  const progress = dueCards.length > 0 ? ((currentIndex + 1) / dueCards.length) * 100 : 0;
+  // Initialize session cards once when vocabulary finishes loading
+  useEffect(() => {
+    if (!vocabLoading && vocabulary && !sessionInitialized.current) {
+      const cards = calculateSessionCards("due");
+      setSessionCards(cards);
+      sessionInitialized.current = true;
+    }
+  }, [vocabulary, vocabLoading, calculateSessionCards]);
+
+  // Use session cards for display (stable during session)
+  const currentCard = sessionCards?.[currentIndex];
+  const progress = sessionCards && sessionCards.length > 0 
+    ? ((currentIndex + 1) / sessionCards.length) * 100 
+    : 0;
 
   /**
    * Handle showing the answer
@@ -146,25 +168,29 @@ export function FlashcardPractice({ onBack }) {
       }));
 
       // Move to next card
-      if (currentIndex < dueCards.length - 1) {
+      if (currentIndex < sessionCards.length - 1) {
         setCurrentIndex((i) => i + 1);
         setShowAnswer(false);
       } else {
         setSessionComplete(true);
       }
     },
-    [currentCard, currentIndex, dueCards.length, updateVocab]
+    [currentCard, currentIndex, sessionCards?.length, updateVocab]
   );
 
   /**
    * Start a new session
+   * @param {"due" | "all"} [mode]
    */
-  const handleNewSession = () => {
+  const handleNewSession = useCallback((mode = "due") => {
+    const cards = calculateSessionCards(mode);
+    setSessionCards(cards);
+    setPracticeMode(mode);
     setCurrentIndex(0);
     setShowAnswer(false);
     setSessionStats({ correct: 0, incorrect: 0 });
     setSessionComplete(false);
-  };
+  }, [calculateSessionCards]);
 
   /**
    * Play word pronunciation
@@ -203,8 +229,27 @@ export function FlashcardPractice({ onBack }) {
     );
   }
 
+  // Still loading vocabulary or session not initialized
+  if (vocabLoading || !sessionCards) {
+    return (
+      <Box>
+        <Group mb="xl">
+          <ActionIcon variant="subtle" onClick={onBack} size="lg">
+            <IconArrowLeft size={20} />
+          </ActionIcon>
+          <Title order={3}>Flashcard Practice</Title>
+        </Group>
+        <Center py="xl">
+          <Text c="dimmed">Loading vocabulary...</Text>
+        </Center>
+      </Box>
+    );
+  }
+
   // No cards due for review
-  if (dueCards.length === 0 && !sessionComplete) {
+  if (sessionCards.length === 0 && !sessionComplete) {
+    const hasVocab = vocabulary && vocabulary.length > 0;
+    
     return (
       <Box>
         <Group mb="xl">
@@ -218,14 +263,28 @@ export function FlashcardPractice({ onBack }) {
           <Stack align="center" gap="md">
             <IconCheck size={60} color="var(--mantine-color-green-5)" />
             <Text c="dimmed" ta="center">
-              All caught up! No cards due for review.
+              {hasVocab 
+                ? "All caught up! No cards due for review."
+                : "No vocabulary words yet."}
               <br />
               Keep reading to learn more words.
             </Text>
-            <Text size="sm" c="dimmed">
-              {vocabulary.length} words in vocabulary
-            </Text>
-            <Button variant="light" onClick={onBack}>
+            {hasVocab && (
+              <>
+                <Text size="sm" c="dimmed">
+                  {vocabulary.length} words in vocabulary
+                </Text>
+                <Button 
+                  variant="filled" 
+                  color="blue"
+                  leftSection={<IconCards size={16} />}
+                  onClick={() => handleNewSession("all")}
+                >
+                  Practice All Words
+                </Button>
+              </>
+            )}
+            <Button variant="subtle" onClick={onBack}>
               Back to Reading
             </Button>
           </Stack>
@@ -293,9 +352,17 @@ export function FlashcardPractice({ onBack }) {
               <Button
                 variant="light"
                 leftSection={<IconRefresh size={18} />}
-                onClick={handleNewSession}
+                onClick={() => handleNewSession("due")}
               >
-                Practice Again
+                Practice Due
+              </Button>
+              <Button
+                variant="light"
+                color="cyan"
+                leftSection={<IconCards size={18} />}
+                onClick={() => handleNewSession("all")}
+              >
+                Practice All
               </Button>
               <Button variant="subtle" onClick={onBack}>
                 Back to Reading
@@ -319,7 +386,7 @@ export function FlashcardPractice({ onBack }) {
           <Title order={3}>Flashcard Practice</Title>
         </Group>
         <Badge variant="light">
-          {currentIndex + 1} / {dueCards.length}
+          {currentIndex + 1} / {sessionCards.length}
         </Badge>
       </Group>
 
