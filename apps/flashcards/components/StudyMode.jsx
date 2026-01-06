@@ -73,11 +73,18 @@ export function StudyMode({ deckId, onBack, onComplete }) {
    * @param {string} url
    */
   const playAudio = useCallback((url) => {
+    console.log("[Audio] Playing:", url);
     const audio = new Audio(url);
     setAudioPlaying(true);
     audio.onended = () => setAudioPlaying(false);
-    audio.onerror = () => setAudioPlaying(false);
-    audio.play().catch(() => setAudioPlaying(false));
+    audio.onerror = (e) => {
+      console.error("[Audio] Error playing:", url, e);
+      setAudioPlaying(false);
+    };
+    audio.play().catch((err) => {
+      console.error("[Audio] Play failed:", err);
+      setAudioPlaying(false);
+    });
   }, []);
 
   const { data: deck, loading: deckLoading, update: updateDeck } = useDocument(collections.decks, deckId);

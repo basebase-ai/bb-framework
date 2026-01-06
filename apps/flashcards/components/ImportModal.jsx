@@ -39,10 +39,9 @@ import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections } from "../schema.js";
 
-const ANKI_MEDIA_BASE = "https://ankiuser.net/study/media/";
-
 /**
- * Extract audio file URLs from HTML
+ * Extract audio file URLs from HTML - only extracts full URLs, not Anki filenames
+ * (AnkiWeb CDN requires authentication and won't work cross-origin)
  * @param {string} html
  * @returns {string[]}
  */
@@ -50,18 +49,12 @@ function extractAudioUrls(html) {
   /** @type {string[]} */
   const urls = [];
   
-  // Match src attributes in audio/source tags
-  const srcRegex = /src=["']([^"']*\.mp3)["']/gi;
+  // Only extract full URLs (not Anki filenames which require auth)
+  const srcRegex = /src=["'](https?:\/\/[^"']*\.mp3)["']/gi;
   let match;
   
   while ((match = srcRegex.exec(html)) !== null) {
-    const filename = match[1];
-    // Convert to full AnkiWeb URL if it's just a filename
-    if (!filename.startsWith("http")) {
-      urls.push(ANKI_MEDIA_BASE + filename);
-    } else {
-      urls.push(filename);
-    }
+    urls.push(match[1]);
   }
   
   return urls;
