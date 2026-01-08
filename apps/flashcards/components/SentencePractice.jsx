@@ -18,6 +18,7 @@ import {
   NumberInput,
   RangeSlider,
   Alert,
+  SegmentedControl,
 } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -27,6 +28,8 @@ import {
   IconVolume,
   IconChevronRight,
   IconAlertCircle,
+  IconBook,
+  IconMessages,
 } from "@tabler/icons-react";
 
 import { useCollection } from "../../../framework/hooks/useCollection.js";
@@ -49,14 +52,17 @@ export function SentencePractice({ deckId, onBack }) {
   const { user } = useAuth();
   
   // Configuration state
+  const [mode, setMode] = useState(/** @type {'sentences' | 'story'} */ ("sentences"));
   const [numSentences, setNumSentences] = useState(/** @type {number | ''} */ (5));
   const [wordRange, setWordRange] = useState(/** @type {[number, number]} */ ([4, 8]));
   const [started, setStarted] = useState(false);
+  const [storyTitle, setStoryTitle] = useState("");
   
   // Practice state
   const [sentences, setSentences] = useState(/** @type {GeneratedSentence[]} */ ([]));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [finished, setFinished] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -140,21 +146,23 @@ export function SentencePractice({ deckId, onBack }) {
   }, []);
 
   /**
-   * Generate sentences using LLM
+   * Generate sentences or story using LLM
    */
-  const generateSentences = useCallback(async () => {
+  const generateContent = useCallback(async () => {
     if (masteredVocab.length < 3) {
-      setError("You need at least 3 mastered words to generate sentences. Keep studying!");
+      setError("You need at least 3 mastered words to generate content. Keep studying!");
       return;
     }
 
     setGenerating(true);
     setError(null);
+    setStoryTitle("");
     
-    // Pick a random subset of vocabulary (max 30 words to keep prompt reasonable)
+    // Pick a random subset of vocabulary (max 40 words for stories, 30 for sentences)
+    const maxVocab = mode === "story" ? 40 : 30;
     const vocabSample = [...masteredVocab]
       .sort(() => Math.random() - 0.5)
-      .slice(0, 30);
+      .slice(0, maxVocab);
     
     const vocabList = vocabSample
       .map((v) => `${v.word} (${v.meaning})`)
@@ -163,14 +171,46 @@ export function SentencePractice({ deckId, onBack }) {
     const count = typeof numSentences === "number" ? numSentences : 5;
     const [minWords, maxWords] = wordRange;
 
-    const prompt = `You are helping someone learn Norwegian. Generate exactly ${count} simple Norwegian sentences using ONLY the vocabulary words provided below. 
+    const grammarWords = "jeg, du, han, hun, vi, de, er, var, har, hadde, kan, vil, må, skal, ikke, det, den, denne, som, av, for, om, men, eller, hvis, når, her, der, nå, da, en, et, og, på, i, til, fra, med, sitt, sin, sine, meg, deg, seg, oss, dem, min, din, hans, hennes, vår, deres, hva, hvem, hvor, hvorfor, hvordan, ja, nei, så, også, bare, alltid, aldri, ofte, noen, alle, ingen, mange, få, mer, mest, mindre, minst, god, bedre, best, stor, liten, ny, gammel, ung, første, siste, annen, samme, egen, hver, begge, både, enten, verken, fordi, derfor, selv, meget, ganske, veldig";
+
+    let prompt;
+    
+    if (mode === "story") {
+      prompt = `You are helping someone learn Norwegian by writing a short story. Create a cohesive mini-story in Norwegian using ONLY the vocabulary words provided below.
+
+VOCABULARY (Norwegian word - English meaning):
+${vocabList}
+
+STORY REQUIREMENTS:
+1. Write a story with exactly ${count} sentences
+2. Each sentence should be ${minWords}-${maxWords} words long
+3. Use ONLY Norwegian words from the vocabulary list above (plus basic grammar words: ${grammarWords})
+4. Include 1-2 characters with authentic Norwegian names (like Erik, Ingrid, Lars, Astrid, Knut, Liv, etc.)
+5. The story must have a clear beginning, middle, and ending
+6. Make it interesting - could be funny, heartwarming, mysterious, or surprising
+7. The sentences should flow naturally as a narrative
+
+OUTPUT FORMAT (JSON object, no markdown):
+{
+  "title": "Story title in Norwegian",
+  "titleEnglish": "Story title in English", 
+  "sentences": [
+    {"norwegian": "First sentence", "english": "English translation", "vocabularyUsed": ["word1", "word2"]},
+    {"norwegian": "Second sentence", "english": "English translation", "vocabularyUsed": ["word3"]},
+    ...
+  ]
+}
+
+Generate the story now:`;
+    } else {
+      prompt = `You are helping someone learn Norwegian. Generate exactly ${count} simple Norwegian sentences using ONLY the vocabulary words provided below. 
 
 VOCABULARY (Norwegian word - English meaning):
 ${vocabList}
 
 REQUIREMENTS:
 1. Each sentence must be ${minWords}-${maxWords} words long
-2. Use ONLY the Norwegian words from the vocabulary list above (plus basic grammar words like "jeg", "er", "en", "et", "og", "på", "i", "til", "fra", "med", "har", "kan", "vil", "må", "skal", "ikke", "det", "den", "denne", "som", "av", "for", "om", "men", "eller", "hvis", "når", "her", "der", "nå", "da")
+2. Use ONLY the Norwegian words from the vocabulary list above (plus basic grammar words: ${grammarWords})
 3. Make sentences that are natural and useful for daily conversation
 4. Vary the sentence structures
 
@@ -181,26 +221,42 @@ OUTPUT FORMAT (JSON array, no markdown):
 ]
 
 Generate the sentences now:`;
+    }
 
     try {
       const result = await callLLM({
         provider: "openai",
         model: "gpt-4o-mini",
         message: prompt,
-        options: { maxTokens: 2000, temperature: 0.8 },
+        options: { maxTokens: 3000, temperature: 0.85 },
       });
 
       const responseText = result?.response || "";
       
-      // Parse JSON from response (handle potential markdown wrapping)
-      let jsonStr = responseText;
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[0];
-      }
-      
       /** @type {GeneratedSentence[]} */
-      const parsed = JSON.parse(jsonStr);
+      let parsed;
+      
+      if (mode === "story") {
+        // Parse story format
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("Invalid story format");
+        const storyData = JSON.parse(jsonMatch[0]);
+        
+        if (!storyData.sentences || !Array.isArray(storyData.sentences)) {
+          throw new Error("Invalid story format - missing sentences");
+        }
+        
+        setStoryTitle(storyData.title || "");
+        parsed = storyData.sentences;
+      } else {
+        // Parse sentences format
+        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          parsed = JSON.parse(responseText);
+        }
+      }
       
       if (!Array.isArray(parsed) || parsed.length === 0) {
         throw new Error("Invalid response format");
@@ -211,12 +267,12 @@ Generate the sentences now:`;
       setShowTranslation(false);
       setStarted(true);
     } catch (err) {
-      console.error("Error generating sentences:", err);
-      setError(err instanceof Error ? err.message : "Failed to generate sentences. Please try again.");
+      console.error("Error generating content:", err);
+      setError(err instanceof Error ? err.message : "Failed to generate content. Please try again.");
     } finally {
       setGenerating(false);
     }
-  }, [masteredVocab, numSentences, wordRange, callLLM]);
+  }, [masteredVocab, numSentences, wordRange, mode, callLLM]);
 
   const currentSentence = sentences[currentIndex];
   const progress = sentences.length > 0 ? ((currentIndex + 1) / sentences.length) * 100 : 0;
@@ -225,6 +281,9 @@ Generate the sentences now:`;
     if (currentIndex < sentences.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setShowTranslation(false);
+    } else {
+      // Last sentence - mark as finished
+      setFinished(true);
     }
   };
 
@@ -269,12 +328,12 @@ Generate the sentences now:`;
             <ActionIcon variant="subtle" color="gray" onClick={onBack}>
               <IconArrowLeft size={20} />
             </ActionIcon>
-            <Title order={3} c="white">Sentence Practice</Title>
+            <Title order={3} c="white">Practice Mode</Title>
             <Box w={28} />
           </Group>
 
-          <Text c="dimmed" size="sm" mb="xl">
-            Generate practice sentences using your mastered vocabulary ({masteredVocab.length} words available)
+          <Text c="dimmed" size="sm" mb="lg">
+            Practice with your mastered vocabulary ({masteredVocab.length} words available)
           </Text>
 
           {error && (
@@ -283,12 +342,53 @@ Generate the sentences now:`;
             </Alert>
           )}
 
-          <Text c="dimmed" size="sm" mb="xs">Number of sentences</Text>
+          <Text c="dimmed" size="sm" mb="xs">Practice type</Text>
+          <SegmentedControl
+            value={mode}
+            onChange={(val) => setMode(/** @type {'sentences' | 'story'} */ (val))}
+            fullWidth
+            mb="lg"
+            data={[
+              { 
+                label: (
+                  <Group gap="xs" justify="center">
+                    <IconMessages size={16} />
+                    <span>Random Sentences</span>
+                  </Group>
+                ), 
+                value: "sentences" 
+              },
+              { 
+                label: (
+                  <Group gap="xs" justify="center">
+                    <IconBook size={16} />
+                    <span>Story Mode</span>
+                  </Group>
+                ), 
+                value: "story" 
+              },
+            ]}
+            styles={{
+              root: { background: "rgba(255, 255, 255, 0.05)" },
+            }}
+          />
+
+          {mode === "story" && (
+            <Paper p="sm" mb="lg" style={{ background: "rgba(147, 51, 234, 0.1)", border: "1px solid rgba(147, 51, 234, 0.2)" }}>
+              <Text size="sm" c="violet.3">
+                📖 Story Mode generates a cohesive narrative with Norwegian characters and a beginning, middle, and end!
+              </Text>
+            </Paper>
+          )}
+
+          <Text c="dimmed" size="sm" mb="xs">
+            {mode === "story" ? "Number of sentences in story" : "Number of sentences"}
+          </Text>
           <NumberInput
             value={numSentences}
             onChange={(val) => setNumSentences(val)}
-            min={1}
-            max={20}
+            min={mode === "story" ? 5 : 1}
+            max={mode === "story" ? 15 : 20}
             mb="lg"
             styles={{
               input: { background: "rgba(255, 255, 255, 0.05)", borderColor: "rgba(255, 255, 255, 0.1)", color: "white" },
@@ -320,11 +420,12 @@ Generate the sentences now:`;
               variant="gradient"
               gradient={{ from: "violet", to: "grape" }}
               size="lg"
-              onClick={generateSentences}
+              leftSection={mode === "story" ? <IconBook size={18} /> : <IconMessages size={18} />}
+              onClick={generateContent}
               loading={generating}
               disabled={masteredVocab.length < 3}
             >
-              {generating ? "Generating..." : "Generate Sentences"}
+              {generating ? "Generating..." : mode === "story" ? "Generate Story" : "Generate Sentences"}
             </Button>
           </Group>
 
@@ -339,12 +440,21 @@ Generate the sentences now:`;
   }
 
   // Completion screen
-  if (currentIndex >= sentences.length - 1 && showTranslation) {
+  if (finished) {
     return (
       <Box style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <Paper p="xl" radius="lg" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(147, 51, 234, 0.3)", maxWidth: 500, width: "100%", textAlign: "center" }}>
-          <Title order={2} c="white" mb="lg">🎉 Practice Complete!</Title>
-          <Text c="dimmed" mb="xl">You practiced with {sentences.length} sentences!</Text>
+          <Title order={2} c="white" mb="lg">
+            {mode === "story" ? "📖 The End!" : "🎉 Practice Complete!"}
+          </Title>
+          {mode === "story" && storyTitle && (
+            <Text c="violet.4" fw={500} mb="sm">"{storyTitle}"</Text>
+          )}
+          <Text c="dimmed" mb="xl">
+            {mode === "story" 
+              ? `You read a ${sentences.length}-part story!` 
+              : `You practiced with ${sentences.length} sentences!`}
+          </Text>
           
           <Group justify="center" gap="md">
             <Button variant="light" color="gray" leftSection={<IconArrowLeft size={16} />} onClick={onBack}>
@@ -359,6 +469,8 @@ Generate the sentences now:`;
                 setSentences([]);
                 setCurrentIndex(0);
                 setShowTranslation(false);
+                setFinished(false);
+                setStoryTitle("");
               }}
             >
               Generate More
@@ -379,7 +491,14 @@ Generate the sentences now:`;
             <ActionIcon variant="subtle" color="gray" onClick={onBack}>
               <IconArrowLeft size={20} />
             </ActionIcon>
-            <Text c="white" fw={500}>Sentence Practice</Text>
+            <Box>
+              <Text c="white" fw={500}>
+                {mode === "story" && storyTitle ? `📖 ${storyTitle}` : "Sentence Practice"}
+              </Text>
+              {mode === "story" && (
+                <Text size="xs" c="dimmed">Story Mode</Text>
+              )}
+            </Box>
           </Group>
           <Text size="sm" c="dimmed">{currentIndex + 1} / {sentences.length}</Text>
         </Group>
@@ -405,7 +524,7 @@ Generate the sentences now:`;
             }}
           >
             <Badge variant="light" color="violet" size="sm" mb="md">
-              Sentence {currentIndex + 1}
+              {mode === "story" ? `Part ${currentIndex + 1}` : `Sentence ${currentIndex + 1}`}
             </Badge>
 
             {/* Norwegian sentence */}
@@ -479,7 +598,17 @@ Generate the sentences now:`;
               >
                 Next Sentence
               </Button>
-            ) : null}
+            ) : (
+              <Button
+                size="lg"
+                variant="gradient"
+                gradient={{ from: "violet", to: "grape" }}
+                leftSection={<IconCheck size={20} />}
+                onClick={handleNext}
+              >
+                Finish
+              </Button>
+            )}
           </Group>
 
           <Text size="xs" c="dimmed" ta="center" mt="xl">
