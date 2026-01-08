@@ -20,6 +20,7 @@ import {
   SimpleGrid,
   Box,
   Card,
+  Switch,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -31,6 +32,8 @@ import {
   IconEdit,
   IconTrash,
   IconChartBar,
+  IconWorld,
+  IconLock,
 } from "@tabler/icons-react";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
@@ -46,10 +49,11 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [editingDeck, setEditingDeck] = useState(/** @type {{ id: string, name: string, description: string } | null} */ (null));
+  const [editingDeck, setEditingDeck] = useState(/** @type {{ id: string, name: string, description: string, isPublic: boolean } | null} */ (null));
 
   const [deckName, setDeckName] = useState("");
   const [deckDescription, setDeckDescription] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Memoize query options to prevent re-renders (no orderBy to avoid composite index)
@@ -91,11 +95,12 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
         owner: user.uid,
         cardCount: 0,
         masteredCount: 0,
-        isPublic: false,
+        isPublic,
         tags: [],
       });
       setDeckName("");
       setDeckDescription("");
+      setIsPublic(false);
       setCreateModalOpen(false);
     } catch (err) {
       console.error("Error creating deck:", err);
@@ -104,15 +109,17 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
     }
   };
 
-  /** @param {{ id: string, name?: string, description?: string }} deck */
+  /** @param {{ id: string, name?: string, description?: string, isPublic?: boolean }} deck */
   const handleEditClick = (deck) => {
     setEditingDeck({
       id: deck.id,
       name: deck.name || "",
       description: deck.description || "",
+      isPublic: deck.isPublic || false,
     });
     setDeckName(deck.name || "");
     setDeckDescription(deck.description || "");
+    setIsPublic(deck.isPublic || false);
     setEditModalOpen(true);
   };
 
@@ -124,10 +131,12 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
       await update(editingDeck.id, {
         name: deckName.trim(),
         description: deckDescription.trim(),
+        isPublic,
       });
       setEditingDeck(null);
       setDeckName("");
       setDeckDescription("");
+      setIsPublic(false);
       setEditModalOpen(false);
     } catch (err) {
       console.error("Error updating deck:", err);
@@ -168,6 +177,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
   const handleCloseCreateModal = () => {
     setDeckName("");
     setDeckDescription("");
+    setIsPublic(false);
     setCreateModalOpen(false);
   };
 
@@ -175,6 +185,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
     setEditingDeck(null);
     setDeckName("");
     setDeckDescription("");
+    setIsPublic(false);
     setEditModalOpen(false);
   };
 
@@ -331,6 +342,12 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
                       {masteredCount} mastered
                     </Badge>
                   )}
+                  {deck.isPublic && (
+                    <Badge variant="light" color="cyan" size="sm">
+                      <IconWorld size={12} style={{ marginRight: 4 }} />
+                      Public
+                    </Badge>
+                  )}
                 </Group>
 
                 {cardCount > 0 && (
@@ -383,6 +400,12 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
             onChange={(e) => setDeckDescription(e.target.value)}
             minRows={3}
           />
+          <Switch
+            label="Make this deck public"
+            description="Other users can discover and copy this deck to study"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.currentTarget.checked)}
+          />
           <Group justify="flex-end" gap="sm">
             <Button variant="default" onClick={handleCloseCreateModal}>
               Cancel
@@ -409,6 +432,12 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
             value={deckDescription}
             onChange={(e) => setDeckDescription(e.target.value)}
             minRows={3}
+          />
+          <Switch
+            label="Make this deck public"
+            description="Other users can discover and copy this deck to study"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.currentTarget.checked)}
           />
           <Group justify="flex-end" gap="sm">
             <Button variant="default" onClick={handleCloseEditModal}>

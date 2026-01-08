@@ -33,6 +33,7 @@ import {
   IconTrash,
   IconSearch,
   IconBox,
+  IconMessageLanguage,
 } from "@tabler/icons-react";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
@@ -49,9 +50,9 @@ function getBoxColor(box) {
 }
 
 /**
- * @param {{ deckId: string, onBack: () => void, onStudy: (deckId: string) => void }} props
+ * @param {{ deckId: string, onBack: () => void, onStudy: (deckId: string) => void, onPractice?: (deckId: string) => void }} props
  */
-export function CardList({ deckId, onBack, onStudy }) {
+export function CardList({ deckId, onBack, onStudy, onPractice }) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -126,6 +127,13 @@ export function CardList({ deckId, onBack, onStudy }) {
       if (!c.nextReviewAt) return true;
       const reviewDate = c.nextReviewAt.toDate ? c.nextReviewAt.toDate() : new Date(c.nextReviewAt);
       return reviewDate <= new Date();
+    }).length,
+    // Cards available for sentence practice (Box 2+ or reviewed with more correct than incorrect)
+    mastered: cards.filter((c) => {
+      const box = c.box || 1;
+      if (box >= 2) return true;
+      if (c.lastReviewedAt && (c.correctCount || 0) > (c.incorrectCount || 0)) return true;
+      return false;
     }).length,
   };
 
@@ -245,6 +253,17 @@ export function CardList({ deckId, onBack, onStudy }) {
           >
             Study ({stats.dueForReview})
           </Button>
+          {onPractice && (
+            <Button
+              variant="light"
+              color="violet"
+              leftSection={<IconMessageLanguage size={16} />}
+              onClick={() => onPractice(deckId)}
+              disabled={stats.mastered < 3}
+            >
+              Practice
+            </Button>
+          )}
           <Button
             variant="gradient"
             gradient={{ from: "#e94560", to: "#ff6b6b" }}

@@ -5,6 +5,7 @@
  *   /              - Deck list (auth required)
  *   /deck/:id      - View cards in a deck
  *   /study/:id     - Study mode for a deck
+ *   /practice/:id  - Sentence practice mode
  */
 
 import React, { useState } from "react";
@@ -21,7 +22,7 @@ import {
   Title,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { IconLogin, IconLogout, IconUser, IconCards } from "@tabler/icons-react";
+import { IconLogin, IconLogout, IconUser, IconCards, IconWorld } from "@tabler/icons-react";
 import { AppRouter, RouteContent } from "../../framework/components/AppRouter.jsx";
 import { useRoute } from "../../framework/hooks/useRoute.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
@@ -30,6 +31,8 @@ import { ProfileModal } from "./components/ProfileModal.jsx";
 import { DeckList } from "./components/DeckList.jsx";
 import { CardList } from "./components/CardList.jsx";
 import { StudyMode } from "./components/StudyMode.jsx";
+import { SentencePractice } from "./components/SentencePractice.jsx";
+import { ExplorePage } from "./components/ExplorePage.jsx";
 import { APP_ID } from "./schema.js";
 
 // Mantine CSS imports
@@ -73,11 +76,17 @@ function DeckViewPage() {
     navigate(`/study/${deckId}`);
   };
 
+  /** @param {string} deckId */
+  const handlePractice = (deckId) => {
+    navigate(`/practice/${deckId}`);
+  };
+
   return (
     <CardList
       deckId={params.id || ""}
       onBack={handleBack}
       onStudy={handleStudy}
+      onPractice={handlePractice}
     />
   );
 }
@@ -102,6 +111,32 @@ function StudyPage() {
   );
 }
 
+function PracticePage() {
+  const { params, navigate } = useRoute();
+
+  const handleBack = () => {
+    navigate(`/deck/${params.id}`);
+  };
+
+  return (
+    <SentencePractice
+      deckId={params.id || ""}
+      onBack={handleBack}
+    />
+  );
+}
+
+function ExplorePageRoute() {
+  const { navigate } = useRoute();
+
+  /** @param {string} deckId */
+  const handleViewDeck = (deckId) => {
+    navigate(`/deck/${deckId}`);
+  };
+
+  return <ExplorePage onViewDeck={handleViewDeck} />;
+}
+
 // ============================================================================
 // Route Definitions
 // ============================================================================
@@ -109,8 +144,10 @@ function StudyPage() {
 /** @type {import('../../framework/components/AppRouter.jsx').RouteDefinition[]} */
 const routes = [
   { path: "/", component: HomePage, auth: true },
+  { path: "/explore", component: ExplorePageRoute, auth: true },
   { path: "/deck/:id", component: DeckViewPage, auth: true },
   { path: "/study/:id", component: StudyPage, auth: true },
+  { path: "/practice/:id", component: PracticePage, auth: true },
 ];
 
 // ============================================================================
@@ -200,10 +237,10 @@ function AppLayout() {
     navigate("/");
   };
 
-  // Hide header in study mode for full-screen experience
-  const isStudyMode = path.startsWith("/study/");
+  // Hide header in study/practice mode for full-screen experience
+  const isFullScreenMode = path.startsWith("/study/") || path.startsWith("/practice/");
 
-  if (isStudyMode) {
+  if (isFullScreenMode) {
     return <RouteContent />;
   }
 
@@ -238,23 +275,33 @@ function AppLayout() {
             </Group>
 
             {user ? (
-              <Menu position="bottom-end" withinPortal>
-                <Menu.Target>
-                  <Group gap="xs" style={{ cursor: "pointer" }}>
-                    <Avatar
-                      src={profile?.photoURL}
-                      alt={profile?.displayName || user.email || "User"}
-                      size="sm"
-                      radius="xl"
-                      color="pink"
-                    >
-                      {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
-                    </Avatar>
-                    <Text size="sm" c="gray.5">
-                      {profile?.displayName || user.email}
-                    </Text>
-                  </Group>
-                </Menu.Target>
+              <Group gap="md">
+                <Button
+                  variant={path === "/explore" ? "light" : "subtle"}
+                  color="cyan"
+                  leftSection={<IconWorld size={16} />}
+                  onClick={() => navigate("/explore")}
+                  size="sm"
+                >
+                  Explore
+                </Button>
+                <Menu position="bottom-end" withinPortal>
+                  <Menu.Target>
+                    <Group gap="xs" style={{ cursor: "pointer" }}>
+                      <Avatar
+                        src={profile?.photoURL}
+                        alt={profile?.displayName || user.email || "User"}
+                        size="sm"
+                        radius="xl"
+                        color="pink"
+                      >
+                        {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Text size="sm" c="gray.5">
+                        {profile?.displayName || user.email}
+                      </Text>
+                    </Group>
+                  </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item
                     leftSection={<IconUser size={16} />}
@@ -280,6 +327,7 @@ function AppLayout() {
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
+              </Group>
             ) : (
               <Button
                 variant="light"
