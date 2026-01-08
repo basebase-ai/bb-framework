@@ -22,7 +22,7 @@ import {
   Title,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { IconLogin, IconLogout, IconUser, IconCards, IconWorld } from "@tabler/icons-react";
+import { IconLogin, IconLogout, IconUser, IconCards } from "@tabler/icons-react";
 import { AppRouter, RouteContent } from "../../framework/components/AppRouter.jsx";
 import { useRoute } from "../../framework/hooks/useRoute.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
@@ -32,7 +32,6 @@ import { DeckList } from "./components/DeckList.jsx";
 import { CardList } from "./components/CardList.jsx";
 import { StudyMode } from "./components/StudyMode.jsx";
 import { SentencePractice } from "./components/SentencePractice.jsx";
-import { ExplorePage } from "./components/ExplorePage.jsx";
 import { APP_ID } from "./schema.js";
 
 // Mantine CSS imports
@@ -126,17 +125,6 @@ function PracticePage() {
   );
 }
 
-function ExplorePageRoute() {
-  const { navigate } = useRoute();
-
-  /** @param {string} deckId */
-  const handleViewDeck = (deckId) => {
-    navigate(`/deck/${deckId}`);
-  };
-
-  return <ExplorePage onViewDeck={handleViewDeck} />;
-}
-
 // ============================================================================
 // Route Definitions
 // ============================================================================
@@ -144,7 +132,6 @@ function ExplorePageRoute() {
 /** @type {import('../../framework/components/AppRouter.jsx').RouteDefinition[]} */
 const routes = [
   { path: "/", component: HomePage, auth: true },
-  { path: "/explore", component: ExplorePageRoute, auth: true },
   { path: "/deck/:id", component: DeckViewPage, auth: true },
   { path: "/study/:id", component: StudyPage, auth: true },
   { path: "/practice/:id", component: PracticePage, auth: true },
@@ -275,33 +262,23 @@ function AppLayout() {
             </Group>
 
             {user ? (
-              <Group gap="md">
-                <Button
-                  variant={path === "/explore" ? "light" : "subtle"}
-                  color="cyan"
-                  leftSection={<IconWorld size={16} />}
-                  onClick={() => navigate("/explore")}
-                  size="sm"
-                >
-                  Explore
-                </Button>
-                <Menu position="bottom-end" withinPortal>
-                  <Menu.Target>
-                    <Group gap="xs" style={{ cursor: "pointer" }}>
-                      <Avatar
-                        src={profile?.photoURL}
-                        alt={profile?.displayName || user.email || "User"}
-                        size="sm"
-                        radius="xl"
-                        color="pink"
-                      >
-                        {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
-                      </Avatar>
-                      <Text size="sm" c="gray.5">
-                        {profile?.displayName || user.email}
-                      </Text>
-                    </Group>
-                  </Menu.Target>
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <Group gap="xs" style={{ cursor: "pointer" }}>
+                    <Avatar
+                      src={profile?.photoURL}
+                      alt={profile?.displayName || user.email || "User"}
+                      size="sm"
+                      radius="xl"
+                      color="pink"
+                    >
+                      {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Text size="sm" c="gray.5">
+                      {profile?.displayName || user.email}
+                    </Text>
+                  </Group>
+                </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item
                     leftSection={<IconUser size={16} />}
@@ -327,7 +304,6 @@ function AppLayout() {
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
-              </Group>
             ) : (
               <Button
                 variant="light"
