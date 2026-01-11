@@ -13,7 +13,7 @@ export const APP_ID = "langbase";
 
 /**
  * Namespaced collection names
- * @type {{ apps: string, users: string, decks: string, cards: string, documents: string, vocabulary: string }}
+ * @type {{ apps: string, users: string, decks: string, cards: string, documents: string, vocabulary: string, conversations: string, messages: string }}
  */
 export const collections = {
   // Global collections (no namespace needed - platform-managed)
@@ -25,6 +25,8 @@ export const collections = {
   cards: `${APP_ID}_cards`,
   documents: `${APP_ID}_documents`,
   vocabulary: `${APP_ID}_vocabulary`,
+  conversations: `${APP_ID}_conversations`,
+  messages: `${APP_ID}_messages`,
 };
 
 /**
@@ -184,14 +186,15 @@ export const schema = {
       },
       wordCount: { type: "number", default: 0 },
       owner: { type: "string", required: true },
+      isPublic: { type: "boolean", default: false },
       lastReadPosition: { type: "number", default: 0 },
       linkedDeckId: { type: "string" }, // Deck to add vocabulary cards to
       createdAt: { type: "timestamp", auto: true },
       updatedAt: { type: "timestamp", auto: true },
     },
-    indexes: [["owner"], ["owner", "createdAt"]],
+    indexes: [["owner"], ["owner", "createdAt"], ["isPublic"]],
     rules: {
-      read: "auth != null && auth.uid == resource.data.owner",
+      read: "auth != null && (auth.uid == resource.data.owner || resource.data.isPublic == true)",
       write: "auth != null && auth.uid == resource.data.owner",
       create: "auth != null && request.resource.data.owner == auth.uid",
       delete: "auth != null && auth.uid == resource.data.owner",
@@ -214,6 +217,45 @@ export const schema = {
       updatedAt: { type: "timestamp", auto: true },
     },
     indexes: [["owner"], ["owner", "nextReviewAt"]],
+    rules: {
+      read: "auth != null && auth.uid == resource.data.owner",
+      write: "auth != null && auth.uid == resource.data.owner",
+      create: "auth != null && request.resource.data.owner == auth.uid",
+      delete: "auth != null && auth.uid == resource.data.owner",
+    },
+  },
+
+  [`${APP_ID}_conversations`]: {
+    fields: {
+      title: { type: "string", required: true }, // e.g., "Purchasing Clothing"
+      description: { type: "string" }, // Optional context/instructions
+      language: { type: "string", required: true }, // Target language key
+      systemPrompt: { type: "string" }, // Custom LLM system prompt
+      owner: { type: "string", required: true },
+      isPublic: { type: "boolean", default: false },
+      messageCount: { type: "number", default: 0 },
+      lastMessageAt: { type: "timestamp" },
+      createdAt: { type: "timestamp", auto: true },
+      updatedAt: { type: "timestamp", auto: true },
+    },
+    indexes: [["owner"], ["isPublic"]],
+    rules: {
+      read: "auth != null && (auth.uid == resource.data.owner || resource.data.isPublic == true)",
+      write: "auth != null && auth.uid == resource.data.owner",
+      create: "auth != null && request.resource.data.owner == auth.uid",
+      delete: "auth != null && auth.uid == resource.data.owner",
+    },
+  },
+
+  [`${APP_ID}_messages`]: {
+    fields: {
+      conversationId: { type: "string", required: true },
+      role: { type: "enum", values: ["user", "assistant"], required: true },
+      content: { type: "string", required: true },
+      owner: { type: "string", required: true },
+      createdAt: { type: "timestamp", auto: true },
+    },
+    indexes: [["conversationId"], ["conversationId", "createdAt"]],
     rules: {
       read: "auth != null && auth.uid == resource.data.owner",
       write: "auth != null && auth.uid == resource.data.owner",

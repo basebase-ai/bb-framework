@@ -5,6 +5,7 @@
  *   - Flashcard Study: Spaced repetition with Leitner system, Anki import
  *   - Sentence Practice: AI-generated comprehension exercises
  *   - Assisted Reading: Import texts/PDFs with click-to-translate
+ *   - Conversation Practice: Chat with AI in target language with translation help
  * 
  * Routes:
  *   /              - Home (shows active tab content)
@@ -12,6 +13,7 @@
  *   /study/:id     - Study mode for a deck
  *   /practice/:id  - Sentence practice mode
  *   /read/:id      - Reading view for a document
+ *   /chat/:id      - Conversation practice chat
  */
 
 import React, { useState } from "react";
@@ -29,7 +31,7 @@ import {
   Tabs,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { IconLogin, IconLogout, IconUser, IconCards, IconBook2 } from "@tabler/icons-react";
+import { IconLogin, IconLogout, IconUser, IconCards, IconBook2, IconMessageCircle } from "@tabler/icons-react";
 import { AppRouter, RouteContent } from "../../framework/components/AppRouter.jsx";
 import { useRoute } from "../../framework/hooks/useRoute.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
@@ -42,6 +44,8 @@ import { SentencePractice } from "./components/SentencePractice.jsx";
 import { DocumentList } from "./components/reading/DocumentList.jsx";
 import { DocumentReader } from "./components/reading/DocumentReader.jsx";
 import { DocumentUpload } from "./components/reading/DocumentUpload.jsx";
+import { ConversationList } from "./components/conversation/ConversationList.jsx";
+import { ConversationChat } from "./components/conversation/ConversationChat.jsx";
 import { useUIStore } from "./stores/uiStore.js";
 import { APP_ID } from "./schema.js";
 
@@ -79,11 +83,16 @@ function HomePage() {
     navigate(`/read/${docId}`);
   };
 
+  /** @param {string} convoId */
+  const handleOpenConversation = (convoId) => {
+    navigate(`/chat/${convoId}`);
+  };
+
   return (
     <Box>
       <Tabs
         value={activeTab}
-        onChange={(val) => val && setActiveTab(/** @type {'vocabulary' | 'reading'} */ (val))}
+        onChange={(val) => val && setActiveTab(/** @type {'vocabulary' | 'reading' | 'conversation'} */ (val))}
         mb="lg"
       >
         <Tabs.List>
@@ -93,15 +102,20 @@ function HomePage() {
           <Tabs.Tab value="reading" leftSection={<IconBook2 size={16} />}>
             Reading
           </Tabs.Tab>
+          <Tabs.Tab value="conversation" leftSection={<IconMessageCircle size={16} />}>
+            Conversation
+          </Tabs.Tab>
         </Tabs.List>
       </Tabs>
 
-      {activeTab === "vocabulary" ? (
+      {activeTab === "vocabulary" && (
         <DeckList
           onViewDeck={handleViewDeck}
           onStudyDeck={handleStudyDeck}
         />
-      ) : (
+      )}
+      
+      {activeTab === "reading" && (
         <>
           <DocumentList
             onOpenDocument={handleOpenDocument}
@@ -113,6 +127,10 @@ function HomePage() {
             onSuccess={handleDocumentCreated}
           />
         </>
+      )}
+      
+      {activeTab === "conversation" && (
+        <ConversationList onOpenConversation={handleOpenConversation} />
       )}
     </Box>
   );
@@ -190,6 +208,18 @@ function ReadPage() {
   return <DocumentReader documentId={params.id || ""} onBack={handleBack} />;
 }
 
+function ConversationChatPage() {
+  const { params, navigate } = useRoute();
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
+
+  const handleBack = () => {
+    setActiveTab("conversation");
+    navigate("/");
+  };
+
+  return <ConversationChat conversationId={params.id || ""} onBack={handleBack} />;
+}
+
 // ============================================================================
 // Route Definitions
 // ============================================================================
@@ -201,6 +231,7 @@ const routes = [
   { path: "/study/:id", component: StudyPage, auth: true },
   { path: "/practice/:id", component: PracticePage, auth: true },
   { path: "/read/:id", component: ReadPage, auth: true },
+  { path: "/chat/:id", component: ConversationChatPage, auth: true },
 ];
 
 // ============================================================================
@@ -304,7 +335,7 @@ function LandingPage() {
       >
         <Box maw={1000} mx="auto">
           <Title order={2} ta="center" c="white" mb="xs" fw={700}>
-            Three powerful tools, one app
+            Four powerful tools, one app
           </Title>
           <Text ta="center" c="gray.5" mb="xl" size="lg">
             Everything you need to learn a new language effectively
@@ -428,6 +459,44 @@ function LandingPage() {
               <Box mt="md">
                 <Text size="xs" c="gray.6">
                   ✓ Click-to-translate &nbsp; ✓ Auto-save vocab &nbsp; ✓ PDF support
+                </Text>
+              </Box>
+            </Box>
+
+            {/* Feature 4: Conversation Practice */}
+            <Box
+              style={{
+                background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%)",
+                border: "1px solid rgba(245, 158, 11, 0.2)",
+                borderRadius: "16px",
+                padding: "2rem",
+              }}
+            >
+              <Box
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "12px",
+                  background: "rgba(245, 158, 11, 0.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "1rem",
+                }}
+              >
+                <IconMessageCircle size={28} color="#f59e0b" />
+              </Box>
+              <Title order={3} c="white" mb="sm" fw={600}>
+                Conversation Practice
+              </Title>
+              <Text c="gray.4" size="sm" style={{ lineHeight: 1.7 }}>
+                Practice real-world scenarios by <strong style={{ color: "#f59e0b" }}>chatting with AI</strong> in your target language. 
+                Click words to translate them, and use the <strong style={{ color: "#f59e0b" }}>lookup panel</strong> to 
+                find words while composing your messages.
+              </Text>
+              <Box mt="md">
+                <Text size="xs" c="gray.6">
+                  ✓ Real scenarios &nbsp; ✓ Click-to-translate &nbsp; ✓ Composition help
                 </Text>
               </Box>
             </Box>

@@ -20,7 +20,7 @@ import { create } from "zustand";
  * @property {boolean} importModalOpen
  * @property {boolean} createDeckModalOpen
  * @property {'front' | 'back'} cardSide
- * @property {'vocabulary' | 'reading'} activeTab
+ * @property {'vocabulary' | 'reading' | 'conversation'} activeTab
  * @property {SelectedWord | null} selectedWord
  * @property {string} sourceLanguage
  * @property {boolean} autoPlayAudio
@@ -30,7 +30,7 @@ import { create } from "zustand";
  * @property {(open: boolean) => void} setCreateDeckModalOpen
  * @property {() => void} toggleCardSide
  * @property {(side: 'front' | 'back') => void} setCardSide
- * @property {(tab: 'vocabulary' | 'reading') => void} setActiveTab
+ * @property {(tab: 'vocabulary' | 'reading' | 'conversation') => void} setActiveTab
  * @property {(word: SelectedWord | null) => void} setSelectedWord
  * @property {() => void} clearSelectedWord
  * @property {(lang: string) => void} setSourceLanguage
@@ -47,7 +47,7 @@ export const useUIStore = create((set) => ({
   cardSide: /** @type {'front' | 'back'} */ ("front"),
   
   // Tab state
-  activeTab: /** @type {'vocabulary' | 'reading'} */ ("vocabulary"),
+  activeTab: /** @type {'vocabulary' | 'reading' | 'conversation'} */ ("vocabulary"),
 
   // Reading state
   selectedWord: null,
@@ -74,7 +74,7 @@ export const useUIStore = create((set) => ({
     set({ cardSide: side }),
 
   // Tab actions
-  setActiveTab: (/** @type {'vocabulary' | 'reading'} */ tab) =>
+  setActiveTab: (/** @type {'vocabulary' | 'reading' | 'conversation'} */ tab) =>
     set({ activeTab: tab }),
 
   // Reading actions
