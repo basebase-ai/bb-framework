@@ -80,6 +80,10 @@ import * as ReactPdf from "react-pdf";
 // React Icons (Simple Icons for brand logos)
 import * as ReactIconsSi from "react-icons/si";
 
+// APKG file parsing (Anki decks)
+import JSZip from "jszip";
+import initSqlJs from "sql.js";
+
 // Update loader text (uses the HTML loader element)
 function updateLoaderText(message) {
   const loaderText = document.querySelector("#initial-loader .loader-text");
@@ -243,6 +247,10 @@ async function init() {
 
       // React Icons (Simple Icons for brand logos)
       "react-icons/si": ReactIconsSi,
+
+      // APKG parsing libraries (Anki decks)
+      "jszip": { default: JSZip, __esModule: true },
+      "sql.js": { default: initSqlJs, __esModule: true },
 
       // Framework hooks (with path variants - normalized, relative old styles)
       "framework/hooks/useAuth.js": { useAuth },
