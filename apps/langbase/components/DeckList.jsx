@@ -21,6 +21,9 @@ import {
   Box,
   Card,
   Switch,
+  Select,
+  Divider,
+  Alert,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -36,13 +39,15 @@ import {
   IconLock,
   IconCopy,
   IconCheck,
+  IconArrowsExchange,
+  IconAlertCircle,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../framework/core/firebase-init.js";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
-import { collections } from "../schema.js";
+import { collections, SUPPORTED_LANGUAGES } from "../schema.js";
 import { ImportModal } from "./ImportModal.jsx";
 
 /**
@@ -54,12 +59,14 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [editingDeck, setEditingDeck] = useState(/** @type {{ id: string, name: string, description: string, isPublic: boolean } | null} */ (null));
+  const [editingDeck, setEditingDeck] = useState(/** @type {{ id: string, name: string, description: string, isPublic: boolean, language: string } | null} */ (null));
 
   const [deckName, setDeckName] = useState("");
   const [deckDescription, setDeckDescription] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const [deckLanguage, setDeckLanguage] = useState("norwegian");
   const [saving, setSaving] = useState(false);
+  const [swappingCards, setSwappingCards] = useState(false);
   const [copying, setCopying] = useState(/** @type {string | null} */ (null));
   const [copiedDecks, setCopiedDecks] = useState(/** @type {Set<string>} */ (new Set()));
 
@@ -142,17 +149,19 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
     }
   };
 
-  /** @param {{ id: string, name?: string, description?: string, isPublic?: boolean }} deck */
+  /** @param {{ id: string, name?: string, description?: string, isPublic?: boolean, language?: string }} deck */
   const handleEditClick = (deck) => {
     setEditingDeck({
       id: deck.id,
       name: deck.name || "",
       description: deck.description || "",
       isPublic: deck.isPublic || false,
+      language: deck.language || "norwegian",
     });
     setDeckName(deck.name || "");
     setDeckDescription(deck.description || "");
     setIsPublic(deck.isPublic || false);
+    setDeckLanguage(deck.language || "norwegian");
     setEditModalOpen(true);
   };
 
@@ -176,17 +185,67 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
         name: deckName.trim(),
         description: deckDescription.trim(),
         isPublic,
+        language: deckLanguage,
         ...(cardCount !== undefined && { cardCount }),
       });
       setEditingDeck(null);
       setDeckName("");
       setDeckDescription("");
       setIsPublic(false);
+      setDeckLanguage("norwegian");
       setEditModalOpen(false);
     } catch (err) {
       console.error("Error updating deck:", err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  /**
+   * Swap front/back for all cards in a deck
+   */
+  const handleSwapCards = async () => {
+    if (!editingDeck) return;
+    
+    setSwappingCards(true);
+    try {
+      const { doc, updateDoc } = await import("firebase/firestore");
+      
+      const cardsQuery = query(
+        collection(db, collections.cards),
+        where("deckId", "==", editingDeck.id)
+      );
+      const cardsSnapshot = await getDocs(cardsQuery);
+      
+      console.log(`[Swap] Swapping front/back for ${cardsSnapshot.size} cards...`);
+      
+      let swapped = 0;
+      for (const cardDoc of cardsSnapshot.docs) {
+        const data = cardDoc.data();
+        await updateDoc(doc(db, collections.cards, cardDoc.id), {
+          front: data.back,
+          back: data.front,
+          frontAudio: data.backAudio || [],
+          backAudio: data.frontAudio || [],
+        });
+        swapped++;
+      }
+      
+      console.log(`[Swap] Successfully swapped ${swapped} cards`);
+      notifications.show({
+        title: "Cards Swapped",
+        message: `Successfully swapped front/back for ${swapped} cards`,
+        color: "green",
+      });
+    } catch (err) {
+      console.error("Error swapping cards:", err);
+      notifications.show({
+        title: "Error",
+        message: "Failed to swap cards",
+        color: "red",
+      });
+    } finally {
+      setSwappingCards(false);
     }
   };
 
@@ -299,6 +358,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
     setDeckName("");
     setDeckDescription("");
     setIsPublic(false);
+    setDeckLanguage("norwegian");
     setEditModalOpen(false);
   };
 
@@ -607,12 +667,47 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
             onChange={(e) => setDeckDescription(e.target.value)}
             minRows={3}
           />
+          <Select
+            label="Card Language"
+            description="Used for text-to-speech audio"
+            value={deckLanguage}
+            onChange={(v) => setDeckLanguage(v || "norwegian")}
+            data={Object.entries(SUPPORTED_LANGUAGES).map(([key, lang]) => ({
+              value: key,
+              label: lang.name,
+            }))}
+          />
           <Switch
             label="Make this deck public"
             description="Other users can discover and copy this deck to study"
             checked={isPublic}
             onChange={(e) => setIsPublic(e.currentTarget.checked)}
           />
+          
+          <Divider label="Card Operations" labelPosition="center" />
+          
+          <Alert 
+            icon={<IconArrowsExchange size={16} />} 
+            color="orange" 
+            variant="light"
+            title="Swap Front ↔ Back"
+          >
+            <Text size="sm" mb="sm">
+              Swap the front and back content of all cards in this deck. 
+              Useful if you imported cards in the wrong direction.
+            </Text>
+            <Button
+              variant="light"
+              color="orange"
+              size="xs"
+              leftSection={<IconArrowsExchange size={14} />}
+              onClick={handleSwapCards}
+              loading={swappingCards}
+            >
+              Swap All Cards
+            </Button>
+          </Alert>
+          
           <Group justify="flex-end" gap="sm">
             <Button variant="default" onClick={handleCloseEditModal}>
               Cancel

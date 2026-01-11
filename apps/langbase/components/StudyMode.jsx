@@ -24,7 +24,6 @@ import {
   Transition,
   RingProgress,
   TypographyStylesProvider,
-  SegmentedControl,
   NumberInput,
   SimpleGrid,
   ThemeIcon,
@@ -39,12 +38,6 @@ import {
   IconVolume,
   IconPlayerPlay,
   IconCards,
-  IconClock,
-  IconSparkles,
-  IconStack2,
-  IconAlertTriangle,
-  IconTrendingUp,
-  IconAlarm,
 } from "@tabler/icons-react";
 
 // Configure marked for better rendering
@@ -55,7 +48,7 @@ marked.setOptions({
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
-import { collections, LEITNER_INTERVALS } from "../schema.js";
+import { collections, LEITNER_INTERVALS, SUPPORTED_LANGUAGES } from "../schema.js";
 
 /**
  * Extract the main definition (first bold text) from card content
@@ -100,13 +93,17 @@ function extractDefinition(content) {
 }
 
 /**
+ * Calculate next review date based on Leitner box.
+ * Uses midnight-based scheduling: "tomorrow" means after the next midnight, not +24 hours.
  * @param {number} box
  * @returns {Date}
  */
 function getNextReviewDate(box) {
   const days = LEITNER_INTERVALS[box] || 1;
   const date = new Date();
+  // Set to midnight of the target day
   date.setDate(date.getDate() + days);
+  date.setHours(0, 0, 0, 0);
   return date;
 }
 
@@ -121,7 +118,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   // Study options state (shown before studying)
   const [studyStarted, setStudyStarted] = useState(false);
   const [studyType, setStudyType] = useState(/** @type {StudyType} */ ("all"));
-  const [cardLimit, setCardLimit] = useState(/** @type {number | ''} */ (20));
+  const [newCardsPerDay, setNewCardsPerDay] = useState(/** @type {number | ''} */ (40));
   
   // Study session state
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -129,80 +126,11 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   const [sessionStats, setSessionStats] = useState({ correct: 0, incorrect: 0, reviewed: 0 });
   const [reviewedCardIds, setReviewedCardIds] = useState(/** @type {Set<string>} */ (new Set()));
   const [isAnimating, setIsAnimating] = useState(false);
+  const [sessionTotalCards, setSessionTotalCards] = useState(/** @type {number | null} */ (null));
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const cardContentRef = useRef(/** @type {HTMLDivElement | null} */ (null));
-
-  // Preload speech synthesis voices
-  useEffect(() => {
-    if (!window.speechSynthesis) return;
-    
-    const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        setVoicesLoaded(true);
-        const norwegianVoice = voices.find(
-          (v) => v.lang.startsWith("no") || v.lang.startsWith("nb") || v.lang.startsWith("nn")
-        );
-        if (norwegianVoice) {
-          console.log("[TTS] Norwegian voice found:", norwegianVoice.name, norwegianVoice.lang);
-        } else {
-          console.log("[TTS] No Norwegian voice found, will use default with nb-NO lang code");
-        }
-      }
-    };
-    
-    loadVoices();
-    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
-    return () => {
-      window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
-    };
-  }, []);
-
-  /**
-   * Speak text using Web Speech API with Norwegian voice if available
-   * @param {string} text
-   */
-  const speak = useCallback((text) => {
-    if (!text || !window.speechSynthesis) return;
-    
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
-    
-    // Strip HTML and clean up text for speech
-    const cleanText = text
-      .replace(/<[^>]*>/g, " ")
-      .replace(/\*\*([^*]+)\*\*/g, "$1")
-      .replace(/_([^_]+)_/g, "$1")
-      .replace(/\s+/g, " ")
-      .trim();
-    
-    if (!cleanText) return;
-    
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    
-    // Try to find a Norwegian voice
-    const voices = window.speechSynthesis.getVoices();
-    const norwegianVoice = voices.find(
-      (v) => v.lang.startsWith("no") || v.lang.startsWith("nb") || v.lang.startsWith("nn")
-    );
-    
-    if (norwegianVoice) {
-      utterance.voice = norwegianVoice;
-      utterance.lang = norwegianVoice.lang;
-    } else {
-      // Fallback to Norwegian language code even without a specific voice
-      utterance.lang = "nb-NO";
-    }
-    
-    utterance.rate = 0.9; // Slightly slower for learning
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    
-    window.speechSynthesis.speak(utterance);
-  }, []);
 
   /**
    * Play an audio URL
@@ -225,6 +153,89 @@ export function StudyMode({ deckId, onBack, onComplete }) {
 
   const { data: deck, loading: deckLoading, update: updateDeck } = useDocument(collections.decks, deckId);
 
+  // Preload speech synthesis voices and log available voice for deck language
+  useEffect(() => {
+    if (!window.speechSynthesis) return;
+    
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        setVoicesLoaded(true);
+        
+        // Log voice availability for the deck's language
+        const deckLang = deck?.language || "norwegian";
+        const langConfig = SUPPORTED_LANGUAGES[deckLang] || SUPPORTED_LANGUAGES.norwegian;
+        const langPrefix = langConfig.code;
+        
+        const matchingVoice = voices.find(
+          (v) => v.lang.startsWith(langPrefix) || v.lang.startsWith(langConfig.speechCode.split("-")[0])
+        );
+        
+        if (matchingVoice) {
+          console.log(`[TTS] ${langConfig.name} voice found:`, matchingVoice.name, matchingVoice.lang);
+        } else {
+          console.log(`[TTS] No ${langConfig.name} voice found, will use ${langConfig.speechCode}`);
+        }
+      }
+    };
+    
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => {
+      window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+    };
+  }, [deck?.language]);
+
+  /**
+   * Speak text using Web Speech API with appropriate voice for deck language
+   * @param {string} text
+   */
+  const speak = useCallback((text) => {
+    if (!text || !window.speechSynthesis) return;
+    
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    // Strip HTML and clean up text for speech
+    const cleanText = text
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/_([^_]+)_/g, "$1")
+      .replace(/\s+/g, " ")
+      .trim();
+    
+    if (!cleanText) return;
+    
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    
+    // Get the language settings for this deck
+    const deckLang = deck?.language || "norwegian";
+    const langConfig = SUPPORTED_LANGUAGES[deckLang] || SUPPORTED_LANGUAGES.norwegian;
+    const speechCode = langConfig.speechCode;
+    const langPrefix = langConfig.code;
+    
+    // Try to find a voice for the deck's language
+    const voices = window.speechSynthesis.getVoices();
+    const matchingVoice = voices.find(
+      (v) => v.lang.startsWith(langPrefix) || v.lang.startsWith(speechCode.split("-")[0])
+    );
+    
+    if (matchingVoice) {
+      utterance.voice = matchingVoice;
+      utterance.lang = matchingVoice.lang;
+    } else {
+      // Fallback to language code even without a specific voice
+      utterance.lang = speechCode;
+    }
+    
+    utterance.rate = 0.9; // Slightly slower for learning
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    
+    window.speechSynthesis.speak(utterance);
+  }, [deck?.language]);
+
   const cardQueryOptions = useMemo(() => ({
     where: user?.uid ? [
       ["deckId", "==", deckId],
@@ -241,22 +252,19 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   // Calculate card counts by type (for study options screen)
   const cardCounts = useMemo(() => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
     
     let newCards = 0;
-    let overdue = 0;      // Past due date
-    let dueToday = 0;     // Due today
-    let dueSoon = 0;      // Due in next 7 days
+    let reviewsDue = 0;     // Cards that have been seen and are due
     let strugglingCards = 0;  // In Box 1, have been reviewed (marked hard)
     let learningCards = 0;    // In Box 2-4, progressing
     
     allCards.forEach((card) => {
       const isNew = !card.lastReviewedAt;
       const box = card.box || 1;
+      const reviewDate = card.nextReviewAt 
+        ? (card.nextReviewAt.toDate ? card.nextReviewAt.toDate() : new Date(card.nextReviewAt))
+        : null;
+      const isDue = !reviewDate || reviewDate <= now;
       
       if (isNew) {
         newCards++;
@@ -267,43 +275,41 @@ export function StudyMode({ deckId, onBack, onComplete }) {
         } else if (box >= 2 && box <= 4) {
           learningCards++;
         }
-        // Box 5 = mastered, not counted separately for review
         
-        // Categorize by schedule
-        if (card.nextReviewAt) {
-          const reviewDate = card.nextReviewAt.toDate ? card.nextReviewAt.toDate() : new Date(card.nextReviewAt);
-          if (reviewDate < today) {
-            overdue++;
-          } else if (reviewDate < tomorrow) {
-            dueToday++;
-          } else if (reviewDate < nextWeek) {
-            dueSoon++;
-          }
+        // Count if due for review
+        if (isDue) {
+          reviewsDue++;
         }
       }
     });
     
+    // Calculate today's session with the new cards limit
+    const newLimit = typeof newCardsPerDay === "number" ? newCardsPerDay : 40;
+    const newToday = Math.min(newCards, newLimit);
+    
     return { 
-      newCards, 
-      overdue,
-      dueToday,
-      dueSoon,
+      newCards,        // Total new cards available
+      newToday,        // New cards for today (limited)
+      reviewsDue,      // Reviews due now
       strugglingCards, 
       learningCards,
-      totalDue: overdue + dueToday,
-      total: newCards + overdue + dueToday
+      dailyTotal: newToday + reviewsDue  // Today's manageable session
     };
-  }, [allCards]);
+  }, [allCards, newCardsPerDay]);
 
   // Filter and limit cards based on study options
   const dueCards = useMemo(() => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const newLimit = typeof newCardsPerDay === "number" ? newCardsPerDay : 40;
     
-    const filtered = allCards.filter((card) => {
-      if (reviewedCardIds.has(card.id)) return false;
+    // First, separate new cards and review cards
+    /** @type {typeof allCards} */
+    const newCardsPool = [];
+    /** @type {typeof allCards} */
+    const reviewCardsPool = [];
+    
+    allCards.forEach((card) => {
+      if (reviewedCardIds.has(card.id)) return;
       
       const isNew = !card.lastReviewedAt;
       const box = card.box || 1;
@@ -311,28 +317,31 @@ export function StudyMode({ deckId, onBack, onComplete }) {
         ? (card.nextReviewAt.toDate ? card.nextReviewAt.toDate() : new Date(card.nextReviewAt))
         : null;
       const isDue = !reviewDate || reviewDate <= now;
-      const isOverdue = reviewDate && reviewDate < today;
       
       // Filter by study type
       switch (studyType) {
         case "new":
-          return isNew;
+          if (isNew) newCardsPool.push(card);
+          break;
         case "struggling":
-          // Show ALL struggling cards (Box 1) - user wants to practice hard ones
-          return !isNew && box === 1;
+          if (!isNew && box === 1) reviewCardsPool.push(card);
+          break;
         case "learning":
-          // Show ALL learning cards (Box 2-4) - user wants to reinforce
-          return !isNew && box >= 2 && box <= 4;
-        case "overdue":
-          return !isNew && isOverdue;
+          if (!isNew && box >= 2 && box <= 4) reviewCardsPool.push(card);
+          break;
         case "all":
         default:
-          return isDue;
+          if (isNew) {
+            newCardsPool.push(card);
+          } else if (isDue) {
+            reviewCardsPool.push(card);
+          }
+          break;
       }
     });
     
     // Sort by importOrder (asc) to preserve original file order
-    const sorted = filtered.sort((a, b) => {
+    const sortCards = (cards) => cards.sort((a, b) => {
       if (a.importOrder !== undefined && b.importOrder !== undefined) {
         return a.importOrder - b.importOrder;
       }
@@ -343,14 +352,32 @@ export function StudyMode({ deckId, onBack, onComplete }) {
       return bTime - aTime;
     });
     
-    // Apply card limit
-    const limit = typeof cardLimit === "number" && cardLimit > 0 ? cardLimit : sorted.length;
-    return sorted.slice(0, limit);
-  }, [allCards, reviewedCardIds, studyType, cardLimit]);
+    sortCards(newCardsPool);
+    sortCards(reviewCardsPool);
+    
+    // For "all" mode: limit new cards, include all reviews
+    // For other modes: no limit on the selected type
+    if (studyType === "all") {
+      const limitedNew = newCardsPool.slice(0, newLimit);
+      return [...reviewCardsPool, ...limitedNew]; // Reviews first, then new
+    } else if (studyType === "new") {
+      return newCardsPool.slice(0, newLimit);
+    } else {
+      return reviewCardsPool;
+    }
+  }, [allCards, reviewedCardIds, studyType, newCardsPerDay]);
 
   const currentCard = dueCards[currentIndex];
-  const totalDue = dueCards.length + sessionStats.reviewed;
+  // Use captured session size for stable progress tracking (doesn't change as cards are reviewed)
+  const totalDue = sessionTotalCards ?? (dueCards.length + sessionStats.reviewed);
   const progress = totalDue > 0 ? (sessionStats.reviewed / totalDue) * 100 : 0;
+
+  // Capture session size when study starts (so the denominator stays fixed)
+  useEffect(() => {
+    if (studyStarted && sessionTotalCards === null && dueCards.length > 0) {
+      setSessionTotalCards(dueCards.length);
+    }
+  }, [studyStarted, sessionTotalCards, dueCards.length]);
 
   // Auto-speak the FRONT (Norwegian word) when flipping to back
   useEffect(() => {
@@ -513,132 +540,101 @@ export function StudyMode({ deckId, onBack, onComplete }) {
             <Box w={28} />
           </Group>
 
-          <Title order={4} c="white" mb="md">What would you like to study?</Title>
-          
-          <SimpleGrid cols={2} spacing="md" mb="md">
-            <Paper
-              p="md"
-              radius="md"
-              onClick={() => cardCounts.newCards > 0 && setStudyType("new")}
-              style={{
-                background: studyType === "new" ? "rgba(233, 69, 96, 0.2)" : "rgba(255, 255, 255, 0.02)",
-                border: `2px solid ${studyType === "new" ? "#e94560" : "rgba(255, 255, 255, 0.1)"}`,
-                cursor: cardCounts.newCards > 0 ? "pointer" : "not-allowed",
-                textAlign: "center",
-                transition: "all 0.2s ease",
-                opacity: cardCounts.newCards > 0 ? 1 : 0.5,
-              }}
-            >
-              <ThemeIcon size="xl" radius="xl" variant="light" color="cyan" mx="auto" mb="sm">
-                <IconSparkles size={24} />
-              </ThemeIcon>
-              <Text fw={600} c="white" size="sm">New Cards</Text>
-              <Text size="xl" fw={700} c="cyan">{cardCounts.newCards}</Text>
-              <Text size="xs" c="dimmed">Never seen</Text>
-            </Paper>
-
-            <Paper
-              p="md"
-              radius="md"
-              onClick={() => cardCounts.strugglingCards > 0 && setStudyType("struggling")}
-              style={{
-                background: studyType === "struggling" ? "rgba(233, 69, 96, 0.2)" : "rgba(255, 255, 255, 0.02)",
-                border: `2px solid ${studyType === "struggling" ? "#e94560" : "rgba(255, 255, 255, 0.1)"}`,
-                cursor: cardCounts.strugglingCards > 0 ? "pointer" : "not-allowed",
-                textAlign: "center",
-                transition: "all 0.2s ease",
-                opacity: cardCounts.strugglingCards > 0 ? 1 : 0.5,
-              }}
-            >
-              <ThemeIcon size="xl" radius="xl" variant="light" color="red" mx="auto" mb="sm">
-                <IconAlertTriangle size={24} />
-              </ThemeIcon>
-              <Text fw={600} c="white" size="sm">Struggling</Text>
-              <Text size="xl" fw={700} c="red">{cardCounts.strugglingCards}</Text>
-              <Text size="xs" c="dimmed">Marked hard</Text>
-            </Paper>
-
-            <Paper
-              p="md"
-              radius="md"
-              onClick={() => cardCounts.learningCards > 0 && setStudyType("learning")}
-              style={{
-                background: studyType === "learning" ? "rgba(233, 69, 96, 0.2)" : "rgba(255, 255, 255, 0.02)",
-                border: `2px solid ${studyType === "learning" ? "#e94560" : "rgba(255, 255, 255, 0.1)"}`,
-                cursor: cardCounts.learningCards > 0 ? "pointer" : "not-allowed",
-                textAlign: "center",
-                transition: "all 0.2s ease",
-                opacity: cardCounts.learningCards > 0 ? 1 : 0.5,
-              }}
-            >
-              <ThemeIcon size="xl" radius="xl" variant="light" color="green" mx="auto" mb="sm">
-                <IconTrendingUp size={24} />
-              </ThemeIcon>
-              <Text fw={600} c="white" size="sm">Learning</Text>
-              <Text size="xl" fw={700} c="green">{cardCounts.learningCards}</Text>
-              <Text size="xs" c="dimmed">Progressing</Text>
-            </Paper>
-
-            <Paper
-              p="md"
-              radius="md"
-              onClick={() => cardCounts.overdue > 0 && setStudyType("overdue")}
-              style={{
-                background: studyType === "overdue" ? "rgba(233, 69, 96, 0.2)" : "rgba(255, 255, 255, 0.02)",
-                border: `2px solid ${studyType === "overdue" ? "#e94560" : "rgba(255, 255, 255, 0.1)"}`,
-                cursor: cardCounts.overdue > 0 ? "pointer" : "not-allowed",
-                textAlign: "center",
-                transition: "all 0.2s ease",
-                opacity: cardCounts.overdue > 0 ? 1 : 0.5,
-              }}
-            >
-              <ThemeIcon size="xl" radius="xl" variant="light" color="orange" mx="auto" mb="sm">
-                <IconAlarm size={24} />
-              </ThemeIcon>
-              <Text fw={600} c="white" size="sm">Overdue</Text>
-              <Text size="xl" fw={700} c="orange">{cardCounts.overdue}</Text>
-              <Text size="xs" c="dimmed">Past schedule</Text>
-            </Paper>
-          </SimpleGrid>
-
+          {/* Today's Session - the main option */}
           <Paper
-            p="md"
+            p="lg"
             radius="md"
-            onClick={() => cardCounts.total > 0 && setStudyType("all")}
-            mb="xl"
+            onClick={() => cardCounts.dailyTotal > 0 && setStudyType("all")}
+            mb="lg"
             style={{
-              background: studyType === "all" ? "rgba(233, 69, 96, 0.2)" : "rgba(255, 255, 255, 0.02)",
+              background: studyType === "all" ? "rgba(233, 69, 96, 0.15)" : "rgba(255, 255, 255, 0.03)",
               border: `2px solid ${studyType === "all" ? "#e94560" : "rgba(255, 255, 255, 0.1)"}`,
-              cursor: cardCounts.total > 0 ? "pointer" : "not-allowed",
-              textAlign: "center",
+              cursor: cardCounts.dailyTotal > 0 ? "pointer" : "not-allowed",
               transition: "all 0.2s ease",
-              opacity: cardCounts.total > 0 ? 1 : 0.5,
+              opacity: cardCounts.dailyTotal > 0 ? 1 : 0.5,
             }}
           >
-            <Group justify="center" gap="md">
-              <ThemeIcon size="xl" radius="xl" variant="light" color="pink">
-                <IconStack2 size={24} />
-              </ThemeIcon>
-              <Box>
-                <Text fw={600} c="white" size="sm">All Due Cards</Text>
-                <Text size="xs" c="dimmed">{cardCounts.newCards} new + {cardCounts.totalDue} review = <Text span fw={700} c="pink">{cardCounts.total}</Text> total</Text>
-              </Box>
+            <Group justify="space-between" align="center">
+              <Group gap="md">
+                <ThemeIcon size={50} radius="xl" variant="gradient" gradient={{ from: "#e94560", to: "#ff6b6b" }}>
+                  <IconCards size={28} />
+                </ThemeIcon>
+                <Box>
+                  <Text fw={600} c="white" size="lg">Today's Session</Text>
+                  <Text size="sm" c="dimmed">
+                    {cardCounts.newToday} new + {cardCounts.reviewsDue} review
+                  </Text>
+                </Box>
+              </Group>
+              <Text size="2rem" fw={700} c="pink">{cardCounts.dailyTotal}</Text>
             </Group>
           </Paper>
 
-          <Text c="dimmed" size="sm" mb="xs">How many cards?</Text>
+          {/* New cards per day setting */}
+          <Text c="dimmed" size="sm" mb="xs">New cards per day</Text>
           <NumberInput
-            value={cardLimit}
-            onChange={(val) => setCardLimit(val)}
-            min={1}
-            max={500}
+            value={newCardsPerDay}
+            onChange={(val) => setNewCardsPerDay(val)}
+            min={5}
+            max={100}
             step={5}
-            placeholder="All cards"
             styles={{
               input: { background: "rgba(255, 255, 255, 0.05)", borderColor: "rgba(255, 255, 255, 0.1)", color: "white" },
             }}
-            mb="xl"
+            mb="lg"
           />
+
+          {/* Additional options - collapsed by default */}
+          <Text c="dimmed" size="xs" mb="sm">Or focus on a specific type:</Text>
+          <SimpleGrid cols={3} spacing="sm" mb="xl">
+            <Paper
+              p="sm"
+              radius="md"
+              onClick={() => cardCounts.newCards > 0 && setStudyType("new")}
+              style={{
+                background: studyType === "new" ? "rgba(6, 182, 212, 0.2)" : "rgba(255, 255, 255, 0.02)",
+                border: `1px solid ${studyType === "new" ? "#06b6d4" : "rgba(255, 255, 255, 0.1)"}`,
+                cursor: cardCounts.newCards > 0 ? "pointer" : "not-allowed",
+                textAlign: "center",
+                opacity: cardCounts.newCards > 0 ? 1 : 0.4,
+              }}
+            >
+              <Text fw={600} c="cyan" size="lg">{cardCounts.newToday}</Text>
+              <Text size="xs" c="dimmed">New</Text>
+            </Paper>
+
+            <Paper
+              p="sm"
+              radius="md"
+              onClick={() => cardCounts.strugglingCards > 0 && setStudyType("struggling")}
+              style={{
+                background: studyType === "struggling" ? "rgba(239, 68, 68, 0.2)" : "rgba(255, 255, 255, 0.02)",
+                border: `1px solid ${studyType === "struggling" ? "#ef4444" : "rgba(255, 255, 255, 0.1)"}`,
+                cursor: cardCounts.strugglingCards > 0 ? "pointer" : "not-allowed",
+                textAlign: "center",
+                opacity: cardCounts.strugglingCards > 0 ? 1 : 0.4,
+              }}
+            >
+              <Text fw={600} c="red" size="lg">{cardCounts.strugglingCards}</Text>
+              <Text size="xs" c="dimmed">Struggling</Text>
+            </Paper>
+
+            <Paper
+              p="sm"
+              radius="md"
+              onClick={() => cardCounts.learningCards > 0 && setStudyType("learning")}
+              style={{
+                background: studyType === "learning" ? "rgba(34, 197, 94, 0.2)" : "rgba(255, 255, 255, 0.02)",
+                border: `1px solid ${studyType === "learning" ? "#22c55e" : "rgba(255, 255, 255, 0.1)"}`,
+                cursor: cardCounts.learningCards > 0 ? "pointer" : "not-allowed",
+                textAlign: "center",
+                opacity: cardCounts.learningCards > 0 ? 1 : 0.4,
+              }}
+            >
+              <Text fw={600} c="green" size="lg">{cardCounts.learningCards}</Text>
+              <Text size="xs" c="dimmed">Learning</Text>
+            </Paper>
+          </SimpleGrid>
 
           <Group justify="center" gap="md">
             <Button variant="light" color="gray" onClick={onBack}>
@@ -654,15 +650,14 @@ export function StudyMode({ deckId, onBack, onComplete }) {
                 (studyType === "new" && cardCounts.newCards === 0) ||
                 (studyType === "struggling" && cardCounts.strugglingCards === 0) ||
                 (studyType === "learning" && cardCounts.learningCards === 0) ||
-                (studyType === "overdue" && cardCounts.overdue === 0) ||
-                (studyType === "all" && cardCounts.total === 0)
+                (studyType === "all" && cardCounts.dailyTotal === 0)
               }
             >
               Start Studying
             </Button>
           </Group>
 
-          {cardCounts.total === 0 && (
+          {cardCounts.dailyTotal === 0 && cardCounts.newCards === 0 && (
             <Text c="dimmed" size="sm" ta="center" mt="md">
               No cards are due for study right now. Check back later!
             </Text>
@@ -724,6 +719,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
                   setSessionStats({ correct: 0, incorrect: 0, reviewed: 0 });
                   setCurrentIndex(0);
                   setShowBack(false);
+                  setSessionTotalCards(null); // Reset so new session captures fresh total
                   setStudyStarted(false); // Go back to study options
                 }}
               >

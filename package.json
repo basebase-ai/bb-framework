@@ -34,6 +34,7 @@
     "@tiptap/extension-underline": "^3.12.1",
     "@tiptap/react": "^3.12.1",
     "@tiptap/starter-kit": "^3.12.1",
+    "apkg-reader.js": "^1.0.1",
     "compression": "^1.7.4",
     "dayjs": "^1.11.19",
     "embla-carousel-react": "^8.6.0",

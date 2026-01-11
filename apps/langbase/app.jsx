@@ -1,11 +1,16 @@
 /**
  * Flashcards - Spaced Repetition Learning App
  * 
+ * Two main tabs:
+ *   - Vocabulary: Create/import flashcard decks, study with Leitner system
+ *   - Reading: Import documents, click words to learn vocabulary
+ * 
  * Routes:
- *   /              - Deck list (auth required)
+ *   /              - Home (shows active tab content)
  *   /deck/:id      - View cards in a deck
  *   /study/:id     - Study mode for a deck
  *   /practice/:id  - Sentence practice mode
+ *   /read/:id      - Reading view for a document
  */
 
 import React, { useState } from "react";
@@ -20,9 +25,10 @@ import {
   Menu,
   Box,
   Title,
+  Tabs,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { IconLogin, IconLogout, IconUser, IconCards } from "@tabler/icons-react";
+import { IconLogin, IconLogout, IconUser, IconCards, IconBook2 } from "@tabler/icons-react";
 import { AppRouter, RouteContent } from "../../framework/components/AppRouter.jsx";
 import { useRoute } from "../../framework/hooks/useRoute.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
@@ -32,6 +38,10 @@ import { DeckList } from "./components/DeckList.jsx";
 import { CardList } from "./components/CardList.jsx";
 import { StudyMode } from "./components/StudyMode.jsx";
 import { SentencePractice } from "./components/SentencePractice.jsx";
+import { DocumentList } from "./components/reading/DocumentList.jsx";
+import { DocumentReader } from "./components/reading/DocumentReader.jsx";
+import { DocumentUpload } from "./components/reading/DocumentUpload.jsx";
+import { useUIStore } from "./stores/uiStore.js";
 import { APP_ID } from "./schema.js";
 
 // Mantine CSS imports
@@ -44,6 +54,9 @@ import "@mantine/notifications/styles.css";
 
 function HomePage() {
   const { navigate } = useRoute();
+  const activeTab = useUIStore((s) => s.activeTab);
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   /** @param {string} deckId */
   const handleViewDeck = (deckId) => {
@@ -55,11 +68,52 @@ function HomePage() {
     navigate(`/study/${deckId}`);
   };
 
+  /** @param {string} docId */
+  const handleOpenDocument = (docId) => {
+    navigate(`/read/${docId}`);
+  };
+
+  /** @param {string} docId */
+  const handleDocumentCreated = (docId) => {
+    navigate(`/read/${docId}`);
+  };
+
   return (
-    <DeckList
-      onViewDeck={handleViewDeck}
-      onStudyDeck={handleStudyDeck}
-    />
+    <Box>
+      <Tabs
+        value={activeTab}
+        onChange={(val) => val && setActiveTab(/** @type {'vocabulary' | 'reading'} */ (val))}
+        mb="lg"
+      >
+        <Tabs.List>
+          <Tabs.Tab value="vocabulary" leftSection={<IconCards size={16} />}>
+            Vocabulary
+          </Tabs.Tab>
+          <Tabs.Tab value="reading" leftSection={<IconBook2 size={16} />}>
+            Reading
+          </Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
+
+      {activeTab === "vocabulary" ? (
+        <DeckList
+          onViewDeck={handleViewDeck}
+          onStudyDeck={handleStudyDeck}
+        />
+      ) : (
+        <>
+          <DocumentList
+            onOpenDocument={handleOpenDocument}
+            onAddDocument={() => setUploadOpen(true)}
+          />
+          <DocumentUpload
+            opened={uploadOpen}
+            onClose={() => setUploadOpen(false)}
+            onSuccess={handleDocumentCreated}
+          />
+        </>
+      )}
+    </Box>
   );
 }
 
@@ -125,6 +179,16 @@ function PracticePage() {
   );
 }
 
+function ReadPage() {
+  const { params, navigate } = useRoute();
+
+  const handleBack = () => {
+    navigate("/");
+  };
+
+  return <DocumentReader documentId={params.id || ""} onBack={handleBack} />;
+}
+
 // ============================================================================
 // Route Definitions
 // ============================================================================
@@ -135,6 +199,7 @@ const routes = [
   { path: "/deck/:id", component: DeckViewPage, auth: true },
   { path: "/study/:id", component: StudyPage, auth: true },
   { path: "/practice/:id", component: PracticePage, auth: true },
+  { path: "/read/:id", component: ReadPage, auth: true },
 ];
 
 // ============================================================================
@@ -171,8 +236,8 @@ function LandingPage({ onSignIn }) {
           Flashcards
         </Title>
         <Text size="xl" c="gray.4" mb="xl">
-          Master anything with the scientifically proven Leitner spaced repetition system.
-          Create decks, import from Anki, and track your progress.
+          Master any language with flashcards and reading practice.
+          Create decks, import from Anki, read foreign texts, and track your progress.
         </Text>
         <Group justify="center" gap="md">
           <Button
@@ -192,8 +257,8 @@ function LandingPage({ onSignIn }) {
               <Text size="sm" c="gray.5" mt="xs">Create Decks</Text>
             </Box>
             <Box ta="center">
-              <Text size="2rem" fw={700} c="white">📥</Text>
-              <Text size="sm" c="gray.5" mt="xs">Import Anki</Text>
+              <Text size="2rem" fw={700} c="white">📖</Text>
+              <Text size="sm" c="gray.5" mt="xs">Read & Learn</Text>
             </Box>
             <Box ta="center">
               <Text size="2rem" fw={700} c="white">🧠</Text>
@@ -379,4 +444,3 @@ if (import.meta.hot) {
 }
 
 export default App;
-

@@ -1,17 +1,19 @@
 /**
  * Flashcards App - Schema Definition
- * 
+ *
  * Collections:
  * - decks: Flashcard decks with metadata
  * - cards: Individual flashcards with Leitner system tracking
+ * - documents: Imported reading documents
+ * - vocabulary: Words looked up during reading
  */
 
 // Your app's unique identifier
-export const APP_ID = "flashcards";
+export const APP_ID = "langbase";
 
 /**
  * Namespaced collection names
- * @type {{ apps: string, users: string, decks: string, cards: string }}
+ * @type {{ apps: string, users: string, decks: string, cards: string, documents: string, vocabulary: string }}
  */
 export const collections = {
   // Global collections (no namespace needed - platform-managed)
@@ -21,6 +23,8 @@ export const collections = {
   // App-specific collections (automatically namespaced)
   decks: `${APP_ID}_decks`,
   cards: `${APP_ID}_cards`,
+  documents: `${APP_ID}_documents`,
+  vocabulary: `${APP_ID}_vocabulary`,
 };
 
 /**
@@ -44,6 +48,29 @@ export const LEITNER_INTERVALS = {
   4: 7,
   5: 14,
 };
+
+/**
+ * Supported source languages for reading
+ * @type {Record<string, { code: string, name: string, speechCode: string }>}
+ */
+export const SUPPORTED_LANGUAGES = {
+  norwegian: { code: "no", name: "Norwegian", speechCode: "nb-NO" },
+  swedish: { code: "sv", name: "Swedish", speechCode: "sv-SE" },
+  danish: { code: "da", name: "Danish", speechCode: "da-DK" },
+  german: { code: "de", name: "German", speechCode: "de-DE" },
+  french: { code: "fr", name: "French", speechCode: "fr-FR" },
+  spanish: { code: "es", name: "Spanish", speechCode: "es-ES" },
+  italian: { code: "it", name: "Italian", speechCode: "it-IT" },
+  dutch: { code: "nl", name: "Dutch", speechCode: "nl-NL" },
+  portuguese: { code: "pt", name: "Portuguese", speechCode: "pt-PT" },
+  english: { code: "en", name: "English", speechCode: "en-US" },
+};
+
+/**
+ * Default language settings
+ */
+export const DEFAULT_SOURCE_LANGUAGE = "norwegian";
+export const TARGET_LANGUAGE = "en";
 
 // Schema definitions for type generation and documentation
 export const schema = {
@@ -73,7 +100,8 @@ export const schema = {
     ],
     rules: {
       read: "true",
-      write: "auth != null && (auth.uid == resource.data.owner || auth.uid in resource.data.get('collaborators', []))",
+      write:
+        "auth != null && (auth.uid == resource.data.owner || auth.uid in resource.data.get('collaborators', []))",
       create: "auth != null && request.resource.data.owner == auth.uid",
       delete: "auth != null && auth.uid == resource.data.owner",
     },
@@ -103,16 +131,14 @@ export const schema = {
       description: { type: "string" },
       owner: { type: "string", required: true },
       isPublic: { type: "boolean", default: false },
+      language: { type: "string", default: "norwegian" }, // Key from SUPPORTED_LANGUAGES
       cardCount: { type: "number", default: 0 },
       masteredCount: { type: "number", default: 0 },
       tags: { type: "array", items: { type: "string" } },
       createdAt: { type: "timestamp", auto: true },
       updatedAt: { type: "timestamp", auto: true },
     },
-    indexes: [
-      ["owner"],
-      ["isPublic"],
-    ],
+    indexes: [["owner"], ["isPublic"]],
     rules: {
       read: "auth != null && (auth.uid == resource.data.owner || resource.data.isPublic == true)",
       write: "auth != null && auth.uid == resource.data.owner",
@@ -137,10 +163,57 @@ export const schema = {
       createdAt: { type: "timestamp", auto: true },
       updatedAt: { type: "timestamp", auto: true },
     },
-    indexes: [
-      ["deckId"],
-      ["owner"],
-    ],
+    indexes: [["deckId"], ["owner"]],
+    rules: {
+      read: "auth != null && auth.uid == resource.data.owner",
+      write: "auth != null && auth.uid == resource.data.owner",
+      create: "auth != null && request.resource.data.owner == auth.uid",
+      delete: "auth != null && auth.uid == resource.data.owner",
+    },
+  },
+
+  [`${APP_ID}_documents`]: {
+    fields: {
+      title: { type: "string", required: true },
+      content: { type: "string", required: true },
+      sourceLanguage: { type: "string", required: true },
+      sourceType: {
+        type: "enum",
+        values: ["text", "pdf"],
+        default: "text",
+      },
+      wordCount: { type: "number", default: 0 },
+      owner: { type: "string", required: true },
+      lastReadPosition: { type: "number", default: 0 },
+      linkedDeckId: { type: "string" }, // Deck to add vocabulary cards to
+      createdAt: { type: "timestamp", auto: true },
+      updatedAt: { type: "timestamp", auto: true },
+    },
+    indexes: [["owner"], ["owner", "createdAt"]],
+    rules: {
+      read: "auth != null && auth.uid == resource.data.owner",
+      write: "auth != null && auth.uid == resource.data.owner",
+      create: "auth != null && request.resource.data.owner == auth.uid",
+      delete: "auth != null && auth.uid == resource.data.owner",
+    },
+  },
+
+  [`${APP_ID}_vocabulary`]: {
+    fields: {
+      word: { type: "string", required: true },
+      translation: { type: "string", required: true },
+      sourceLanguage: { type: "string", required: true },
+      owner: { type: "string", required: true },
+      lookupCount: { type: "number", default: 1 },
+      masteryLevel: { type: "number", default: 0 },
+      correctCount: { type: "number", default: 0 },
+      incorrectCount: { type: "number", default: 0 },
+      lastReviewedAt: { type: "timestamp" },
+      nextReviewAt: { type: "timestamp" },
+      createdAt: { type: "timestamp", auto: true },
+      updatedAt: { type: "timestamp", auto: true },
+    },
+    indexes: [["owner"], ["owner", "nextReviewAt"]],
     rules: {
       read: "auth != null && auth.uid == resource.data.owner",
       write: "auth != null && auth.uid == resource.data.owner",
@@ -158,9 +231,12 @@ export const schema = {
     },
     rules: {
       read: "true",
-      write: "auth != null && (auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []))",
-      create: "auth != null && (auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []))",
-      delete: "auth != null && auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner",
+      write:
+        "auth != null && (auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []))",
+      create:
+        "auth != null && (auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner || auth.uid in get(/databases/$(database)/documents/apps/$(appId)).data.get('collaborators', []))",
+      delete:
+        "auth != null && auth.uid == get(/databases/$(database)/documents/apps/$(appId)).data.owner",
     },
   },
 };
@@ -190,4 +266,3 @@ export function generateRules(schemaObj) {
   rules += "  }\n}";
   return rules;
 }
-
