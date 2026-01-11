@@ -252,16 +252,20 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
     const cleanWord = word.replace(/[.,!?;:'"()[\]{}]/g, "").trim();
     if (!cleanWord) return;
     
+    // Use viewport coordinates for fixed positioning
     const rect = e.currentTarget.getBoundingClientRect();
-    const containerRect = chatContainerRef.current?.getBoundingClientRect();
+    const posX = rect.left + rect.width / 2;
+    const posY = rect.top;
+    
+    console.log("[Tooltip] Word clicked:", cleanWord, "Position:", { x: posX, y: posY, rect });
     
     setSelectedWord({
       word: cleanWord,
       translation: null,
       loading: true,
       position: {
-        x: rect.left - (containerRect?.left || 0) + rect.width / 2,
-        y: rect.top - (containerRect?.top || 0) - 10,
+        x: posX,
+        y: posY,
       },
     });
     
@@ -358,6 +362,7 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
   }
   
   return (
+    <>
     <Box style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 140px)" }}>
       {/* Header */}
       <Group mb="md" justify="space-between" style={{ flexShrink: 0 }}>
@@ -416,51 +421,6 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
               )}
               <div ref={messagesEndRef} />
             </Stack>
-          
-          {/* Word tooltip */}
-          {selectedWord && (
-            <Paper
-              shadow="lg"
-              p="sm"
-              withBorder
-              style={{
-                position: "absolute",
-                left: selectedWord.position.x,
-                top: selectedWord.position.y,
-                transform: "translate(-50%, -100%)",
-                zIndex: 100,
-                minWidth: 120,
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Stack gap="xs">
-                <Group justify="space-between" gap="xs">
-                  <Text fw={600} size="sm">
-                    {selectedWord.word}
-                  </Text>
-                  <ActionIcon size="xs" variant="subtle" onClick={() => setSelectedWord(null)}>
-                    <IconX size={12} />
-                  </ActionIcon>
-                </Group>
-                {selectedWord.loading ? (
-                  <Loader size="xs" />
-                ) : (
-                  <Group gap="xs">
-                    <Text size="sm" c="dimmed">
-                      {selectedWord.translation}
-                    </Text>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      onClick={() => handleSpeak(selectedWord.word)}
-                    >
-                      <IconVolume size={12} />
-                    </ActionIcon>
-                  </Group>
-                )}
-              </Stack>
-            </Paper>
-          )}
           </Box>
           
           {/* Input area - fixed at bottom */}
@@ -561,7 +521,55 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
           </Text>
         </Paper>
       </Box>
+      
     </Box>
+    
+    {/* Word tooltip - rendered outside all containers with fixed positioning */}
+    {selectedWord && (
+      <Paper
+        shadow="lg"
+        p="sm"
+        withBorder
+        style={{
+          position: "fixed",
+          left: selectedWord.position.x,
+          top: selectedWord.position.y,
+          transform: "translate(-50%, -100%)",
+          zIndex: 10000,
+          minWidth: 120,
+          background: "var(--mantine-color-dark-7)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Stack gap="xs">
+          <Group justify="space-between" gap="xs">
+            <Text fw={600} size="sm">
+              {selectedWord.word}
+            </Text>
+            <ActionIcon size="xs" variant="subtle" onClick={() => setSelectedWord(null)}>
+              <IconX size={12} />
+            </ActionIcon>
+          </Group>
+          {selectedWord.loading ? (
+            <Loader size="xs" />
+          ) : (
+            <Group gap="xs">
+              <Text size="sm" c="dimmed">
+                {selectedWord.translation}
+              </Text>
+              <ActionIcon
+                size="xs"
+                variant="subtle"
+                onClick={() => handleSpeak(selectedWord.word)}
+              >
+                <IconVolume size={12} />
+              </ActionIcon>
+            </Group>
+          )}
+        </Stack>
+      </Paper>
+    )}
+    </>
   );
 }
 
