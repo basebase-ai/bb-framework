@@ -1,9 +1,10 @@
 /**
- * Flashcards - Spaced Repetition Learning App
+ * LangBase - Free Language Learning Toolkit
  * 
- * Two main tabs:
- *   - Vocabulary: Create/import flashcard decks, study with Leitner system
- *   - Reading: Import documents, click words to learn vocabulary
+ * Features:
+ *   - Flashcard Study: Spaced repetition with Leitner system, Anki import
+ *   - Sentence Practice: AI-generated comprehension exercises
+ *   - Assisted Reading: Import texts/PDFs with click-to-translate
  * 
  * Routes:
  *   /              - Home (shows active tab content)
@@ -206,70 +207,270 @@ const routes = [
 // Landing Page
 // ============================================================================
 
-/** @param {{ onSignIn: () => void }} props */
-function LandingPage({ onSignIn }) {
+function LandingPage() {
+  const { promptSignIn } = useAuth();
   return (
     <Box
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2rem",
+        background: "linear-gradient(180deg, #0a0a12 0%, #12121f 50%, #1a1a2e 100%)",
       }}
     >
-      <Box ta="center" maw={600}>
-        <IconCards size={80} color="#e94560" style={{ marginBottom: "1.5rem" }} />
+      {/* Hero Section */}
+      <Box
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "4rem 2rem",
+          minHeight: "70vh",
+          textAlign: "center",
+        }}
+      >
+        <Box
+          style={{
+            width: 100,
+            height: 100,
+            borderRadius: "24px",
+            background: "linear-gradient(135deg, #e94560 0%, #ff6b6b 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: "2rem",
+            boxShadow: "0 20px 60px rgba(233, 69, 96, 0.3)",
+          }}
+        >
+          <IconCards size={50} color="white" />
+        </Box>
         <Title
           order={1}
           style={{
-            fontSize: "3.5rem",
+            fontSize: "clamp(2.5rem, 6vw, 4rem)",
             fontWeight: 800,
-            background: "linear-gradient(135deg, #e94560 0%, #ff6b6b 100%)",
+            background: "linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            marginBottom: "1rem",
+            marginBottom: "0.5rem",
+            letterSpacing: "-0.03em",
           }}
         >
-          Flashcards
+          LangBase
         </Title>
-        <Text size="xl" c="gray.4" mb="xl">
-          Master any language with flashcards and reading practice.
-          Create decks, import from Anki, read foreign texts, and track your progress.
+        <Text
+          size="xl"
+          c="gray.5"
+          maw={500}
+          mb="sm"
+          style={{ lineHeight: 1.6 }}
+        >
+          A free, open-source language learning toolkit
         </Text>
-        <Group justify="center" gap="md">
-          <Button
-            size="lg"
-            variant="gradient"
-            gradient={{ from: "#e94560", to: "#ff6b6b" }}
-            onClick={onSignIn}
-            leftSection={<IconLogin size={20} />}
+        <Text
+          size="md"
+          c="gray.6"
+          maw={600}
+          mb="xl"
+          style={{ lineHeight: 1.7 }}
+        >
+          Master vocabulary with spaced repetition flashcards, practice reading comprehension 
+          with instant translations, and build fluency through AI-generated sentence practice.
+        </Text>
+        <Button
+          size="xl"
+          variant="gradient"
+          gradient={{ from: "#e94560", to: "#ff6b6b" }}
+          onClick={promptSignIn}
+          leftSection={<IconLogin size={22} />}
+          style={{
+            boxShadow: "0 10px 40px rgba(233, 69, 96, 0.4)",
+            fontWeight: 600,
+          }}
+        >
+          Start Learning — Free
+        </Button>
+        <Text size="xs" c="gray.7" mt="md">
+          No credit card required. Sign in with Google.
+        </Text>
+      </Box>
+
+      {/* Features Section */}
+      <Box
+        style={{
+          background: "rgba(255, 255, 255, 0.02)",
+          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+          padding: "4rem 2rem",
+        }}
+      >
+        <Box maw={1000} mx="auto">
+          <Title order={2} ta="center" c="white" mb="xs" fw={700}>
+            Three powerful tools, one app
+          </Title>
+          <Text ta="center" c="gray.5" mb="xl" size="lg">
+            Everything you need to learn a new language effectively
+          </Text>
+
+          <Box
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: "2rem",
+              marginTop: "2rem",
+            }}
           >
-            Get Started
-          </Button>
-        </Group>
-        <Box mt="xl" pt="xl">
-          <Group justify="center" gap="xl">
-            <Box ta="center">
-              <Text size="2rem" fw={700} c="white">📚</Text>
-              <Text size="sm" c="gray.5" mt="xs">Create Decks</Text>
+            {/* Feature 1: Flashcards */}
+            <Box
+              style={{
+                background: "linear-gradient(135deg, rgba(233, 69, 96, 0.1) 0%, rgba(255, 107, 107, 0.05) 100%)",
+                border: "1px solid rgba(233, 69, 96, 0.2)",
+                borderRadius: "16px",
+                padding: "2rem",
+              }}
+            >
+              <Box
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "12px",
+                  background: "rgba(233, 69, 96, 0.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "1rem",
+                }}
+              >
+                <IconCards size={28} color="#e94560" />
+              </Box>
+              <Title order={3} c="white" mb="sm" fw={600}>
+                Flashcard Study
+              </Title>
+              <Text c="gray.4" size="sm" style={{ lineHeight: 1.7 }}>
+                Learn vocabulary using the proven <strong style={{ color: "#e94560" }}>Leitner spaced repetition system</strong>. 
+                Create your own decks or <strong style={{ color: "#e94560" }}>import directly from Anki</strong> (.apkg files). 
+                Includes text-to-speech for 10+ languages.
+              </Text>
+              <Box mt="md">
+                <Text size="xs" c="gray.6">
+                  ✓ Anki deck import (.apkg) &nbsp; ✓ Leitner boxes &nbsp; ✓ Audio TTS
+                </Text>
+              </Box>
             </Box>
-            <Box ta="center">
-              <Text size="2rem" fw={700} c="white">📖</Text>
-              <Text size="sm" c="gray.5" mt="xs">Read & Learn</Text>
+
+            {/* Feature 2: Sentence Practice */}
+            <Box
+              style={{
+                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)",
+                border: "1px solid rgba(99, 102, 241, 0.2)",
+                borderRadius: "16px",
+                padding: "2rem",
+              }}
+            >
+              <Box
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "12px",
+                  background: "rgba(99, 102, 241, 0.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "1rem",
+                }}
+              >
+                <Text size="xl">🧠</Text>
+              </Box>
+              <Title order={3} c="white" mb="sm" fw={600}>
+                Sentence Practice
+              </Title>
+              <Text c="gray.4" size="sm" style={{ lineHeight: 1.7 }}>
+                Practice reading comprehension with <strong style={{ color: "#6366f1" }}>AI-generated sentences</strong> using 
+                only your mastered vocabulary. Choose random sentences or follow 
+                a <strong style={{ color: "#6366f1" }}>cohesive story</strong> to keep practice engaging.
+              </Text>
+              <Box mt="md">
+                <Text size="xs" c="gray.6">
+                  ✓ Uses your vocab &nbsp; ✓ Story mode &nbsp; ✓ Adjustable difficulty
+                </Text>
+              </Box>
             </Box>
-            <Box ta="center">
-              <Text size="2rem" fw={700} c="white">🧠</Text>
-              <Text size="sm" c="gray.5" mt="xs">Leitner System</Text>
+
+            {/* Feature 3: Assisted Reading */}
+            <Box
+              style={{
+                background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(52, 211, 153, 0.05) 100%)",
+                border: "1px solid rgba(16, 185, 129, 0.2)",
+                borderRadius: "16px",
+                padding: "2rem",
+              }}
+            >
+              <Box
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "12px",
+                  background: "rgba(16, 185, 129, 0.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "1rem",
+                }}
+              >
+                <IconBook2 size={28} color="#10b981" />
+              </Box>
+              <Title order={3} c="white" mb="sm" fw={600}>
+                Assisted Reading
+              </Title>
+              <Text c="gray.4" size="sm" style={{ lineHeight: 1.7 }}>
+                Import any text or PDF and read with <strong style={{ color: "#10b981" }}>instant word translations</strong>. 
+                Click any word to see its meaning, hear the <strong style={{ color: "#10b981" }}>pronunciation</strong>, 
+                and automatically save it as a flashcard for later review.
+              </Text>
+              <Box mt="md">
+                <Text size="xs" c="gray.6">
+                  ✓ Click-to-translate &nbsp; ✓ Auto-save vocab &nbsp; ✓ PDF support
+                </Text>
+              </Box>
             </Box>
-            <Box ta="center">
-              <Text size="2rem" fw={700} c="white">📊</Text>
-              <Text size="sm" c="gray.5" mt="xs">Track Progress</Text>
-            </Box>
-          </Group>
+          </Box>
         </Box>
+      </Box>
+
+      {/* Bottom CTA */}
+      <Box
+        style={{
+          padding: "4rem 2rem",
+          textAlign: "center",
+          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+        }}
+      >
+        <Title order={3} c="white" mb="sm">
+          Ready to start learning?
+        </Title>
+        <Text c="gray.5" mb="lg">
+          Join for free and begin your language journey today.
+        </Text>
+        <Button
+          size="lg"
+          variant="gradient"
+          gradient={{ from: "#e94560", to: "#ff6b6b" }}
+          onClick={promptSignIn}
+          leftSection={<IconLogin size={18} />}
+        >
+          Get Started
+        </Button>
+      </Box>
+
+      {/* Footer */}
+      <Box
+        style={{
+          padding: "2rem",
+          textAlign: "center",
+          borderTop: "1px solid rgba(255, 255, 255, 0.03)",
+        }}
+      >
+        <Text size="xs" c="gray.7">
+          LangBase is free and open source. Built with ❤️ for language learners.
+        </Text>
       </Box>
     </Box>
   );
@@ -322,7 +523,7 @@ function AppLayout() {
                 size="lg"
                 style={{ color: "#e94560", letterSpacing: "-0.02em" }}
               >
-                Flashcards
+                LangBase
               </Text>
             </Group>
 
@@ -415,7 +616,7 @@ function App() {
       <AppRouter
         appId={APP_ID}
         routes={routes}
-        landingPage={LandingPage}
+        landing={<LandingPage />}
       >
         <AppLayout />
       </AppRouter>
