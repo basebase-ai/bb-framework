@@ -55,7 +55,7 @@ export default function SettingsTab({ app, onUpdate, onDelete, onClose }) {
     description: app?.description || "",
     logoURL: app?.logoURL || "",
     accessMode: app?.accessMode || "open",
-    publicUse: app?.publicUse ?? true,
+    publicUse: app?.publicUse ?? false,
     publicEdit: app?.publicEdit ?? false,
     collaborators: app?.collaborators || [],
   });
@@ -187,7 +187,7 @@ export default function SettingsTab({ app, onUpdate, onDelete, onClose }) {
         description: app.description || "",
         logoURL: app.logoURL || "",
         accessMode: app.accessMode || "open",
-        publicUse: app.publicUse ?? true,
+        publicUse: app.publicUse ?? false,
         publicEdit: app.publicEdit ?? false,
         collaborators: app.collaborators || [],
       });

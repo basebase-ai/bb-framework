@@ -36,7 +36,7 @@ export default function AppGrid({
     );
   }, [apps, user]);
 
-  // Public apps
+  // Public apps (must explicitly set publicUse: true)
   const publicApps = useMemo(() => {
     return apps.filter(app => app.publicUse === true);
   }, [apps]);
