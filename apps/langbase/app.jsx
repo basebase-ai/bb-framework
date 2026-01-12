@@ -99,11 +99,11 @@ function HomePage() {
           <Tabs.Tab value="vocabulary" leftSection={<IconCards size={16} />}>
             Vocabulary
           </Tabs.Tab>
-          <Tabs.Tab value="reading" leftSection={<IconBook2 size={16} />}>
-            Reading
-          </Tabs.Tab>
           <Tabs.Tab value="conversation" leftSection={<IconMessageCircle size={16} />}>
             Conversation
+          </Tabs.Tab>
+          <Tabs.Tab value="reading" leftSection={<IconBook2 size={16} />}>
+            Reading
           </Tabs.Tab>
         </Tabs.List>
       </Tabs>
@@ -113,6 +113,10 @@ function HomePage() {
           onViewDeck={handleViewDeck}
           onStudyDeck={handleStudyDeck}
         />
+      )}
+      
+      {activeTab === "conversation" && (
+        <ScenarioList onOpenConversation={handleOpenConversation} />
       )}
       
       {activeTab === "reading" && (
@@ -127,10 +131,6 @@ function HomePage() {
             onSuccess={handleDocumentCreated}
           />
         </>
-      )}
-      
-      {activeTab === "conversation" && (
-        <ScenarioList onOpenConversation={handleOpenConversation} />
       )}
     </Box>
   );
@@ -291,11 +291,11 @@ function LandingPage() {
         <Text
           size="xl"
           c="gray.5"
-          maw={500}
+          maw={550}
           mb="sm"
           style={{ lineHeight: 1.6 }}
         >
-          A free, open-source language learning toolkit
+          Learn high-frequency words. Practice them in real conversations.
         </Text>
         <Text
           size="md"
@@ -304,8 +304,9 @@ function LandingPage() {
           mb="xl"
           style={{ lineHeight: 1.7 }}
         >
-          Master vocabulary with spaced repetition flashcards, practice reading comprehension 
-          with instant translations, and build fluency through AI-generated sentence practice.
+          A proven two-step method: First, <strong style={{ color: "#e94560" }}>memorize vocabulary</strong> with 
+          spaced repetition flashcards. Then, <strong style={{ color: "#f59e0b" }}>use those words</strong> in 
+          scenario-based AI conversations — ordering coffee, meeting friends, shopping, and more.
         </Text>
         <Button
           size="xl"
@@ -325,7 +326,7 @@ function LandingPage() {
         </Text>
       </Box>
 
-      {/* Features Section */}
+      {/* Method Section */}
       <Box
         style={{
           background: "rgba(255, 255, 255, 0.02)",
@@ -333,31 +334,52 @@ function LandingPage() {
           padding: "4rem 2rem",
         }}
       >
-        <Box maw={1000} mx="auto">
+        <Box maw={900} mx="auto">
           <Title order={2} ta="center" c="white" mb="xs" fw={700}>
-            Four powerful tools, one app
+            The two-step method
           </Title>
           <Text ta="center" c="gray.5" mb="xl" size="lg">
-            Everything you need to learn a new language effectively
+            Build vocabulary, then put it to use immediately
           </Text>
 
+          {/* Two main steps */}
           <Box
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
               gap: "2rem",
               marginTop: "2rem",
             }}
           >
-            {/* Feature 1: Flashcards */}
+            {/* Step 1: Learn Vocabulary */}
             <Box
               style={{
                 background: "linear-gradient(135deg, rgba(233, 69, 96, 0.1) 0%, rgba(255, 107, 107, 0.05) 100%)",
                 border: "1px solid rgba(233, 69, 96, 0.2)",
                 borderRadius: "16px",
                 padding: "2rem",
+                position: "relative",
               }}
             >
+              <Box
+                style={{
+                  position: "absolute",
+                  top: "-16px",
+                  left: "24px",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  background: "#e94560",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: 700,
+                  color: "white",
+                  fontSize: "14px",
+                }}
+              >
+                1
+              </Box>
               <Box
                 style={{
                   width: 56,
@@ -368,110 +390,56 @@ function LandingPage() {
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: "1rem",
+                  marginTop: "0.5rem",
                 }}
               >
                 <IconCards size={28} color="#e94560" />
               </Box>
               <Title order={3} c="white" mb="sm" fw={600}>
-                Flashcard Study
+                Learn High-Frequency Words
               </Title>
               <Text c="gray.4" size="sm" style={{ lineHeight: 1.7 }}>
-                Learn vocabulary using the proven <strong style={{ color: "#e94560" }}>Leitner spaced repetition system</strong>. 
-                Create your own decks or <strong style={{ color: "#e94560" }}>import directly from Anki</strong> (.apkg files). 
-                Includes text-to-speech for 10+ languages.
+                Import an <strong style={{ color: "#e94560" }}>Anki deck</strong> of the most common words in your 
+                target language, or create your own. The <strong style={{ color: "#e94560" }}>Leitner spaced 
+                repetition system</strong> ensures you review words at optimal intervals — spending 
+                more time on words you struggle with.
               </Text>
               <Box mt="md">
                 <Text size="xs" c="gray.6">
-                  ✓ Anki deck import (.apkg) &nbsp; ✓ Leitner boxes &nbsp; ✓ Audio TTS
+                  ✓ Import Anki decks (.apkg) &nbsp; ✓ Spaced repetition &nbsp; ✓ Audio pronunciation
                 </Text>
               </Box>
             </Box>
 
-            {/* Feature 2: Sentence Practice */}
-            <Box
-              style={{
-                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)",
-                border: "1px solid rgba(99, 102, 241, 0.2)",
-                borderRadius: "16px",
-                padding: "2rem",
-              }}
-            >
-              <Box
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "12px",
-                  background: "rgba(99, 102, 241, 0.15)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "1rem",
-                }}
-              >
-                <Text size="xl">🧠</Text>
-              </Box>
-              <Title order={3} c="white" mb="sm" fw={600}>
-                Sentence Practice
-              </Title>
-              <Text c="gray.4" size="sm" style={{ lineHeight: 1.7 }}>
-                Practice reading comprehension with <strong style={{ color: "#6366f1" }}>AI-generated sentences</strong> using 
-                only your mastered vocabulary. Choose random sentences or follow 
-                a <strong style={{ color: "#6366f1" }}>cohesive story</strong> to keep practice engaging.
-              </Text>
-              <Box mt="md">
-                <Text size="xs" c="gray.6">
-                  ✓ Uses your vocab &nbsp; ✓ Story mode &nbsp; ✓ Adjustable difficulty
-                </Text>
-              </Box>
-            </Box>
-
-            {/* Feature 3: Assisted Reading */}
-            <Box
-              style={{
-                background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(52, 211, 153, 0.05) 100%)",
-                border: "1px solid rgba(16, 185, 129, 0.2)",
-                borderRadius: "16px",
-                padding: "2rem",
-              }}
-            >
-              <Box
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "12px",
-                  background: "rgba(16, 185, 129, 0.15)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "1rem",
-                }}
-              >
-                <IconBook2 size={28} color="#10b981" />
-              </Box>
-              <Title order={3} c="white" mb="sm" fw={600}>
-                Assisted Reading
-              </Title>
-              <Text c="gray.4" size="sm" style={{ lineHeight: 1.7 }}>
-                Import any text or PDF and read with <strong style={{ color: "#10b981" }}>instant word translations</strong>. 
-                Click any word to see its meaning, hear the <strong style={{ color: "#10b981" }}>pronunciation</strong>, 
-                and automatically save it as a flashcard for later review.
-              </Text>
-              <Box mt="md">
-                <Text size="xs" c="gray.6">
-                  ✓ Click-to-translate &nbsp; ✓ Auto-save vocab &nbsp; ✓ PDF support
-                </Text>
-              </Box>
-            </Box>
-
-            {/* Feature 4: Conversation Practice */}
+            {/* Step 2: Practice in Scenarios */}
             <Box
               style={{
                 background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%)",
                 border: "1px solid rgba(245, 158, 11, 0.2)",
                 borderRadius: "16px",
                 padding: "2rem",
+                position: "relative",
               }}
             >
+              <Box
+                style={{
+                  position: "absolute",
+                  top: "-16px",
+                  left: "24px",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  background: "#f59e0b",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: 700,
+                  color: "white",
+                  fontSize: "14px",
+                }}
+              >
+                2
+              </Box>
               <Box
                 style={{
                   width: 56,
@@ -482,23 +450,107 @@ function LandingPage() {
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: "1rem",
+                  marginTop: "0.5rem",
                 }}
               >
                 <IconMessageCircle size={28} color="#f59e0b" />
               </Box>
               <Title order={3} c="white" mb="sm" fw={600}>
-                Conversation Practice
+                Practice in Real Scenarios
               </Title>
               <Text c="gray.4" size="sm" style={{ lineHeight: 1.7 }}>
-                Practice real-world scenarios by <strong style={{ color: "#f59e0b" }}>chatting with AI</strong> in your target language. 
-                Click words to translate them, and use the <strong style={{ color: "#f59e0b" }}>lookup panel</strong> to 
-                find words while composing your messages.
+                Create conversation scenarios like "ordering at a café" or "meeting a new friend". 
+                An <strong style={{ color: "#f59e0b" }}>AI chat partner</strong> plays the other role while you practice. 
+                Click any word to translate it, and use the <strong style={{ color: "#f59e0b" }}>lookup panel</strong> to 
+                find words as you compose messages.
               </Text>
               <Box mt="md">
                 <Text size="xs" c="gray.6">
-                  ✓ Real scenarios &nbsp; ✓ Click-to-translate &nbsp; ✓ Composition help
+                  ✓ Realistic scenarios &nbsp; ✓ Click-to-translate &nbsp; ✓ Grammar corrections
                 </Text>
               </Box>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Additional Tools Section */}
+      <Box
+        style={{
+          padding: "4rem 2rem",
+          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+        }}
+      >
+        <Box maw={900} mx="auto">
+          <Title order={3} ta="center" c="gray.4" mb="xs" fw={600}>
+            Plus more tools to accelerate your learning
+          </Title>
+          <Text ta="center" c="gray.6" mb="xl" size="sm">
+            Additional features to support your language journey
+          </Text>
+
+          <Box
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+              gap: "1.5rem",
+            }}
+          >
+            {/* Sentence Practice */}
+            <Box
+              style={{
+                background: "rgba(99, 102, 241, 0.08)",
+                border: "1px solid rgba(99, 102, 241, 0.15)",
+                borderRadius: "12px",
+                padding: "1.5rem",
+              }}
+            >
+              <Text size="lg" mb="xs">🧠</Text>
+              <Title order={5} c="white" mb="xs" fw={600}>
+                Sentence Practice
+              </Title>
+              <Text c="gray.5" size="xs" style={{ lineHeight: 1.6 }}>
+                AI generates sentences using only your mastered vocabulary. 
+                Test your comprehension with random sentences or follow a cohesive story.
+              </Text>
+            </Box>
+
+            {/* Assisted Reading */}
+            <Box
+              style={{
+                background: "rgba(16, 185, 129, 0.08)",
+                border: "1px solid rgba(16, 185, 129, 0.15)",
+                borderRadius: "12px",
+                padding: "1.5rem",
+              }}
+            >
+              <IconBook2 size={24} color="#10b981" style={{ marginBottom: 8 }} />
+              <Title order={5} c="white" mb="xs" fw={600}>
+                Assisted Reading
+              </Title>
+              <Text c="gray.5" size="xs" style={{ lineHeight: 1.6 }}>
+                Import any text or PDF. Click words to see translations and hear pronunciation. 
+                New words automatically become flashcards.
+              </Text>
+            </Box>
+
+            {/* Community Decks */}
+            <Box
+              style={{
+                background: "rgba(139, 92, 246, 0.08)",
+                border: "1px solid rgba(139, 92, 246, 0.15)",
+                borderRadius: "12px",
+                padding: "1.5rem",
+              }}
+            >
+              <Text size="lg" mb="xs">🌍</Text>
+              <Title order={5} c="white" mb="xs" fw={600}>
+                Community Sharing
+              </Title>
+              <Text c="gray.5" size="xs" style={{ lineHeight: 1.6 }}>
+                Share vocabulary decks and conversation scenarios with other learners. 
+                Copy community content to your own library.
+              </Text>
             </Box>
           </Box>
         </Box>
