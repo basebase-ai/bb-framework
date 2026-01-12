@@ -13,7 +13,7 @@ export const APP_ID = "langbase";
 
 /**
  * Namespaced collection names
- * @type {{ apps: string, users: string, decks: string, cards: string, documents: string, vocabulary: string, conversations: string, messages: string }}
+ * @type {{ apps: string, users: string, decks: string, cards: string, documents: string, vocabulary: string, scenarios: string, conversations: string, messages: string }}
  */
 export const collections = {
   // Global collections (no namespace needed - platform-managed)
@@ -25,7 +25,8 @@ export const collections = {
   cards: `${APP_ID}_cards`,
   documents: `${APP_ID}_documents`,
   vocabulary: `${APP_ID}_vocabulary`,
-  conversations: `${APP_ID}_conversations`,
+  scenarios: `${APP_ID}_scenarios`, // Reusable conversation templates
+  conversations: `${APP_ID}_conversations`, // Individual chat instances
   messages: `${APP_ID}_messages`,
 };
 
@@ -225,7 +226,8 @@ export const schema = {
     },
   },
 
-  [`${APP_ID}_conversations`]: {
+  // Scenarios - Reusable conversation templates (can be shared)
+  [`${APP_ID}_scenarios`]: {
     fields: {
       title: { type: "string", required: true }, // e.g., "Purchasing Clothing"
       description: { type: "string" }, // Optional context/instructions
@@ -233,8 +235,6 @@ export const schema = {
       systemPrompt: { type: "string" }, // Custom LLM system prompt
       owner: { type: "string", required: true },
       isPublic: { type: "boolean", default: false },
-      messageCount: { type: "number", default: 0 },
-      lastMessageAt: { type: "timestamp" },
       createdAt: { type: "timestamp", auto: true },
       updatedAt: { type: "timestamp", auto: true },
     },
@@ -247,6 +247,26 @@ export const schema = {
     },
   },
 
+  // Conversations - Individual chat instances (always private)
+  [`${APP_ID}_conversations`]: {
+    fields: {
+      scenarioId: { type: "string", required: true }, // Reference to scenario
+      owner: { type: "string", required: true },
+      messageCount: { type: "number", default: 0 },
+      lastMessageAt: { type: "timestamp" },
+      createdAt: { type: "timestamp", auto: true },
+      updatedAt: { type: "timestamp", auto: true },
+    },
+    indexes: [["owner"], ["scenarioId", "owner"]],
+    rules: {
+      read: "auth != null && auth.uid == resource.data.owner",
+      write: "auth != null && auth.uid == resource.data.owner",
+      create: "auth != null && request.resource.data.owner == auth.uid",
+      delete: "auth != null && auth.uid == resource.data.owner",
+    },
+  },
+
+  // Messages - Chat messages within a conversation instance
   [`${APP_ID}_messages`]: {
     fields: {
       conversationId: { type: "string", required: true },

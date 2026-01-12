@@ -44,7 +44,7 @@ import { SentencePractice } from "./components/SentencePractice.jsx";
 import { DocumentList } from "./components/reading/DocumentList.jsx";
 import { DocumentReader } from "./components/reading/DocumentReader.jsx";
 import { DocumentUpload } from "./components/reading/DocumentUpload.jsx";
-import { ConversationList } from "./components/conversation/ConversationList.jsx";
+import { ScenarioList } from "./components/conversation/ScenarioList.jsx";
 import { ConversationChat } from "./components/conversation/ConversationChat.jsx";
 import { useUIStore } from "./stores/uiStore.js";
 import { APP_ID } from "./schema.js";
@@ -130,7 +130,7 @@ function HomePage() {
       )}
       
       {activeTab === "conversation" && (
-        <ConversationList onOpenConversation={handleOpenConversation} />
+        <ScenarioList onOpenConversation={handleOpenConversation} />
       )}
     </Box>
   );

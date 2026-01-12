@@ -5,8 +5,12 @@
  * - Chat with LLM in target language
  * - Click words in AI messages to translate (target → English)
  * - Lookup panel to translate English → target language for composing
+ * 
+ * Now works with the scenario/instance model:
+ * - conversationId refers to an instance (langbase_conversations)
+ * - The instance has a scenarioId that links to the scenario (langbase_scenarios)
  */
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Stack,
   Group,
@@ -56,10 +60,16 @@ export function ConversationChat({ conversationId, onBack }) {
   const chatContainerRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const initialMessageSent = useRef(false);
   
-  // Load conversation
+  // Load conversation instance
   const { data: conversation, loading: convoLoading, update: updateConversation } = useDocument(
     collections.conversations,
     conversationId
+  );
+  
+  // Load the scenario that this conversation instance belongs to
+  const { data: scenario, loading: scenarioLoading } = useDocument(
+    collections.scenarios,
+    conversation?.scenarioId || ""
   );
   
   // Load messages
@@ -87,7 +97,7 @@ export function ConversationChat({ conversationId, onBack }) {
   
   // Speech - pass language key to speak() function
   const { speak, speaking } = useSpeech();
-  const languageKey = conversation?.language || "norwegian";
+  const languageKey = scenario?.language || "norwegian";
   const langInfo = SUPPORTED_LANGUAGES[languageKey] || null;
   
   // Scroll to bottom when messages change
@@ -101,7 +111,9 @@ export function ConversationChat({ conversationId, onBack }) {
       if (
         initialMessageSent.current ||
         messagesLoading ||
+        scenarioLoading ||
         !conversation ||
+        !scenario ||
         !user?.uid ||
         !messages ||
         messages.length > 0
@@ -113,11 +125,11 @@ export function ConversationChat({ conversationId, onBack }) {
       setSending(true);
       
       try {
-        const langName = langInfo?.name || conversation.language;
-        const scenario = conversation.title;
-        const context = conversation.description || "";
+        const langName = langInfo?.name || scenario.language;
+        const scenarioTitle = scenario.title;
+        const context = scenario.description || "";
         
-        const prompt = `You are starting a conversation practice session. The scenario is: "${scenario}"
+        const prompt = `You are starting a conversation practice session. The scenario is: "${scenarioTitle}"
 ${context ? `Context: ${context}` : ""}
 
 You are playing a role in this scenario (e.g., a shopkeeper, a friend, a colleague, etc.).
@@ -153,13 +165,13 @@ Keep it short (1-2 sentences). Only respond in ${langName}.`;
     };
     
     generateInitialMessage();
-  }, [conversation, messages, messagesLoading, user?.uid, conversationId]);
+  }, [conversation, scenario, scenarioLoading, messages, messagesLoading, user?.uid, conversationId]);
   
   /**
    * Handle sending a message
    */
   const handleSend = async () => {
-    if (!input.trim() || !user?.uid || !conversation) return;
+    if (!input.trim() || !user?.uid || !conversation || !scenario) return;
     
     const userMessage = input.trim();
     setInput("");
@@ -181,14 +193,14 @@ Keep it short (1-2 sentences). Only respond in ${langName}.`;
       }));
       history.push({ role: "user", content: userMessage });
       
-      // Build system prompt
-      const langName = langInfo?.name || conversation.language;
-      const scenario = conversation.title;
-      const context = conversation.description || "";
+      // Build system prompt using scenario details
+      const langName = langInfo?.name || scenario.language;
+      const scenarioTitle = scenario.title;
+      const context = scenario.description || "";
       
       const systemPrompt = `You are a helpful language practice partner. You are helping the user practice ${langName} conversation.
 
-The scenario is: "${scenario}"
+The scenario is: "${scenarioTitle}"
 ${context ? `Additional context: ${context}` : ""}
 
 Guidelines:
@@ -341,7 +353,7 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
   };
   
   // Loading state
-  if (convoLoading || (messagesLoading && !messages)) {
+  if (convoLoading || scenarioLoading || (messagesLoading && !messages)) {
     return (
       <Center py="xl">
         <Loader size="lg" />
@@ -350,7 +362,7 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
   }
   
   // Not found
-  if (!conversation) {
+  if (!conversation || !scenario) {
     return (
       <Stack align="center" py="xl" gap="md">
         <Text c="dimmed">Conversation not found.</Text>
@@ -364,21 +376,21 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
   return (
     <>
     <Box style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 140px)" }}>
-      {/* Header */}
+      {/* Header - shows scenario info */}
       <Group mb="md" justify="space-between" style={{ flexShrink: 0 }}>
         <Group gap="md">
           <ActionIcon variant="subtle" onClick={onBack}>
             <IconArrowLeft size={20} />
           </ActionIcon>
           <Box>
-            <Title order={4}>{conversation.title}</Title>
+            <Title order={4}>{scenario.title}</Title>
             <Group gap="xs">
               <Badge variant="light" color="indigo" size="sm" leftSection={<IconLanguage size={12} />}>
-                {langInfo?.name || conversation.language}
+                {langInfo?.name || scenario.language}
               </Badge>
-              {conversation.description && (
+              {scenario.description && (
                 <Text size="xs" c="dimmed" lineClamp={1}>
-                  {conversation.description}
+                  {scenario.description}
                 </Text>
               )}
             </Group>
@@ -403,7 +415,7 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
                     <IconMessageCircle size={48} color="var(--mantine-color-dimmed)" />
                     <Text c="dimmed" ta="center">
                       Start the conversation!<br />
-                      Write in {langInfo?.name || conversation.language} to practice.
+                      Write in {langInfo?.name || scenario.language} to practice.
                     </Text>
                   </Stack>
                 </Center>
@@ -426,7 +438,7 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
           {/* Input area - fixed at bottom */}
           <Group mt="md" gap="sm" style={{ flexShrink: 0 }}>
             <Textarea
-              placeholder={`Write in ${langInfo?.name || conversation.language}...`}
+              placeholder={`Write in ${langInfo?.name || scenario.language}...`}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
