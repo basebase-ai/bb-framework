@@ -16,6 +16,7 @@ import {
   Switch,
   Loader,
   Center,
+  Button,
   useMantineColorScheme,
 } from "@mantine/core";
 import {
@@ -26,6 +27,7 @@ import {
   IconLanguage,
   IconVocabulary,
   IconChevronRight,
+  IconX,
 } from "@tabler/icons-react";
 import { useDocument } from "../../../../framework/hooks/useDocument.js";
 import { useUIStore } from "../../stores/uiStore.js";
@@ -96,8 +98,8 @@ export function DocumentReader({ documentId, onBack }) {
   const { supported: speechSupported, speak } = useSpeech();
   const sourceLanguage = useUIStore((s) => s.sourceLanguage);
 
-  // State for vocabulary panel visibility
-  const [showVocabPanel, setShowVocabPanel] = useState(true);
+  // State for vocabulary panel visibility - start hidden for mobile-friendly default
+  const [showVocabPanel, setShowVocabPanel] = useState(false);
 
   // Ref for the reading content area
   const contentRef = useRef(/** @type {HTMLDivElement | null} */ (null));
@@ -325,13 +327,13 @@ export function DocumentReader({ documentId, onBack }) {
   const langConfig = getLanguageConfig(doc.sourceLanguage);
 
   return (
-    <Box style={{ display: "flex", gap: "1rem", height: "calc(100vh - 180px)" }}>
-      {/* Main content area */}
+    <Box style={{ display: "flex", height: "calc(100vh - 100px)" }}>
+      {/* Main content area - takes full width since sidebar is overlay */}
       <Box style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        {/* Header */}
+        {/* Header - compact */}
         <Paper
-          p="md"
-          mb="md"
+          p="sm"
+          mb="sm"
           withBorder
           shadow="xs"
           style={{
@@ -342,75 +344,59 @@ export function DocumentReader({ documentId, onBack }) {
           }}
         >
           <Group justify="space-between" wrap="nowrap">
-            <Group gap="md" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-              <ActionIcon variant="subtle" onClick={onBack} size="lg">
-                <IconArrowLeft size={20} />
+            <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+              <ActionIcon variant="subtle" onClick={onBack} size="sm">
+                <IconArrowLeft size={18} />
               </ActionIcon>
-              <Box style={{ minWidth: 0 }}>
-                <Title order={4} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {doc.title}
-                </Title>
-                <Group gap="xs" mt={4}>
-                  <Badge
-                    variant="light"
-                    color="pink"
-                    size="sm"
-                    leftSection={<IconLanguage size={12} />}
-                  >
-                    {langConfig?.name || doc.sourceLanguage}
-                  </Badge>
-                  <Text size="xs" c="dimmed">
-                    {doc.wordCount?.toLocaleString()} words
-                  </Text>
-                </Group>
-              </Box>
+              <Text fw={600} size="sm" truncate style={{ flex: 1 }}>
+                {doc.title}
+              </Text>
+              <Badge variant="light" color="pink" size="xs">
+                {langConfig?.name || doc.sourceLanguage}
+              </Badge>
             </Group>
 
-            <Group gap="lg" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap">
               {/* Font size control */}
-              <Group gap="xs" wrap="nowrap">
+              <Group gap={4} wrap="nowrap">
                 <Tooltip label="Text size">
-                  <ActionIcon variant="subtle" color="gray">
-                    <IconTextResize size={18} />
+                  <ActionIcon variant="subtle" color="gray" size="sm">
+                    <IconTextResize size={16} />
                   </ActionIcon>
                 </Tooltip>
                 <Slider
-                  w={80}
+                  w={60}
                   min={14}
                   max={28}
                   step={2}
                   value={fontSize}
                   onChange={setFontSize}
-                  size="sm"
+                  size="xs"
                 />
               </Group>
 
               {/* Audio toggle */}
               {speechSupported && (
-                <Group gap="xs" wrap="nowrap">
-                  <Tooltip label={autoPlayAudio ? "Audio enabled" : "Audio disabled"}>
-                    <Switch
-                      checked={autoPlayAudio}
-                      onChange={(e) => setAutoPlayAudio(e.currentTarget.checked)}
-                      onLabel={<IconVolume size={14} />}
-                      offLabel={<IconVolumeOff size={14} />}
-                      size="md"
-                    />
-                  </Tooltip>
-                  <Text size="xs" c="dimmed">Audio</Text>
-                </Group>
+                <Tooltip label={autoPlayAudio ? "Audio on" : "Audio off"}>
+                  <Switch
+                    checked={autoPlayAudio}
+                    onChange={(e) => setAutoPlayAudio(e.currentTarget.checked)}
+                    size="xs"
+                    color="pink"
+                  />
+                </Tooltip>
               )}
 
-              {/* Vocab panel toggle */}
-              <Tooltip label={showVocabPanel ? "Hide vocabulary" : "Show vocabulary"}>
-                <ActionIcon
-                  variant={showVocabPanel ? "filled" : "subtle"}
-                  color="pink"
-                  onClick={() => setShowVocabPanel(!showVocabPanel)}
-                >
-                  {showVocabPanel ? <IconChevronRight size={18} /> : <IconVocabulary size={18} />}
-                </ActionIcon>
-              </Tooltip>
+              {/* Vocab panel toggle - with text label */}
+              <Button
+                variant={showVocabPanel ? "filled" : "light"}
+                color="pink"
+                size="xs"
+                leftSection={<IconVocabulary size={14} />}
+                onClick={() => setShowVocabPanel(!showVocabPanel)}
+              >
+                {showVocabPanel ? "Hide" : "Tools"}
+              </Button>
             </Group>
           </Group>
         </Paper>
@@ -474,27 +460,58 @@ export function DocumentReader({ documentId, onBack }) {
             })}
           </Box>
         </Paper>
-
-        {/* Instructions */}
-        <Text size="sm" c="dimmed" ta="center" mt="md">
-          Click on any word to see its English translation
-          {speechSupported && " and hear the pronunciation"}
-          {linkedDeckId && " • Words are saved to your deck"}
-        </Text>
       </Box>
 
-      {/* Sidebar panels */}
+      {/* Sidebar panels - slide-in drawer */}
       {showVocabPanel && (
-        <Stack style={{ width: 280, flexShrink: 0 }} gap="sm">
-          <QuickTranslate />
-          <Box style={{ flex: 1, minHeight: 0 }}>
-            <VocabularyPanel 
-              linkedDeckId={linkedDeckId}
-              onLinkDeck={handleLinkDeck}
-              onClose={() => setShowVocabPanel(false)} 
-            />
-          </Box>
-        </Stack>
+        <>
+          {/* Backdrop overlay */}
+          <Box
+            onClick={() => setShowVocabPanel(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.3)",
+              zIndex: 199,
+            }}
+          />
+          <Stack 
+            gap="sm"
+            style={{ 
+              width: 300, 
+              maxWidth: "90vw",
+              background: isDark ? "var(--mantine-color-dark-7)" : "var(--mantine-color-white)",
+              position: "fixed",
+              right: 0,
+              top: 0,
+              bottom: 0,
+              zIndex: 200,
+              padding: "1rem",
+              boxShadow: "-4px 0 20px rgba(0,0,0,0.15)",
+              overflowY: "auto",
+            }}
+          >
+            {/* Header with close button */}
+            <Group justify="space-between" mb="xs">
+              <Text fw={600} size="sm">Translation Tools</Text>
+              <ActionIcon 
+                variant="subtle" 
+                onClick={() => setShowVocabPanel(false)}
+                size="sm"
+              >
+                <IconX size={16} />
+              </ActionIcon>
+            </Group>
+            <QuickTranslate />
+            <Box style={{ flex: 1, minHeight: 0 }}>
+              <VocabularyPanel 
+                linkedDeckId={linkedDeckId}
+                onLinkDeck={handleLinkDeck}
+                onClose={() => setShowVocabPanel(false)} 
+              />
+            </Box>
+          </Stack>
+        </>
       )}
 
       {/* Word tooltip */}

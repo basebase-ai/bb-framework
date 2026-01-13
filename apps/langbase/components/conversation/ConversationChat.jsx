@@ -38,6 +38,7 @@ import {
   IconSearch,
   IconX,
   IconMessageCircle,
+  IconVocabulary,
 } from "@tabler/icons-react";
 import { useDocument } from "../../../../framework/hooks/useDocument.js";
 import { useCollection } from "../../../../framework/hooks/useCollection.js";
@@ -53,6 +54,9 @@ import { useUIStore } from "../../stores/uiStore.js";
  * @param {{ conversationId: string, onBack: () => void }} props
  */
 export function ConversationChat({ conversationId, onBack }) {
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === "dark";
+  
   const { user } = useAuth();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -60,6 +64,7 @@ export function ConversationChat({ conversationId, onBack }) {
   const [lookupWord, setLookupWord] = useState("");
   const [lookupResult, setLookupResult] = useState(/** @type {{ word: string, translation: string } | null} */ (null));
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   
   const messagesEndRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const chatContainerRef = useRef(/** @type {HTMLDivElement | null} */ (null));
@@ -412,32 +417,36 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
   
   return (
     <>
-    <Box style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 140px)" }}>
-      {/* Header - shows scenario info */}
-      <Group mb="md" justify="space-between" style={{ flexShrink: 0 }}>
-        <Group gap="md">
-          <ActionIcon variant="subtle" onClick={onBack}>
-            <IconArrowLeft size={20} />
+    <Box style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 100px)" }}>
+      {/* Header - compact layout */}
+      <Group mb="sm" justify="space-between" wrap="nowrap" style={{ flexShrink: 0 }}>
+        <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+          <ActionIcon variant="subtle" onClick={onBack} size="sm">
+            <IconArrowLeft size={18} />
           </ActionIcon>
-          <Box>
-            <Title order={4}>{scenario.title}</Title>
-            <Group gap="xs">
-              <Badge variant="light" color="indigo" size="sm" leftSection={<IconLanguage size={12} />}>
-                {langInfo?.name || scenario.language}
-              </Badge>
-              {scenario.description && (
-                <Text size="xs" c="dimmed" lineClamp={1}>
-                  {scenario.description}
-                </Text>
-              )}
-            </Group>
-          </Box>
+          <Text fw={600} size="sm" truncate style={{ flex: 1 }}>
+            {scenario.title}
+          </Text>
+          <Badge variant="light" color="pink" size="xs">
+            {langInfo?.name || scenario.language}
+          </Badge>
         </Group>
+        
+        {/* Toggle sidebar button - with text label */}
+        <Button
+          variant={showSidebar ? "filled" : "light"}
+          color="pink"
+          size="xs"
+          leftSection={<IconVocabulary size={14} />}
+          onClick={() => setShowSidebar(!showSidebar)}
+        >
+          {showSidebar ? "Hide" : "Tools"}
+        </Button>
       </Group>
       
       {/* Main chat area */}
-      <Box style={{ display: "flex", flex: 1, gap: "1rem", minHeight: 0, overflow: "hidden" }}>
-        {/* Left column: Messages + Input */}
+      <Box style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
+        {/* Messages + Input - takes full width since sidebar is overlay */}
         <Box style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
           {/* Messages - scrollable area */}
           <Box
@@ -473,7 +482,7 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
           </Box>
           
           {/* Input area - fixed at bottom */}
-          <Group mt="md" gap="sm" style={{ flexShrink: 0 }}>
+          <Group mt="sm" gap="sm" style={{ flexShrink: 0 }}>
             <Textarea
               placeholder={`Write in ${langInfo?.name || scenario.language}...`}
               value={input}
@@ -493,96 +502,139 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
               onClick={handleSend}
               loading={sending}
               disabled={!input.trim()}
-              leftSection={<IconSend size={18} />}
+              leftSection={<IconSend size={16} />}
+              size="sm"
             >
               Send
             </Button>
           </Group>
         </Box>
         
-        {/* Right sidebar: Lookup + Vocabulary panels */}
-        <Stack style={{ width: 280, flexShrink: 0 }} gap="sm">
-          {/* Lookup panel */}
-          <Paper
-            withBorder
-            p="md"
-            style={{ alignSelf: "flex-start", width: "100%" }}
+      </Box>
+      
+      {/* Right sidebar: Lookup + Vocabulary panels - slide-in drawer */}
+      {showSidebar && (
+        <>
+          {/* Backdrop overlay */}
+          <Box
+            onClick={() => setShowSidebar(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.3)",
+              zIndex: 199,
+            }}
+          />
+          <Stack 
+            gap="sm"
+            style={{ 
+              width: 300, 
+              maxWidth: "90vw",
+              background: isDark ? "var(--mantine-color-dark-7)" : "var(--mantine-color-white)",
+              position: "fixed",
+              right: 0,
+              top: 0,
+              bottom: 0,
+              zIndex: 200,
+              padding: "1rem",
+              boxShadow: "-4px 0 20px rgba(0,0,0,0.15)",
+              overflowY: "auto",
+            }}
           >
-            <Text fw={600} size="sm" mb="sm">
-              <IconSearch size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
-              English → {langInfo?.name || "Target"}
-            </Text>
-            <Text size="xs" c="dimmed" mb="md">
-              Look up words to help compose your message
-            </Text>
-            
-            <Group gap="xs" mb="md">
-              <TextInput
-                placeholder="Type English word..."
-                value={lookupWord}
-                onChange={(e) => setLookupWord(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLookup()}
-                style={{ flex: 1 }}
+            {/* Header with close button */}
+            <Group justify="space-between" mb="xs">
+              <Text fw={600} size="sm">Translation Tools</Text>
+              <ActionIcon 
+                variant="subtle" 
+                onClick={() => setShowSidebar(false)}
                 size="sm"
-              />
-              <ActionIcon
-                variant="light"
-                color="indigo"
-                onClick={handleLookup}
-                loading={lookupLoading}
               >
-                <IconSearch size={16} />
+                <IconX size={16} />
               </ActionIcon>
             </Group>
             
-            {lookupResult && (
-              <Paper withBorder p="sm">
-                <Text size="xs" c="dimmed">
-                  {lookupResult.word}
-                </Text>
-                <Group gap="xs" mt="xs">
-                  <Text fw={600}>{lookupResult.translation}</Text>
-                  <ActionIcon
+            {/* Lookup panel */}
+            <Paper
+              withBorder
+              p="md"
+            >
+              <Text fw={600} size="sm" mb="sm">
+                <IconSearch size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                English → {langInfo?.name || "Target"}
+              </Text>
+              <Text size="xs" c="dimmed" mb="md">
+                Look up words to help compose your message
+              </Text>
+              
+              <Group gap="xs" mb="md">
+                <TextInput
+                  placeholder="Type English word..."
+                  value={lookupWord}
+                  onChange={(e) => setLookupWord(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLookup()}
+                  style={{ flex: 1 }}
+                  size="sm"
+                />
+                <ActionIcon
+                  variant="light"
+                  color="pink"
+                  onClick={handleLookup}
+                  loading={lookupLoading}
+                >
+                  <IconSearch size={16} />
+                </ActionIcon>
+              </Group>
+              
+              {lookupResult && (
+                <Paper withBorder p="sm">
+                  <Text size="xs" c="dimmed">
+                    {lookupResult.word}
+                  </Text>
+                  <Group gap="xs" mt="xs">
+                    <Text fw={600}>{lookupResult.translation}</Text>
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => handleSpeak(lookupResult.translation)}
+                    >
+                      <IconVolume size={12} />
+                    </ActionIcon>
+                  </Group>
+                  <Button
                     size="xs"
                     variant="subtle"
-                    onClick={() => handleSpeak(lookupResult.translation)}
+                    color="pink"
+                    mt="xs"
+                    onClick={() => {
+                      setInput((prev) => prev + (prev ? " " : "") + lookupResult.translation);
+                      setLookupResult(null);
+                      setLookupWord("");
+                    }}
                   >
-                    <IconVolume size={12} />
-                  </ActionIcon>
-                </Group>
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  mt="xs"
-                  onClick={() => {
-                    setInput((prev) => prev + (prev ? " " : "") + lookupResult.translation);
-                    setLookupResult(null);
-                    setLookupWord("");
-                  }}
-                >
-                  Insert into message
-                </Button>
-              </Paper>
-            )}
+                    Insert into message
+                  </Button>
+                </Paper>
+              )}
+              
+              <Divider my="md" />
+              
+              <Text size="xs" c="dimmed">
+                <strong>Tip:</strong> Click any word in the AI's messages to see its English translation.
+                {linkedDeckId && " Words are saved to your deck!"}
+              </Text>
+            </Paper>
             
-            <Divider my="md" />
-            
-            <Text size="xs" c="dimmed">
-              <strong>Tip:</strong> Click any word in the AI's messages to see its English translation.
-              {linkedDeckId && " Words are saved to your deck!"}
-            </Text>
-          </Paper>
-          
-          {/* Vocabulary panel - save words to deck */}
-          <Box style={{ flex: 1, minHeight: 200 }}>
-            <VocabularyPanel 
-              linkedDeckId={linkedDeckId}
-              onLinkDeck={handleLinkDeck}
-              context="conversation"
-            />
-          </Box>
-        </Stack>
-      </Box>
+            {/* Vocabulary panel - save words to deck */}
+            <Box style={{ flex: 1, minHeight: 200 }}>
+              <VocabularyPanel 
+                linkedDeckId={linkedDeckId}
+                onLinkDeck={handleLinkDeck}
+                context="conversation"
+              />
+            </Box>
+          </Stack>
+        </>
+      )}
       
     </Box>
     
