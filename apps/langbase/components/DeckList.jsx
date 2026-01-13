@@ -24,6 +24,7 @@ import {
   Select,
   Divider,
   Alert,
+  CloseButton,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -387,16 +388,26 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
         key={deck.id}
         padding="lg"
         radius="md"
+        withBorder
+        shadow="xs"
         style={{
-          background: "rgba(255, 255, 255, 0.03)",
-          border: isOwned ? "1px solid rgba(233, 69, 96, 0.2)" : "1px solid rgba(6, 182, 212, 0.2)",
           cursor: isOwned ? "pointer" : "default",
           transition: "all 0.2s ease",
         }}
         onClick={isOwned ? () => onViewDeck(deck.id) : undefined}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = isOwned
+            ? "var(--mantine-color-pink-7)"
+            : "var(--mantine-color-cyan-7)";
+          e.currentTarget.style.transform = "translateY(-2px)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = "";
+          e.currentTarget.style.transform = "translateY(0)";
+        }}
       >
         <Group justify="space-between" mb="xs">
-          <Text fw={600} size="lg" c="white" lineClamp={1}>
+          <Text fw={600} size="lg" lineClamp={1}>
             {deck.name}
           </Text>
           {isOwned && (
@@ -467,7 +478,6 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
               color="pink"
               size="sm"
               radius="xl"
-              style={{ background: "rgba(255, 255, 255, 0.1)" }}
             />
             <Text size="xs" c="dimmed" ta="right" mt={4}>
               {Math.round(progress)}% mastered
@@ -508,15 +518,17 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
   };
 
   return (
-    <Stack gap="lg" py="md">
-      {/* Header with actions */}
-      <Group justify="space-between" align="flex-start">
-        <div>
-          <Title order={2} c="white">My Decks</Title>
-          <Text size="sm" c="dimmed">
-            {myDecks.length} deck{myDecks.length !== 1 ? "s" : ""} • Create, study, and track your progress
-          </Text>
-        </div>
+    <Stack gap="md">
+      {/* Header with search and actions */}
+      <Group justify="space-between" mb="md">
+        <TextInput
+          placeholder="Search decks..."
+          leftSection={<IconSearch size={16} />}
+          rightSection={searchQuery && <CloseButton size="sm" onClick={() => setSearchQuery("")} />}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ flex: 1, maxWidth: 300 }}
+        />
         <Group gap="sm">
           <Button
             variant="light"
@@ -537,39 +549,29 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
         </Group>
       </Group>
 
-      {/* Search */}
-      <TextInput
-        placeholder="Search all decks..."
-        leftSection={<IconSearch size={16} />}
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        styles={{
-          input: {
-            background: "rgba(255, 255, 255, 0.05)",
-            borderColor: "rgba(255, 255, 255, 0.1)",
-          },
-        }}
-      />
-
       {/* My Decks Section */}
-      {filteredMyDecks.length > 0 && (
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
-          {filteredMyDecks.map((deck) => renderDeckCard(deck, true))}
-        </SimpleGrid>
+      {myDecks.length > 0 && (
+        <>
+          <Title order={4} c="gray.4">
+            Your Decks
+          </Title>
+          {filteredMyDecks.length === 0 ? (
+            <Text c="dimmed" size="sm">
+              No decks match your search.
+            </Text>
+          ) : (
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+              {filteredMyDecks.map((deck) => renderDeckCard(deck, true))}
+            </SimpleGrid>
+          )}
+        </>
       )}
 
       {/* Empty state for my decks (only show if not searching) */}
       {myDecks.length === 0 && !searchQuery && (
-        <Paper
-          p="xl"
-          style={{
-            background: "rgba(255, 255, 255, 0.03)",
-            borderColor: "rgba(255, 255, 255, 0.1)",
-          }}
-          withBorder
-        >
+        <Paper p="xl" withBorder shadow="xs">
           <Stack align="center" gap="md">
-            <IconCards size={48} color="#666" />
+            <IconCards size={48} color="var(--mantine-color-dimmed)" />
             <Text size="lg" c="dimmed" ta="center">
               No decks yet. Create your first deck or copy one from the community!
             </Text>
@@ -588,11 +590,14 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
       {/* Community Decks Section */}
       {filteredPublicDecks.length > 0 && (
         <>
-          <Group gap="sm" mt="lg">
-            <IconWorld size={20} color="#06b6d4" />
-            <Title order={3} c="white">Community Decks</Title>
-            <Text size="sm" c="dimmed">• Copy to start studying</Text>
+          <Divider my="md" />
+          <Group gap="xs">
+            <IconWorld size={20} color="var(--mantine-color-cyan-5)" />
+            <Title order={4} c="gray.4">Community Decks</Title>
           </Group>
+          <Text size="sm" c="dimmed" mb="sm">
+            Public decks shared by the community. Copy one to start studying.
+          </Text>
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
             {filteredPublicDecks.map((deck) => renderDeckCard(deck, false))}
           </SimpleGrid>
@@ -601,16 +606,9 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
 
       {/* No results message */}
       {searchQuery && filteredMyDecks.length === 0 && filteredPublicDecks.length === 0 && (
-        <Paper
-          p="xl"
-          style={{
-            background: "rgba(255, 255, 255, 0.03)",
-            borderColor: "rgba(255, 255, 255, 0.1)",
-          }}
-          withBorder
-        >
+        <Paper p="xl" withBorder shadow="xs">
           <Stack align="center" gap="md">
-            <IconSearch size={48} color="#666" />
+            <IconSearch size={48} color="var(--mantine-color-dimmed)" />
             <Text size="lg" c="dimmed" ta="center">
               No decks match "{searchQuery}"
             </Text>

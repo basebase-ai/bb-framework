@@ -27,6 +27,7 @@ import {
   NumberInput,
   SimpleGrid,
   ThemeIcon,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { marked } from "marked";
 import {
@@ -114,6 +115,8 @@ function getNextReviewDate(box) {
 
 export function StudyMode({ deckId, onBack, onComplete }) {
   const { user } = useAuth();
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === "dark";
   
   // Study options state (shown before studying)
   const [studyStarted, setStudyStarted] = useState(false);
@@ -460,6 +463,11 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   /** @param {'easy' | 'hard'} difficulty */
   const handleAnswer = useCallback(async (difficulty) => {
     if (!currentCard || isAnimating) return;
+    
+    // Prevent reviewing more cards than we started with
+    if (sessionTotalCards !== null && sessionStats.reviewed >= sessionTotalCards) {
+      return;
+    }
 
     setIsAnimating(true);
 
@@ -504,7 +512,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     } finally {
       setTimeout(() => setIsAnimating(false), 100);
     }
-  }, [currentCard, currentIndex, dueCards.length, isAnimating, updateCard]);
+  }, [currentCard, currentIndex, dueCards.length, isAnimating, updateCard, sessionTotalCards, sessionStats.reviewed]);
 
   const handleFlip = () => {
     if (!isAnimating) setShowBack(!showBack);
@@ -521,7 +529,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
 
   if (deckLoading || cardsLoading) {
     return (
-      <Box style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Text c="dimmed">Loading study session...</Text>
       </Box>
     );
@@ -530,13 +538,13 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   // Study options screen (before starting)
   if (!studyStarted) {
     return (
-      <Box style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-        <Paper p="xl" radius="lg" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(233, 69, 96, 0.3)", maxWidth: 500, width: "100%" }}>
+      <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+        <Paper p="xl" radius="lg" withBorder shadow="sm" style={{ maxWidth: 500, width: "100%" }}>
           <Group justify="space-between" mb="xl">
             <ActionIcon variant="subtle" color="gray" onClick={onBack}>
               <IconArrowLeft size={20} />
             </ActionIcon>
-            <Title order={3} c="white">{deck?.name}</Title>
+            <Title order={3}>{deck?.name}</Title>
             <Box w={28} />
           </Group>
 
@@ -546,9 +554,10 @@ export function StudyMode({ deckId, onBack, onComplete }) {
             radius="md"
             onClick={() => cardCounts.dailyTotal > 0 && setStudyType("all")}
             mb="lg"
+            withBorder
             style={{
-              background: studyType === "all" ? "rgba(233, 69, 96, 0.15)" : "rgba(255, 255, 255, 0.03)",
-              border: `2px solid ${studyType === "all" ? "#e94560" : "rgba(255, 255, 255, 0.1)"}`,
+              borderColor: studyType === "all" ? "var(--mantine-color-pink-6)" : undefined,
+              borderWidth: studyType === "all" ? 2 : 1,
               cursor: cardCounts.dailyTotal > 0 ? "pointer" : "not-allowed",
               transition: "all 0.2s ease",
               opacity: cardCounts.dailyTotal > 0 ? 1 : 0.5,
@@ -560,7 +569,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
                   <IconCards size={28} />
                 </ThemeIcon>
                 <Box>
-                  <Text fw={600} c="white" size="lg">Today's Session</Text>
+                  <Text fw={600} size="lg">Today's Session</Text>
                   <Text size="sm" c="dimmed">
                     {cardCounts.newToday} new + {cardCounts.reviewsDue} review
                   </Text>
@@ -578,9 +587,6 @@ export function StudyMode({ deckId, onBack, onComplete }) {
             min={5}
             max={100}
             step={5}
-            styles={{
-              input: { background: "rgba(255, 255, 255, 0.05)", borderColor: "rgba(255, 255, 255, 0.1)", color: "white" },
-            }}
             mb="lg"
           />
 
@@ -591,9 +597,9 @@ export function StudyMode({ deckId, onBack, onComplete }) {
               p="sm"
               radius="md"
               onClick={() => cardCounts.newCards > 0 && setStudyType("new")}
+              withBorder
               style={{
-                background: studyType === "new" ? "rgba(6, 182, 212, 0.2)" : "rgba(255, 255, 255, 0.02)",
-                border: `1px solid ${studyType === "new" ? "#06b6d4" : "rgba(255, 255, 255, 0.1)"}`,
+                borderColor: studyType === "new" ? "var(--mantine-color-cyan-6)" : undefined,
                 cursor: cardCounts.newCards > 0 ? "pointer" : "not-allowed",
                 textAlign: "center",
                 opacity: cardCounts.newCards > 0 ? 1 : 0.4,
@@ -607,9 +613,9 @@ export function StudyMode({ deckId, onBack, onComplete }) {
               p="sm"
               radius="md"
               onClick={() => cardCounts.strugglingCards > 0 && setStudyType("struggling")}
+              withBorder
               style={{
-                background: studyType === "struggling" ? "rgba(239, 68, 68, 0.2)" : "rgba(255, 255, 255, 0.02)",
-                border: `1px solid ${studyType === "struggling" ? "#ef4444" : "rgba(255, 255, 255, 0.1)"}`,
+                borderColor: studyType === "struggling" ? "var(--mantine-color-red-6)" : undefined,
                 cursor: cardCounts.strugglingCards > 0 ? "pointer" : "not-allowed",
                 textAlign: "center",
                 opacity: cardCounts.strugglingCards > 0 ? 1 : 0.4,
@@ -623,9 +629,9 @@ export function StudyMode({ deckId, onBack, onComplete }) {
               p="sm"
               radius="md"
               onClick={() => cardCounts.learningCards > 0 && setStudyType("learning")}
+              withBorder
               style={{
-                background: studyType === "learning" ? "rgba(34, 197, 94, 0.2)" : "rgba(255, 255, 255, 0.02)",
-                border: `1px solid ${studyType === "learning" ? "#22c55e" : "rgba(255, 255, 255, 0.1)"}`,
+                borderColor: studyType === "learning" ? "var(--mantine-color-green-6)" : undefined,
                 cursor: cardCounts.learningCards > 0 ? "pointer" : "not-allowed",
                 textAlign: "center",
                 opacity: cardCounts.learningCards > 0 ? 1 : 0.4,
@@ -667,14 +673,18 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     );
   }
 
-  if (dueCards.length === 0) {
+  // Session complete when no cards left OR we've reviewed all cards in the session
+  const sessionComplete = dueCards.length === 0 || 
+    (sessionTotalCards !== null && sessionStats.reviewed >= sessionTotalCards);
+  
+  if (sessionComplete) {
     const totalReviewed = sessionStats.reviewed;
     const accuracy = totalReviewed > 0 ? Math.round((sessionStats.correct / totalReviewed) * 100) : 0;
 
     return (
-      <Box style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-        <Paper p="xl" radius="lg" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(233, 69, 96, 0.3)", maxWidth: 500, width: "100%", textAlign: "center" }}>
-          <Title order={2} c="white" mb="lg">🎉 Session Complete!</Title>
+      <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+        <Paper p="xl" radius="lg" withBorder shadow="sm" style={{ maxWidth: 500, width: "100%", textAlign: "center" }}>
+          <Title order={2} mb="lg">🎉 Session Complete!</Title>
 
           {totalReviewed > 0 ? (
             <>
@@ -686,7 +696,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
                   { value: accuracy, color: "green" },
                   { value: 100 - accuracy, color: "red" },
                 ]}
-                label={<Text ta="center" fw={700} size="xl" c="white">{accuracy}%</Text>}
+                label={<Text ta="center" fw={700} size="xl">{accuracy}%</Text>}
                 mx="auto"
                 mb="lg"
               />
@@ -733,14 +743,14 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   }
 
   return (
-    <Box style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)", display: "flex", flexDirection: "column" }}>
-      <Box px="md" py="sm" style={{ background: "rgba(0, 0, 0, 0.3)", borderBottom: "1px solid rgba(255, 255, 255, 0.1)" }}>
+    <Box style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <Box px="md" py="sm" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
         <Group justify="space-between" maw={800} mx="auto">
           <Group gap="sm">
             <ActionIcon variant="subtle" color="gray" onClick={onBack}>
               <IconArrowLeft size={20} />
             </ActionIcon>
-            <Text c="white" fw={500}>{deck?.name}</Text>
+            <Text fw={500}>{deck?.name}</Text>
           </Group>
           <Group gap="md">
             <Badge variant="light" color="green">✓ {sessionStats.correct}</Badge>
@@ -748,7 +758,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
             <Text size="sm" c="dimmed">{sessionStats.reviewed} / {totalDue}</Text>
           </Group>
         </Group>
-        <Progress value={progress} color="pink" size="xs" radius={0} mt="sm" style={{ background: "rgba(255, 255, 255, 0.1)" }} />
+        <Progress value={progress} color="pink" size="xs" radius={0} mt="sm" />
       </Box>
 
       <Box style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
@@ -757,9 +767,10 @@ export function StudyMode({ deckId, onBack, onComplete }) {
             p="xl"
             radius="lg"
             onClick={handleFlip}
+            withBorder
+            shadow="sm"
             style={{
-              background: showBack ? "linear-gradient(135deg, rgba(233, 69, 96, 0.1), rgba(255, 107, 107, 0.05))" : "rgba(255, 255, 255, 0.05)",
-              border: `1px solid ${showBack ? "rgba(233, 69, 96, 0.3)" : "rgba(255, 255, 255, 0.1)"}`,
+              borderColor: showBack ? "var(--mantine-color-pink-6)" : undefined,
               minHeight: 300,
               display: "flex",
               flexDirection: "column",
@@ -785,13 +796,8 @@ export function StudyMode({ deckId, onBack, onComplete }) {
                     <Text
                       size="2rem"
                       fw={700}
-                      c="white"
+                      c="pink"
                       mb="md"
-                      style={{ 
-                        background: "linear-gradient(90deg, #e94560, #ff6b6b)",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                      }}
                     >
                       {definition}
                     </Text>
@@ -804,7 +810,6 @@ export function StudyMode({ deckId, onBack, onComplete }) {
                       maxHeight: definition ? "40vh" : "50vh",
                       overflow: "auto",
                       textAlign: "center",
-                      color: definition ? "#aaa" : "white",
                     }}
                   >
                     <div
@@ -863,7 +868,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
             })()}
 
             <Group gap="xs" mt="xl">
-              <IconRotate size={16} color="#666" />
+              <IconRotate size={16} color="var(--mantine-color-dimmed)" />
               <Text size="xs" c="dimmed">Click or press Space to flip</Text>
             </Group>
           </Paper>

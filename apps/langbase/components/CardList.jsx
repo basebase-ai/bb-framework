@@ -21,6 +21,7 @@ import {
   Loader,
   TextInput,
   TypographyStylesProvider,
+  CloseButton,
 } from "@mantine/core";
 import { marked } from "marked";
 
@@ -111,9 +112,7 @@ export function CardList({ deckId, onBack, onStudy, onPractice }) {
   }, [cards, deck, deckLoading, updateDeck]);
 
   const filteredCards = cards.filter(
-    (card) =>
-      card.front?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      card.back?.toLowerCase().includes(searchQuery.toLowerCase())
+    (card) => card.front?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const stats = {
@@ -237,7 +236,7 @@ export function CardList({ deckId, onBack, onStudy, onPractice }) {
             <ActionIcon variant="subtle" color="gray" onClick={onBack}>
               <IconArrowLeft size={20} />
             </ActionIcon>
-            <Title order={2} c="white">{deck.name}</Title>
+            <Title order={2}>{deck.name}</Title>
           </Group>
           <Text size="sm" c="dimmed">
             {stats.total} card{stats.total !== 1 ? "s" : ""} • {stats.dueForReview} due for review
@@ -275,8 +274,8 @@ export function CardList({ deckId, onBack, onStudy, onPractice }) {
         </Group>
       </Group>
 
-      <Paper p="md" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-        <Text size="sm" fw={500} c="dimmed" mb="sm">Leitner Box Distribution</Text>
+      <Paper p="md" withBorder shadow="xs">
+        <Text size="sm" fw={500} mb="sm">Leitner Box Distribution</Text>
         <Group gap="md">
           {[1, 2, 3, 4, 5].map((box) => {
             const count = stats[`box${box}`];
@@ -295,13 +294,13 @@ export function CardList({ deckId, onBack, onStudy, onPractice }) {
       <TextInput
         placeholder="Search cards..."
         leftSection={<IconSearch size={16} />}
+        rightSection={searchQuery && <CloseButton size="sm" onClick={() => setSearchQuery("")} />}
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        styles={{ input: { background: "rgba(255, 255, 255, 0.05)", borderColor: "rgba(255, 255, 255, 0.1)" } }}
       />
 
       {filteredCards.length === 0 ? (
-        <Paper p="xl" style={{ background: "rgba(255, 255, 255, 0.03)", borderColor: "rgba(255, 255, 255, 0.1)" }} withBorder>
+        <Paper p="xl" withBorder shadow="xs">
           <Stack align="center" gap="md">
             <Text size="lg" c="dimmed" ta="center">
               {searchQuery ? "No cards match your search" : "No cards yet. Add your first card!"}
@@ -316,7 +315,24 @@ export function CardList({ deckId, onBack, onStudy, onPractice }) {
       ) : (
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
           {filteredCards.map((card) => (
-            <Card key={card.id} padding="lg" radius="md" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+            <Card
+              key={card.id}
+              padding="lg"
+              radius="md"
+              withBorder
+              shadow="xs"
+              style={{
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--mantine-color-pink-6)";
+                e.currentTarget.style.transform = "translateY(-2px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
               <Group justify="space-between" mb="xs">
                 <Badge variant="light" color={getBoxColor(card.box || 1)} size="sm">Box {card.box || 1}</Badge>
                 <Group gap="xs">
@@ -331,7 +347,7 @@ export function CardList({ deckId, onBack, onStudy, onPractice }) {
 
               <Box mb="sm">
                 <Text size="xs" c="dimmed" mb={4}>Front</Text>
-                <TypographyStylesProvider fz="sm" c="white" style={{ maxHeight: 80, overflow: "hidden" }}>
+                <TypographyStylesProvider fz="sm" style={{ maxHeight: 80, overflow: "hidden" }}>
                   <div dangerouslySetInnerHTML={{ __html: marked(card.front || "") }} />
                 </TypographyStylesProvider>
               </Box>

@@ -19,6 +19,7 @@ import {
   RangeSlider,
   Alert,
   SegmentedControl,
+  useMantineColorScheme,
 } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -50,6 +51,8 @@ import { collections } from "../schema.js";
  */
 export function SentencePractice({ deckId, onBack }) {
   const { user } = useAuth();
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === "dark";
   
   // Configuration state
   const [mode, setMode] = useState(/** @type {'sentences' | 'story'} */ ("sentences"));
@@ -150,7 +153,7 @@ export function SentencePractice({ deckId, onBack }) {
    */
   const generateContent = useCallback(async () => {
     if (masteredVocab.length < 3) {
-      setError("You need at least 3 mastered words to generate content. Keep studying!");
+      setError("You need at least 3 words in progress (Box 2+) to generate content. Keep studying!");
       return;
     }
 
@@ -322,18 +325,18 @@ Generate the sentences now:`;
   // Configuration screen
   if (!started) {
     return (
-      <Box style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-        <Paper p="xl" radius="lg" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(147, 51, 234, 0.3)", maxWidth: 500, width: "100%" }}>
+      <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+        <Paper p="xl" radius="lg" withBorder shadow="sm" style={{ maxWidth: 500, width: "100%" }}>
           <Group justify="space-between" mb="xl">
             <ActionIcon variant="subtle" color="gray" onClick={onBack}>
               <IconArrowLeft size={20} />
             </ActionIcon>
-            <Title order={3} c="white">Practice Mode</Title>
+            <Title order={3}>Practice Mode</Title>
             <Box w={28} />
           </Group>
 
           <Text c="dimmed" size="sm" mb="lg">
-            Practice with your mastered vocabulary ({masteredVocab.length} words available)
+            Practice with vocabulary you're currently learning ({masteredVocab.length} words available)
           </Text>
 
           {error && (
@@ -368,17 +371,14 @@ Generate the sentences now:`;
                 value: "story" 
               },
             ]}
-            styles={{
-              root: { background: "rgba(255, 255, 255, 0.05)" },
-            }}
           />
 
           {mode === "story" && (
-            <Paper p="sm" mb="lg" style={{ background: "rgba(147, 51, 234, 0.1)", border: "1px solid rgba(147, 51, 234, 0.2)" }}>
-              <Text size="sm" c="violet.3">
+            <Alert color="violet" variant="light" mb="lg">
+              <Text size="sm">
                 📖 Story Mode generates a cohesive narrative with Norwegian characters and a beginning, middle, and end!
               </Text>
-            </Paper>
+            </Alert>
           )}
 
           <Text c="dimmed" size="sm" mb="xs">
@@ -390,9 +390,6 @@ Generate the sentences now:`;
             min={mode === "story" ? 5 : 1}
             max={mode === "story" ? 15 : 20}
             mb="lg"
-            styles={{
-              input: { background: "rgba(255, 255, 255, 0.05)", borderColor: "rgba(255, 255, 255, 0.1)", color: "white" },
-            }}
           />
 
           <Text c="dimmed" size="sm" mb="xs">Sentence length (words): {wordRange[0]} - {wordRange[1]}</Text>
@@ -431,7 +428,7 @@ Generate the sentences now:`;
 
           {masteredVocab.length < 3 && (
             <Text c="dimmed" size="sm" ta="center" mt="md">
-              Study more cards first! You need at least 3 mastered words.
+              Study more cards first! You need at least 3 words in progress (Box 2+).
             </Text>
           )}
         </Paper>
@@ -442,9 +439,9 @@ Generate the sentences now:`;
   // Completion screen
   if (finished) {
     return (
-      <Box style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-        <Paper p="xl" radius="lg" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(147, 51, 234, 0.3)", maxWidth: 500, width: "100%", textAlign: "center" }}>
-          <Title order={2} c="white" mb="lg">
+      <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+        <Paper p="xl" radius="lg" withBorder shadow="sm" style={{ maxWidth: 500, width: "100%", textAlign: "center" }}>
+          <Title order={2} mb="lg">
             {mode === "story" ? "📖 The End!" : "🎉 Practice Complete!"}
           </Title>
           {mode === "story" && storyTitle && (
@@ -483,16 +480,16 @@ Generate the sentences now:`;
 
   // Practice screen
   return (
-    <Box style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)", display: "flex", flexDirection: "column" }}>
+    <Box style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Header */}
-      <Box px="md" py="sm" style={{ background: "rgba(0, 0, 0, 0.3)", borderBottom: "1px solid rgba(255, 255, 255, 0.1)" }}>
+      <Box px="md" py="sm" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
         <Group justify="space-between" maw={800} mx="auto">
           <Group gap="sm">
             <ActionIcon variant="subtle" color="gray" onClick={onBack}>
               <IconArrowLeft size={20} />
             </ActionIcon>
             <Box>
-              <Text c="white" fw={500}>
+              <Text fw={500}>
                 {mode === "story" && storyTitle ? `📖 ${storyTitle}` : "Sentence Practice"}
               </Text>
               {mode === "story" && (
@@ -502,7 +499,7 @@ Generate the sentences now:`;
           </Group>
           <Text size="sm" c="dimmed">{currentIndex + 1} / {sentences.length}</Text>
         </Group>
-        <Progress value={progress} color="violet" size="xs" radius={0} mt="sm" style={{ background: "rgba(255, 255, 255, 0.1)" }} />
+        <Progress value={progress} color="violet" size="xs" radius={0} mt="sm" />
       </Box>
 
       {/* Main content */}
@@ -511,11 +508,10 @@ Generate the sentences now:`;
           <Paper
             p="xl"
             radius="lg"
+            withBorder
+            shadow="sm"
             style={{
-              background: showTranslation 
-                ? "linear-gradient(135deg, rgba(147, 51, 234, 0.1), rgba(168, 85, 247, 0.05))" 
-                : "rgba(255, 255, 255, 0.05)",
-              border: `1px solid ${showTranslation ? "rgba(147, 51, 234, 0.3)" : "rgba(255, 255, 255, 0.1)"}`,
+              borderColor: showTranslation ? "var(--mantine-color-violet-6)" : undefined,
               minHeight: 250,
               display: "flex",
               flexDirection: "column",
@@ -531,7 +527,7 @@ Generate the sentences now:`;
             <Text
               size="1.5rem"
               fw={600}
-              c="white"
+              c="violet"
               ta="center"
               mb="md"
               style={{ lineHeight: 1.5 }}
@@ -559,7 +555,7 @@ Generate the sentences now:`;
                   style={{
                     width: "100%",
                     height: 1,
-                    background: "rgba(255, 255, 255, 0.1)",
+                    background: "var(--mantine-color-default-border)",
                     margin: "1rem 0",
                   }}
                 />

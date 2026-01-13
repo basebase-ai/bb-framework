@@ -29,9 +29,10 @@ import {
   Box,
   Title,
   Tabs,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { IconLogin, IconLogout, IconUser, IconCards, IconBook2, IconMessageCircle } from "@tabler/icons-react";
+import { IconLogin, IconLogout, IconUser, IconCards, IconBook2, IconMessageCircle, IconSun, IconMoon } from "@tabler/icons-react";
 import { AppRouter, RouteContent } from "../../framework/components/AppRouter.jsx";
 import { useRoute } from "../../framework/hooks/useRoute.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
@@ -606,6 +607,8 @@ function AppLayout() {
   const { profile } = useUserProfile(user?.uid);
   const { navigate, path } = useRoute();
   const [profileModalOpened, setProfileModalOpened] = useState(false);
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === "dark";
 
   const handleNavigateHome = () => {
     navigate("/");
@@ -623,13 +626,13 @@ function AppLayout() {
       <AppShell
         header={{ height: 64 }}
         padding="md"
-        style={{ background: "#0f0f1a" }}
+        style={{ background: isDark ? "#0f0f1a" : undefined }}
       >
         <AppShell.Header
           style={{
-            background: "rgba(15, 15, 26, 0.95)",
+            background: isDark ? "rgba(15, 15, 26, 0.95)" : "rgba(255, 255, 255, 0.95)",
             backdropFilter: "blur(20px)",
-            borderBottom: "1px solid rgba(233, 69, 96, 0.2)",
+            borderBottom: `1px solid ${isDark ? "rgba(233, 69, 96, 0.2)" : "rgba(233, 69, 96, 0.3)"}`,
           }}
         >
           <Group h="100%" px="md" justify="space-between" maw={1200} mx="auto">
@@ -672,6 +675,12 @@ function AppLayout() {
                     onClick={() => setProfileModalOpened(true)}
                   >
                     Profile
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
+                    onClick={() => toggleColorScheme()}
+                  >
+                    {isDark ? "Light Mode" : "Dark Mode"}
                   </Menu.Item>
                   <Menu.Divider />
                   <Menu.Item

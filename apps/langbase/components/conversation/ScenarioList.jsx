@@ -26,6 +26,7 @@ import {
   Divider,
   Paper,
   SimpleGrid,
+  CloseButton,
 } from "@mantine/core";
 import {
   IconMessageCircle,
@@ -362,7 +363,7 @@ export function ScenarioList({ onOpenConversation }) {
             <Group gap="sm">
               <Title order={3}>{selectedScenario.title}</Title>
               {selectedScenario.isPublic && (
-                <Badge variant="light" color="violet" size="sm" leftSection={<IconWorld size={12} />}>
+                <Badge variant="light" color="cyan" size="sm" leftSection={<IconWorld size={12} />}>
                   Public
                 </Badge>
               )}
@@ -374,7 +375,7 @@ export function ScenarioList({ onOpenConversation }) {
             )}
             <Badge
               variant="light"
-              color="indigo"
+              color="pink"
               size="sm"
               mt="xs"
               leftSection={<IconLanguage size={12} />}
@@ -412,7 +413,7 @@ export function ScenarioList({ onOpenConversation }) {
           leftSection={<IconPlus size={20} />}
           onClick={handleStartNewConversation}
           variant="gradient"
-          gradient={{ from: "indigo", to: "violet" }}
+          gradient={{ from: "#e94560", to: "#ff6b6b" }}
           fullWidth
         >
           Start New Conversation
@@ -426,7 +427,7 @@ export function ScenarioList({ onOpenConversation }) {
             <Loader size="sm" />
           </Center>
         ) : sortedInstances.length === 0 ? (
-          <Paper withBorder p="lg" ta="center">
+          <Paper withBorder shadow="xs" p="lg" ta="center">
             <Text c="dimmed">No conversations yet. Start a new one above!</Text>
           </Paper>
         ) : (
@@ -435,26 +436,26 @@ export function ScenarioList({ onOpenConversation }) {
               <Card
                 key={instance.id}
                 withBorder
+                shadow="xs"
                 padding="md"
                 style={{
                   cursor: "pointer",
                   transition: "all 0.2s ease",
-                  borderColor: "var(--mantine-color-dark-4)",
                 }}
                 onClick={() => onOpenConversation(instance.id)}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "var(--mantine-color-indigo-7)";
+                  e.currentTarget.style.borderColor = "var(--mantine-color-pink-7)";
                   e.currentTarget.style.transform = "translateY(-1px)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "var(--mantine-color-dark-4)";
+                  e.currentTarget.style.borderColor = "";
                   e.currentTarget.style.transform = "translateY(0)";
                 }}
               >
                 <Group justify="space-between">
                   <Stack gap={4}>
                     <Group gap="sm">
-                      <IconMessageCircle size={16} color="var(--mantine-color-indigo-5)" />
+                      <IconMessageCircle size={16} color="var(--mantine-color-pink-5)" />
                       <Text size="sm" fw={500}>
                         {instance.messageCount || 0} messages
                       </Text>
@@ -469,7 +470,7 @@ export function ScenarioList({ onOpenConversation }) {
                     <Button
                       size="xs"
                       variant="light"
-                      color="indigo"
+                      color="pink"
                       leftSection={<IconPlayerPlay size={14} />}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -528,13 +529,13 @@ export function ScenarioList({ onOpenConversation }) {
               width: 120,
               height: 120,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(99, 102, 241, 0.05) 100%)",
+              background: "linear-gradient(135deg, rgba(233, 69, 96, 0.2) 0%, rgba(233, 69, 96, 0.05) 100%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <IconMessageCircle size={60} stroke={1.2} color="var(--mantine-color-indigo-5)" />
+            <IconMessageCircle size={60} stroke={1.2} color="var(--mantine-color-pink-5)" />
           </Box>
           <Stack align="center" gap="xs">
             <Title order={3} c="gray.3">
@@ -550,7 +551,7 @@ export function ScenarioList({ onOpenConversation }) {
             leftSection={<IconPlus size={20} />}
             onClick={openCreateModal}
             variant="gradient"
-            gradient={{ from: "indigo", to: "violet" }}
+            gradient={{ from: "#e94560", to: "#ff6b6b" }}
           >
             Create Your First Scenario
           </Button>
@@ -583,6 +584,7 @@ export function ScenarioList({ onOpenConversation }) {
         <TextInput
           placeholder="Search scenarios..."
           leftSection={<IconSearch size={16} />}
+          rightSection={searchQuery && <CloseButton size="sm" onClick={() => setSearchQuery("")} />}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{ flex: 1, maxWidth: 300 }}
@@ -591,7 +593,7 @@ export function ScenarioList({ onOpenConversation }) {
           leftSection={<IconPlus size={18} />}
           onClick={openCreateModal}
           variant="light"
-          color="indigo"
+          color="pink"
         >
           New Scenario
         </Button>
@@ -629,7 +631,7 @@ export function ScenarioList({ onOpenConversation }) {
         <>
           <Divider my="md" />
           <Group gap="xs">
-            <IconUsers size={20} color="var(--mantine-color-violet-5)" />
+            <IconUsers size={20} color="var(--mantine-color-cyan-5)" />
             <Title order={4} c="gray.4">
               Community Scenarios
             </Title>
@@ -704,21 +706,21 @@ function ScenarioCard({ scenario, isOwner, onSelect, onEdit, onDelete, onCopy, c
   return (
     <Card
       withBorder
+      shadow="xs"
       padding="lg"
       style={{
         cursor: "pointer",
         transition: "all 0.2s ease",
-        borderColor: "var(--mantine-color-dark-4)",
       }}
       onClick={isOwner ? onSelect : undefined}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = isOwner
-          ? "var(--mantine-color-indigo-7)"
-          : "var(--mantine-color-violet-7)";
+          ? "var(--mantine-color-pink-7)"
+          : "var(--mantine-color-cyan-7)";
         e.currentTarget.style.transform = "translateY(-2px)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "var(--mantine-color-dark-4)";
+        e.currentTarget.style.borderColor = "";
         e.currentTarget.style.transform = "translateY(0)";
       }}
     >
@@ -727,14 +729,14 @@ function ScenarioCard({ scenario, isOwner, onSelect, onEdit, onDelete, onCopy, c
           <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
             <IconMessageCircle
               size={20}
-              color={isOwner ? "var(--mantine-color-indigo-5)" : "var(--mantine-color-violet-5)"}
+              color={isOwner ? "var(--mantine-color-pink-5)" : "var(--mantine-color-cyan-5)"}
             />
             <Text fw={600} truncate>
               {scenario.title}
             </Text>
           </Group>
           {scenario.isPublic && (
-            <Badge variant="light" color="violet" size="xs" leftSection={<IconWorld size={10} />}>
+            <Badge variant="light" color="cyan" size="xs" leftSection={<IconWorld size={10} />}>
               Public
             </Badge>
           )}
@@ -749,7 +751,7 @@ function ScenarioCard({ scenario, isOwner, onSelect, onEdit, onDelete, onCopy, c
         <Group gap="sm">
           <Badge
             variant="light"
-            color={isOwner ? "indigo" : "violet"}
+            color={isOwner ? "pink" : "cyan"}
             size="sm"
             leftSection={<IconLanguage size={12} />}
           >
@@ -763,7 +765,7 @@ function ScenarioCard({ scenario, isOwner, onSelect, onEdit, onDelete, onCopy, c
               <Button
                 size="xs"
                 variant="light"
-                color="indigo"
+                color="pink"
                 leftSection={<IconPlayerPlay size={14} />}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -794,7 +796,7 @@ function ScenarioCard({ scenario, isOwner, onSelect, onEdit, onDelete, onCopy, c
             <Button
               size="xs"
               variant="light"
-              color="violet"
+              color="cyan"
               leftSection={<IconCopy size={14} />}
               onClick={(e) => { e.stopPropagation(); onCopy?.(); }}
               loading={copying}
@@ -858,7 +860,7 @@ function ScenarioModal({
           description="Others can copy and use this scenario template"
           checked={isPublic}
           onChange={(e) => setIsPublic(e.currentTarget.checked)}
-          color="violet"
+          color="cyan"
         />
         <Group justify="flex-end" mt="md">
           <Button variant="subtle" onClick={onClose}>
@@ -868,7 +870,7 @@ function ScenarioModal({
             onClick={onSubmit}
             disabled={!formTitle.trim()}
             variant="gradient"
-            gradient={{ from: "indigo", to: "violet" }}
+            gradient={{ from: "#e94560", to: "#ff6b6b" }}
           >
             {submitLabel}
           </Button>

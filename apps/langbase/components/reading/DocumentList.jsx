@@ -19,6 +19,7 @@ import {
   Switch,
   Modal,
   Divider,
+  CloseButton,
 } from "@mantine/core";
 import {
   IconBook,
@@ -249,6 +250,7 @@ export function DocumentList({ onOpenDocument, onAddDocument }) {
         <TextInput
           placeholder="Search documents..."
           leftSection={<IconSearch size={16} />}
+          rightSection={searchQuery && <CloseButton size="sm" onClick={() => setSearchQuery("")} />}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{ flex: 1, maxWidth: 300 }}
@@ -293,7 +295,7 @@ export function DocumentList({ onOpenDocument, onAddDocument }) {
         <>
           <Divider my="md" />
           <Group gap="xs">
-            <IconUsers size={20} color="var(--mantine-color-teal-5)" />
+            <IconUsers size={20} color="var(--mantine-color-cyan-5)" />
             <Title order={4} c="gray.4">
               Community Readings
             </Title>
@@ -339,7 +341,7 @@ export function DocumentList({ onOpenDocument, onAddDocument }) {
             description="Public documents can be read by anyone in the community"
             checked={editIsPublic}
             onChange={(e) => setEditIsPublic(e.currentTarget.checked)}
-            color="teal"
+            color="cyan"
           />
           <Group justify="flex-end" mt="md">
             <Button variant="subtle" onClick={() => setEditingDoc(null)}>
@@ -371,35 +373,35 @@ function DocumentCard({ doc, isOwner, onOpen, onEdit, onDelete, onCopy, copying 
   return (
     <Card
       withBorder
+      shadow="xs"
       padding="lg"
       style={{
         cursor: "pointer",
         transition: "all 0.2s ease",
-        borderColor: "var(--mantine-color-dark-4)",
       }}
       onClick={onOpen}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = isOwner
           ? "var(--mantine-color-pink-7)"
-          : "var(--mantine-color-teal-7)";
+          : "var(--mantine-color-cyan-7)";
         e.currentTarget.style.transform = "translateY(-2px)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "var(--mantine-color-dark-4)";
+        e.currentTarget.style.borderColor = "";
         e.currentTarget.style.transform = "translateY(0)";
       }}
     >
       <Group justify="space-between" wrap="nowrap">
         <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
           <Group gap="sm" wrap="nowrap">
-            <IconBook size={20} color={isOwner ? "var(--mantine-color-pink-5)" : "var(--mantine-color-teal-5)"} />
+            <IconBook size={20} color={isOwner ? "var(--mantine-color-pink-5)" : "var(--mantine-color-cyan-5)"} />
             <Text fw={600} truncate>
               {doc.title}
             </Text>
             {doc.isPublic && (
               <Badge
                 variant="light"
-                color="teal"
+                color="cyan"
                 size="xs"
                 leftSection={<IconWorld size={10} />}
               >
@@ -410,7 +412,7 @@ function DocumentCard({ doc, isOwner, onOpen, onEdit, onDelete, onCopy, copying 
           <Group gap="sm">
             <Badge
               variant="light"
-              color={isOwner ? "pink" : "teal"}
+              color={isOwner ? "pink" : "cyan"}
               size="sm"
               leftSection={<IconLanguage size={12} />}
             >
@@ -430,7 +432,7 @@ function DocumentCard({ doc, isOwner, onOpen, onEdit, onDelete, onCopy, copying 
             <Button
               size="xs"
               variant="light"
-              color="teal"
+              color="cyan"
               leftSection={<IconCopy size={14} />}
               onClick={(e) => {
                 e.stopPropagation();

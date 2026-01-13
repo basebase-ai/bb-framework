@@ -665,7 +665,7 @@ export function ImportModal({ opened, onClose }) {
         />
 
         {importFormat === "apkg" && apkgFieldCount > 2 && !parsing && (
-          <Paper p="sm" withBorder style={{ background: "rgba(255, 255, 255, 0.02)" }}>
+          <Paper p="sm" withBorder>
             <Text size="sm" fw={500} mb="xs">Field Mapping</Text>
             <Text size="xs" c="dimmed" mb="sm">
               This deck has {apkgFieldCount} fields per card. Select which fields to use:
@@ -753,7 +753,7 @@ export function ImportModal({ opened, onClose }) {
         )}
 
         {previewCards.length > 0 && !parsing && (
-          <Paper p="md" withBorder style={{ background: "rgba(255, 255, 255, 0.02)" }}>
+          <Paper p="md" withBorder>
             <Group justify="space-between" mb="sm">
               <Text size="sm" fw={500}>Preview</Text>
               <Group gap="sm">
@@ -783,13 +783,12 @@ export function ImportModal({ opened, onClose }) {
                       gridTemplateColumns: "1fr 1fr",
                       gap: "1rem",
                       padding: "0.5rem",
-                      background: "rgba(255, 255, 255, 0.03)",
                       borderRadius: "4px",
                     }}
                   >
                     <Box>
                       <Text size="xs" c="dimmed" mb={2}>Front</Text>
-                      <TypographyStylesProvider fz="sm" c="white" style={{ maxHeight: 50, overflow: "hidden" }}>
+                      <TypographyStylesProvider fz="sm" style={{ maxHeight: 50, overflow: "hidden" }}>
                         <div dangerouslySetInnerHTML={{ __html: marked(displayFront || "") }} />
                       </TypographyStylesProvider>
                     </Box>
