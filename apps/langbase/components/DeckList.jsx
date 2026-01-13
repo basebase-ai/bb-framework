@@ -502,9 +502,8 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
         ) : (
           <Button
             fullWidth
-            variant={isCopied ? "light" : "gradient"}
-            gradient={{ from: "cyan", to: "teal" }}
-            color={isCopied ? "green" : undefined}
+            variant={isCopied ? "light" : "filled"}
+            color={isCopied ? "green" : "cyan"}
             leftSection={isCopied ? <IconCheck size={16} /> : <IconCopy size={16} />}
             onClick={() => handleCopyDeck(deck.id, deck.name)}
             loading={isCopying}
@@ -539,8 +538,8 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
             Import
           </Button>
           <Button
-            variant="gradient"
-            gradient={{ from: "#e94560", to: "#ff6b6b" }}
+            variant="filled"
+            color="pink"
             leftSection={<IconPlus size={16} />}
             onClick={() => setCreateModalOpen(true)}
           >

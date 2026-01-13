@@ -412,8 +412,8 @@ export function ScenarioList({ onOpenConversation }) {
           size="lg"
           leftSection={<IconPlus size={20} />}
           onClick={handleStartNewConversation}
-          variant="gradient"
-          gradient={{ from: "#e94560", to: "#ff6b6b" }}
+          variant="filled"
+          color="pink"
           fullWidth
         >
           Start New Conversation
@@ -529,7 +529,7 @@ export function ScenarioList({ onOpenConversation }) {
               width: 120,
               height: 120,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, rgba(233, 69, 96, 0.2) 0%, rgba(233, 69, 96, 0.05) 100%)",
+              background: "rgba(233, 69, 96, 0.1)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -550,8 +550,8 @@ export function ScenarioList({ onOpenConversation }) {
             size="lg"
             leftSection={<IconPlus size={20} />}
             onClick={openCreateModal}
-            variant="gradient"
-            gradient={{ from: "#e94560", to: "#ff6b6b" }}
+            variant="filled"
+            color="pink"
           >
             Create Your First Scenario
           </Button>
@@ -869,8 +869,8 @@ function ScenarioModal({
           <Button
             onClick={onSubmit}
             disabled={!formTitle.trim()}
-            variant="gradient"
-            gradient={{ from: "#e94560", to: "#ff6b6b" }}
+            variant="filled"
+            color="pink"
           >
             {submitLabel}
           </Button>

@@ -16,6 +16,7 @@ import {
   Button,
   Modal,
   Select,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { IconSearch, IconVolume, IconX, IconCards, IconPlus, IconLink } from "@tabler/icons-react";
 import { useCollection } from "../../../../framework/hooks/useCollection.js";
@@ -28,11 +29,14 @@ import { collections } from "../../schema.js";
  * @param {{ 
  *   linkedDeckId: string | null, 
  *   onLinkDeck: (deckId: string) => void,
- *   onClose?: () => void 
+ *   onClose?: () => void,
+ *   context?: "reading" | "conversation"
  * }} props
  */
-export function VocabularyPanel({ linkedDeckId, onLinkDeck, onClose }) {
+export function VocabularyPanel({ linkedDeckId, onLinkDeck, onClose, context = "reading" }) {
   const { user } = useAuth();
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === "dark";
   const [search, setSearch] = useState("");
   const [showDeckModal, setShowDeckModal] = useState(false);
   const [newDeckName, setNewDeckName] = useState("");
@@ -138,11 +142,10 @@ export function VocabularyPanel({ linkedDeckId, onLinkDeck, onClose }) {
         h="100%"
         p="sm"
         withBorder
+        shadow="xs"
         style={{
           display: "flex",
           flexDirection: "column",
-          background: "var(--mantine-color-dark-7)",
-          borderColor: "var(--mantine-color-dark-5)",
         }}
       >
         <Group justify="space-between" mb="sm">
@@ -157,7 +160,7 @@ export function VocabularyPanel({ linkedDeckId, onLinkDeck, onClose }) {
         <Box style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
           <IconCards size={48} color="var(--mantine-color-pink-5)" style={{ opacity: 0.5, marginBottom: "1rem" }} />
           <Text size="sm" c="dimmed" ta="center" mb="md">
-            Link a flashcard deck to save words you look up while reading.
+            Link a flashcard deck to save words you look up{context === "reading" ? " while reading" : " during conversations"}.
           </Text>
           <Button
             variant="light"
@@ -229,11 +232,10 @@ export function VocabularyPanel({ linkedDeckId, onLinkDeck, onClose }) {
       h="100%"
       p="sm"
       withBorder
+      shadow="xs"
       style={{
         display: "flex",
         flexDirection: "column",
-        background: "var(--mantine-color-dark-7)",
-        borderColor: "var(--mantine-color-dark-5)",
       }}
     >
       {/* Header */}
@@ -281,7 +283,7 @@ export function VocabularyPanel({ linkedDeckId, onLinkDeck, onClose }) {
             </Text>
           ) : filteredCards.length === 0 ? (
             <Text size="xs" c="dimmed" ta="center" py="md">
-              {search ? "No matches" : "Click on words while reading to add them here"}
+              {search ? "No matches" : context === "reading" ? "Click on words while reading to add them here" : "Click on words in messages to add them here"}
             </Text>
           ) : (
             filteredCards.map((card) => (
@@ -290,7 +292,7 @@ export function VocabularyPanel({ linkedDeckId, onLinkDeck, onClose }) {
                 p="xs"
                 style={{
                   borderRadius: "4px",
-                  background: "var(--mantine-color-dark-6)",
+                  background: isDark ? "var(--mantine-color-dark-6)" : "var(--mantine-color-gray-0)",
                   cursor: "default",
                 }}
               >
@@ -339,7 +341,7 @@ export function VocabularyPanel({ linkedDeckId, onLinkDeck, onClose }) {
 
       {/* Stats */}
       {cards && cards.length > 0 && (
-        <Box mt="sm" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-dark-5)" }}>
+        <Box mt="sm" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
           <Text size="xs" c="dimmed" ta="center">
             {cards.filter((c) => (c.box || 1) >= 5).length} mastered •{" "}
             {cards.filter((c) => (c.box || 1) < 5).length} learning

@@ -89,6 +89,11 @@ function HomePage() {
     navigate(`/chat/${convoId}`);
   };
 
+  /** @param {string} deckId */
+  const handleStartSentencePractice = (deckId) => {
+    navigate(`/practice/${deckId}`);
+  };
+
   return (
     <Box>
       <Tabs
@@ -125,6 +130,7 @@ function HomePage() {
           <DocumentList
             onOpenDocument={handleOpenDocument}
             onAddDocument={() => setUploadOpen(true)}
+            onStartSentencePractice={handleStartSentencePractice}
           />
           <DocumentUpload
             opened={uploadOpen}
@@ -149,17 +155,11 @@ function DeckViewPage() {
     navigate(`/study/${deckId}`);
   };
 
-  /** @param {string} deckId */
-  const handlePractice = (deckId) => {
-    navigate(`/practice/${deckId}`);
-  };
-
   return (
     <CardList
       deckId={params.id || ""}
       onBack={handleBack}
       onStudy={handleStudy}
-      onPractice={handlePractice}
     />
   );
 }
@@ -186,9 +186,12 @@ function StudyPage() {
 
 function PracticePage() {
   const { params, navigate } = useRoute();
+  const setActiveTab = useUIStore((s) => s.setActiveTab);
 
   const handleBack = () => {
-    navigate(`/deck/${params.id}`);
+    // Navigate to home and show the Reading tab (since sentence practice is now part of reading)
+    setActiveTab("reading");
+    navigate("/");
   };
 
   return (
@@ -245,7 +248,7 @@ function LandingPage() {
     <Box
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(180deg, #0a0a12 0%, #12121f 50%, #1a1a2e 100%)",
+        background: "#0f0f1a",
       }}
     >
       {/* Hero Section */}
@@ -265,7 +268,7 @@ function LandingPage() {
             width: 100,
             height: 100,
             borderRadius: "24px",
-            background: "linear-gradient(135deg, #e94560 0%, #ff6b6b 100%)",
+            background: "#e94560",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -280,9 +283,7 @@ function LandingPage() {
           style={{
             fontSize: "clamp(2.5rem, 6vw, 4rem)",
             fontWeight: 800,
-            background: "linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
+            color: "#ffffff",
             marginBottom: "0.5rem",
             letterSpacing: "-0.03em",
           }}
@@ -311,8 +312,8 @@ function LandingPage() {
         </Text>
         <Button
           size="xl"
-          variant="gradient"
-          gradient={{ from: "#e94560", to: "#ff6b6b" }}
+          variant="filled"
+          color="pink"
           onClick={promptSignIn}
           leftSection={<IconLogin size={22} />}
           style={{
@@ -355,7 +356,7 @@ function LandingPage() {
             {/* Step 1: Learn Vocabulary */}
             <Box
               style={{
-                background: "linear-gradient(135deg, rgba(233, 69, 96, 0.1) 0%, rgba(255, 107, 107, 0.05) 100%)",
+                background: "rgba(233, 69, 96, 0.08)",
                 border: "1px solid rgba(233, 69, 96, 0.2)",
                 borderRadius: "16px",
                 padding: "2rem",
@@ -415,7 +416,7 @@ function LandingPage() {
             {/* Step 2: Practice in Scenarios */}
             <Box
               style={{
-                background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%)",
+                background: "rgba(245, 158, 11, 0.08)",
                 border: "1px solid rgba(245, 158, 11, 0.2)",
                 borderRadius: "16px",
                 padding: "2rem",
@@ -573,8 +574,8 @@ function LandingPage() {
         </Text>
         <Button
           size="lg"
-          variant="gradient"
-          gradient={{ from: "#e94560", to: "#ff6b6b" }}
+          variant="filled"
+          color="pink"
           onClick={promptSignIn}
           leftSection={<IconLogin size={18} />}
         >

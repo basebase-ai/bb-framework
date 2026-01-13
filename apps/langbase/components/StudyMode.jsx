@@ -565,7 +565,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
           >
             <Group justify="space-between" align="center">
               <Group gap="md">
-                <ThemeIcon size={50} radius="xl" variant="gradient" gradient={{ from: "#e94560", to: "#ff6b6b" }}>
+                <ThemeIcon size={50} radius="xl" variant="filled" color="pink">
                   <IconCards size={28} />
                 </ThemeIcon>
                 <Box>
@@ -647,8 +647,8 @@ export function StudyMode({ deckId, onBack, onComplete }) {
               Cancel
             </Button>
             <Button
-              variant="gradient"
-              gradient={{ from: "#e94560", to: "#ff6b6b" }}
+              variant="filled"
+              color="pink"
               size="lg"
               leftSection={<IconCards size={20} />}
               onClick={() => setStudyStarted(true)}
@@ -721,8 +721,8 @@ export function StudyMode({ deckId, onBack, onComplete }) {
             </Button>
             {totalReviewed > 0 && (
               <Button
-                variant="gradient"
-                gradient={{ from: "#e94560", to: "#ff6b6b" }}
+                variant="filled"
+                color="pink"
                 leftSection={<IconRefresh size={16} />}
                 onClick={() => {
                   setReviewedCardIds(new Set());
@@ -879,7 +879,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
                 <Button size="xl" variant="light" color="red" leftSection={<IconX size={24} />} onClick={() => handleAnswer("hard")} disabled={isAnimating} style={{ minWidth: 150 }}>
                   Hard
                 </Button>
-                <Button size="xl" variant="gradient" gradient={{ from: "green", to: "lime" }} leftSection={<IconCheck size={24} />} onClick={() => handleAnswer("easy")} disabled={isAnimating} style={{ minWidth: 150 }}>
+                <Button size="xl" variant="filled" color="green" leftSection={<IconCheck size={24} />} onClick={() => handleAnswer("easy")} disabled={isAnimating} style={{ minWidth: 150 }}>
                   Easy
                 </Button>
               </Group>

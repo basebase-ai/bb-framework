@@ -414,8 +414,8 @@ Generate the sentences now:`;
               Cancel
             </Button>
             <Button
-              variant="gradient"
-              gradient={{ from: "violet", to: "grape" }}
+              variant="filled"
+              color="violet"
               size="lg"
               leftSection={mode === "story" ? <IconBook size={18} /> : <IconMessages size={18} />}
               onClick={generateContent}
@@ -458,8 +458,8 @@ Generate the sentences now:`;
               Back
             </Button>
             <Button
-              variant="gradient"
-              gradient={{ from: "violet", to: "grape" }}
+              variant="filled"
+              color="violet"
               leftSection={<IconRefresh size={16} />}
               onClick={() => {
                 setStarted(false);
@@ -578,8 +578,8 @@ Generate the sentences now:`;
             {!showTranslation ? (
               <Button
                 size="lg"
-                variant="gradient"
-                gradient={{ from: "violet", to: "grape" }}
+                variant="filled"
+                color="violet"
                 onClick={handleReveal}
               >
                 Show Translation
@@ -587,8 +587,8 @@ Generate the sentences now:`;
             ) : currentIndex < sentences.length - 1 ? (
               <Button
                 size="lg"
-                variant="gradient"
-                gradient={{ from: "violet", to: "grape" }}
+                variant="filled"
+                color="violet"
                 rightSection={<IconChevronRight size={20} />}
                 onClick={handleNext}
               >
@@ -597,8 +597,8 @@ Generate the sentences now:`;
             ) : (
               <Button
                 size="lg"
-                variant="gradient"
-                gradient={{ from: "violet", to: "grape" }}
+                variant="filled"
+                color="violet"
                 leftSection={<IconCheck size={20} />}
                 onClick={handleNext}
               >

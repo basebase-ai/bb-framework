@@ -254,6 +254,7 @@ export const schema = {
       owner: { type: "string", required: true },
       messageCount: { type: "number", default: 0 },
       lastMessageAt: { type: "timestamp" },
+      linkedDeckId: { type: "string" }, // Optional linked vocabulary deck
       createdAt: { type: "timestamp", auto: true },
       updatedAt: { type: "timestamp", auto: true },
     },

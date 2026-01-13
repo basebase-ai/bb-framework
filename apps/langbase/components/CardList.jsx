@@ -34,7 +34,6 @@ import {
   IconTrash,
   IconSearch,
   IconBox,
-  IconMessageLanguage,
 } from "@tabler/icons-react";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
@@ -51,9 +50,9 @@ function getBoxColor(box) {
 }
 
 /**
- * @param {{ deckId: string, onBack: () => void, onStudy: (deckId: string) => void, onPractice?: (deckId: string) => void }} props
+ * @param {{ deckId: string, onBack: () => void, onStudy: (deckId: string) => void }} props
  */
-export function CardList({ deckId, onBack, onStudy, onPractice }) {
+export function CardList({ deckId, onBack, onStudy }) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -252,20 +251,9 @@ export function CardList({ deckId, onBack, onStudy, onPractice }) {
           >
             Study ({stats.dueForReview})
           </Button>
-          {onPractice && (
-            <Button
-              variant="light"
-              color="violet"
-              leftSection={<IconMessageLanguage size={16} />}
-              onClick={() => onPractice(deckId)}
-              disabled={stats.mastered < 3}
-            >
-              Practice
-            </Button>
-          )}
           <Button
-            variant="gradient"
-            gradient={{ from: "#e94560", to: "#ff6b6b" }}
+            variant="filled"
+            color="pink"
             leftSection={<IconPlus size={16} />}
             onClick={() => setCreateModalOpen(true)}
           >

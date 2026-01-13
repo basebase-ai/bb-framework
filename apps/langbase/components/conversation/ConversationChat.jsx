@@ -5,12 +5,13 @@
  * - Chat with LLM in target language
  * - Click words in AI messages to translate (target → English)
  * - Lookup panel to translate English → target language for composing
+ * - Vocabulary panel to save translated words to a flashcard deck
  * 
  * Now works with the scenario/instance model:
  * - conversationId refers to an instance (langbase_conversations)
  * - The instance has a scenarioId that links to the scenario (langbase_scenarios)
  */
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Stack,
   Group,
@@ -27,6 +28,7 @@ import {
   Tooltip,
   TextInput,
   Divider,
+  useMantineColorScheme,
 } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -43,6 +45,9 @@ import { useFunction } from "../../../../framework/hooks/useFunction.js";
 import { useAuth } from "../../../../framework/hooks/useAuth.js";
 import { collections, SUPPORTED_LANGUAGES } from "../../schema.js";
 import { useSpeech } from "../../hooks/useSpeech.js";
+import { VocabularyPanel } from "../reading/VocabularyPanel.jsx";
+import { useTranslation } from "../../hooks/useTranslation.js";
+import { useUIStore } from "../../stores/uiStore.js";
 
 /**
  * @param {{ conversationId: string, onBack: () => void }} props
@@ -99,6 +104,29 @@ export function ConversationChat({ conversationId, onBack }) {
   const { speak, speaking } = useSpeech();
   const languageKey = scenario?.language || "norwegian";
   const langInfo = SUPPORTED_LANGUAGES[languageKey] || null;
+  
+  // Set source language in UI store for VocabularyPanel speech
+  const setSourceLanguage = useUIStore((s) => s.setSourceLanguage);
+  
+  useEffect(() => {
+    if (languageKey) {
+      setSourceLanguage(languageKey);
+    }
+  }, [languageKey, setSourceLanguage]);
+  
+  // Linked vocabulary deck
+  const linkedDeckId = conversation?.linkedDeckId || null;
+  
+  // Translation hook - when a deck is linked, translations get added as cards
+  const { translate: translateWithDeck } = useTranslation(linkedDeckId);
+  
+  /**
+   * Handle linking a deck to this conversation
+   * @param {string} deckId
+   */
+  const handleLinkDeck = useCallback(async (deckId) => {
+    await updateConversation({ linkedDeckId: deckId });
+  }, [updateConversation]);
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -204,20 +232,21 @@ The scenario is: "${scenarioTitle}"
 ${context ? `Additional context: ${context}` : ""}
 
 Guidelines:
-- If the user's message has spelling or grammar errors, FIRST provide a correction on its own line starting with "✏️ " followed by the corrected sentence. Then add a blank line and your response.
-- If the message is correct, just respond normally without any correction prefix.
+- ONLY if the user's message has actual spelling mistakes, grammar errors, or incorrect word usage, provide a correction on its own line starting with "✏️ " followed by the corrected sentence. Then add a blank line and your response.
+- Do NOT provide a correction if the user's message is understandable and grammatically acceptable, even if you might phrase it differently. Only correct actual errors where specific characters or words need to change.
+- If the message is correct or acceptable, just respond normally without any correction prefix.
 - Respond ONLY in ${langName} (both corrections and responses)
 - Keep responses conversational and natural
 - Use vocabulary appropriate for an intermediate learner
 - Keep responses relatively short (1-3 sentences) to maintain a natural conversation flow
 - Stay in character for the scenario
 
-Example with correction:
+Example with correction (actual spelling error):
 ✏️ Jeg vil gjerne ha en kopp kaffe.
 
 Selvfølgelig! Vil du ha melk eller sukker?
 
-Example without correction (message was correct):
+Example without correction (message was correct or acceptable):
 Selvfølgelig! Vil du ha melk eller sukker?`;
 
       // Call LLM
@@ -269,8 +298,6 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
     const posX = rect.left + rect.width / 2;
     const posY = rect.top;
     
-    console.log("[Tooltip] Word clicked:", cleanWord, "Position:", { x: posX, y: posY, rect });
-    
     setSelectedWord({
       word: cleanWord,
       translation: null,
@@ -282,20 +309,30 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
     });
     
     try {
-      // Translate from target language to English
-      const prompt = `Translate the ${langInfo?.name || "Norwegian"} word or phrase "${cleanWord}" to English. Only respond with the translation, nothing else.`;
-      const result = await callLLM({
-        provider: "openai",
-        model: "gpt-4o-mini",
-        message: prompt,
-        temperature: 0.1,
-      });
-      
-      setSelectedWord((prev) =>
-        prev?.word === cleanWord
-          ? { ...prev, translation: result?.response || "Translation failed", loading: false }
-          : prev
-      );
+      // If deck is linked, use the translation hook (which adds to deck)
+      if (linkedDeckId && langInfo) {
+        const result = await translateWithDeck(cleanWord, langInfo.code);
+        setSelectedWord((prev) =>
+          prev?.word === cleanWord
+            ? { ...prev, translation: result?.translation || "Translation failed", loading: false }
+            : prev
+        );
+      } else {
+        // No deck linked - just translate without saving
+        const prompt = `Translate the ${langInfo?.name || "Norwegian"} word or phrase "${cleanWord}" to English. Only respond with the translation, nothing else.`;
+        const result = await callLLM({
+          provider: "openai",
+          model: "gpt-4o-mini",
+          message: prompt,
+          temperature: 0.1,
+        });
+        
+        setSelectedWord((prev) =>
+          prev?.word === cleanWord
+            ? { ...prev, translation: result?.response || "Translation failed", loading: false }
+            : prev
+        );
+      }
     } catch (err) {
       setSelectedWord((prev) =>
         prev?.word === cleanWord
@@ -463,75 +500,88 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
           </Group>
         </Box>
         
-        {/* Lookup panel */}
-        <Paper
-          withBorder
-          p="md"
-          style={{ width: 280, flexShrink: 0, alignSelf: "flex-start" }}
-        >
-          <Text fw={600} size="sm" mb="sm">
-            <IconSearch size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
-            English → {langInfo?.name || "Target"}
-          </Text>
-          <Text size="xs" c="dimmed" mb="md">
-            Look up words to help compose your message
-          </Text>
-          
-          <Group gap="xs" mb="md">
-            <TextInput
-              placeholder="Type English word..."
-              value={lookupWord}
-              onChange={(e) => setLookupWord(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLookup()}
-              style={{ flex: 1 }}
-              size="sm"
-            />
-            <ActionIcon
-              variant="light"
-              color="indigo"
-              onClick={handleLookup}
-              loading={lookupLoading}
-            >
-              <IconSearch size={16} />
-            </ActionIcon>
-          </Group>
-          
-          {lookupResult && (
-            <Paper withBorder p="sm" bg="dark.7">
-              <Text size="xs" c="dimmed">
-                {lookupResult.word}
-              </Text>
-              <Group gap="xs" mt="xs">
-                <Text fw={600}>{lookupResult.translation}</Text>
-                <ActionIcon
+        {/* Right sidebar: Lookup + Vocabulary panels */}
+        <Stack style={{ width: 280, flexShrink: 0 }} gap="sm">
+          {/* Lookup panel */}
+          <Paper
+            withBorder
+            p="md"
+            style={{ alignSelf: "flex-start", width: "100%" }}
+          >
+            <Text fw={600} size="sm" mb="sm">
+              <IconSearch size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
+              English → {langInfo?.name || "Target"}
+            </Text>
+            <Text size="xs" c="dimmed" mb="md">
+              Look up words to help compose your message
+            </Text>
+            
+            <Group gap="xs" mb="md">
+              <TextInput
+                placeholder="Type English word..."
+                value={lookupWord}
+                onChange={(e) => setLookupWord(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLookup()}
+                style={{ flex: 1 }}
+                size="sm"
+              />
+              <ActionIcon
+                variant="light"
+                color="indigo"
+                onClick={handleLookup}
+                loading={lookupLoading}
+              >
+                <IconSearch size={16} />
+              </ActionIcon>
+            </Group>
+            
+            {lookupResult && (
+              <Paper withBorder p="sm">
+                <Text size="xs" c="dimmed">
+                  {lookupResult.word}
+                </Text>
+                <Group gap="xs" mt="xs">
+                  <Text fw={600}>{lookupResult.translation}</Text>
+                  <ActionIcon
+                    size="xs"
+                    variant="subtle"
+                    onClick={() => handleSpeak(lookupResult.translation)}
+                  >
+                    <IconVolume size={12} />
+                  </ActionIcon>
+                </Group>
+                <Button
                   size="xs"
                   variant="subtle"
-                  onClick={() => handleSpeak(lookupResult.translation)}
+                  mt="xs"
+                  onClick={() => {
+                    setInput((prev) => prev + (prev ? " " : "") + lookupResult.translation);
+                    setLookupResult(null);
+                    setLookupWord("");
+                  }}
                 >
-                  <IconVolume size={12} />
-                </ActionIcon>
-              </Group>
-              <Button
-                size="xs"
-                variant="subtle"
-                mt="xs"
-                onClick={() => {
-                  setInput((prev) => prev + (prev ? " " : "") + lookupResult.translation);
-                  setLookupResult(null);
-                  setLookupWord("");
-                }}
-              >
-                Insert into message
-              </Button>
-            </Paper>
-          )}
+                  Insert into message
+                </Button>
+              </Paper>
+            )}
+            
+            <Divider my="md" />
+            
+            <Text size="xs" c="dimmed">
+              <strong>Tip:</strong> Click any word in the AI's messages to see its English translation.
+              {linkedDeckId && " Words are saved to your deck!"}
+            </Text>
+          </Paper>
           
-          <Divider my="md" />
-          
-          <Text size="xs" c="dimmed">
-            <strong>Tip:</strong> Click any word in the AI's messages to see its English translation.
-          </Text>
-        </Paper>
+          {/* Vocabulary panel - save words to deck */}
+          <Box style={{ flex: 1, minHeight: 200 }}>
+            <VocabularyPanel 
+              linkedDeckId={linkedDeckId}
+              onLinkDeck={handleLinkDeck}
+              context="conversation"
+            />
+          </Box>
+        </Stack>
       </Box>
       
     </Box>
@@ -549,7 +599,6 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
           transform: "translate(-50%, -100%)",
           zIndex: 10000,
           minWidth: 120,
-          background: "var(--mantine-color-dark-7)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -589,6 +638,9 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
  * Message Bubble Component
  */
 function MessageBubble({ message, isUser, onWordClick, onSpeak, speaking }) {
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === "dark";
+  
   /**
    * Parse message content to extract correction (if any) and main response
    * @param {string} content
@@ -663,13 +715,13 @@ function MessageBubble({ message, isUser, onWordClick, onSpeak, speaking }) {
             p="xs"
             radius="md"
             style={{
-              background: "rgba(34, 197, 94, 0.15)",
-              border: "1px solid rgba(34, 197, 94, 0.3)",
+              background: "rgba(233, 69, 96, 0.1)",
+              border: "1px solid rgba(233, 69, 96, 0.25)",
             }}
           >
             <Group gap="xs" wrap="nowrap">
-              <Text size="xs" c="green.4">✏️</Text>
-              <Text size="xs" c="green.3" style={{ fontStyle: "italic" }}>
+              <Text size="xs" c="pink.5">✏️</Text>
+              <Text size="xs" c="pink.6" style={{ fontStyle: "italic" }}>
                 {renderClickableText(correction)}
               </Text>
             </Group>
@@ -682,13 +734,13 @@ function MessageBubble({ message, isUser, onWordClick, onSpeak, speaking }) {
           radius="lg"
           style={{
             background: isUser
-              ? "linear-gradient(135deg, var(--mantine-color-indigo-6) 0%, var(--mantine-color-violet-6) 100%)"
-              : "var(--mantine-color-dark-6)",
+              ? "var(--mantine-color-pink-6)"
+              : isDark ? "var(--mantine-color-dark-6)" : "var(--mantine-color-gray-1)",
             borderBottomRightRadius: isUser ? 4 : undefined,
             borderBottomLeftRadius: !isUser ? 4 : undefined,
           }}
         >
-          <Text size="sm" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+          <Text size="sm" c={isUser ? "white" : undefined} style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
             {isUser ? message.content : renderClickableText(response)}
           </Text>
           {!isUser && (
