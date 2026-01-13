@@ -148,6 +148,23 @@ export async function parseApkgFile(file) {
   const tables = tablesResult.length > 0 ? tablesResult[0].values.map(r => r[0]) : [];
   console.log("[APKG Parser] Tables found:", tables);
   
+  // Try to get model (note type) information to understand field names
+  try {
+    const colResult = db.exec("SELECT models FROM col LIMIT 1");
+    if (colResult.length > 0 && colResult[0].values.length > 0) {
+      const modelsJson = JSON.parse(String(colResult[0].values[0][0]));
+      const modelIds = Object.keys(modelsJson);
+      console.log("[APKG Parser] Note types found:", modelIds.length);
+      for (const mid of modelIds.slice(0, 3)) { // Show first 3 models
+        const model = modelsJson[mid];
+        const fieldNames = model.flds?.map((/** @type {{ name: string }} */ f) => f.name) || [];
+        console.log(`[APKG Parser] Model "${model.name}": fields = [${fieldNames.join(", ")}]`);
+      }
+    }
+  } catch (e) {
+    console.log("[APKG Parser] Could not parse models:", e);
+  }
+  
   /** @type {RawNote[]} */
   const rawNotes = [];
   /** @type {string[]} */
@@ -185,8 +202,20 @@ export async function parseApkgFile(file) {
         if (sampleFields.length === 0 && fields.length > 0) {
           sampleFields = fields;
           fieldCount = fields.length;
-          console.log("[APKG Parser] Field count:", fieldCount);
-          console.log("[APKG Parser] Sample fields:", sampleFields.map((f, i) => `[${i}] ${f.substring(0, 30)}`));
+        }
+      }
+      
+      // Log diverse samples to help user find the right fields
+      console.log("[APKG Parser] Field count:", fieldCount);
+      console.log("[APKG Parser] Total raw notes:", rawNotes.length);
+      
+      // Show samples from beginning, middle, and end
+      const sampleIndices = [0, 10, 100, 500, Math.floor(rawNotes.length / 2), rawNotes.length - 1];
+      console.log("[APKG Parser] Sample notes at various positions:");
+      for (const idx of sampleIndices) {
+        if (idx >= 0 && idx < rawNotes.length) {
+          const note = rawNotes[idx];
+          console.log(`  Note #${idx}:`, note.fields.map((f, i) => `[${i}] ${f.substring(0, 40)}`));
         }
       }
     }

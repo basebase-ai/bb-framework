@@ -10,6 +10,7 @@ import {
   Group,
   Loader,
   Box,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { IconVolume, IconX } from "@tabler/icons-react";
 import { useSpeech } from "../../hooks/useSpeech.js";
@@ -19,6 +20,9 @@ import { useUIStore } from "../../stores/uiStore.js";
  * @param {{ onClose: () => void }} props
  */
 export function WordTooltip({ onClose }) {
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === "dark";
+  
   const selectedWord = useUIStore((s) => s.selectedWord);
   const sourceLanguage = useUIStore((s) => s.sourceLanguage);
   const { speak, speaking, supported } = useSpeech();
@@ -116,9 +120,11 @@ export function WordTooltip({ onClose }) {
       shadow="xl"
       p="md"
       radius="md"
-      style={tooltipStyle}
+      style={{
+        ...tooltipStyle,
+        background: isDark ? "var(--mantine-color-dark-7)" : "var(--mantine-color-white)",
+      }}
       withBorder
-      bg="dark.7"
     >
       <Stack gap="sm">
         <Group justify="space-between" wrap="nowrap">

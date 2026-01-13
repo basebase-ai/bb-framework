@@ -10,6 +10,7 @@ import {
   Paper,
   SegmentedControl,
   Loader,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { IconArrowRight, IconVolume } from "@tabler/icons-react";
 import { useAuth } from "../../../../framework/hooks/useAuth.js";
@@ -19,6 +20,9 @@ import { useUIStore } from "../../stores/uiStore.js";
 import { SUPPORTED_LANGUAGES } from "../../schema.js";
 
 export function QuickTranslate() {
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === "dark";
+  
   const { user } = useAuth();
   const { speak, supported: speechSupported } = useSpeech();
   const sourceLanguage = useUIStore((s) => s.sourceLanguage);
@@ -87,9 +91,9 @@ export function QuickTranslate() {
     <Paper
       p="sm"
       withBorder
+      shadow="xs"
       style={{
-        background: "var(--mantine-color-dark-7)",
-        borderColor: "var(--mantine-color-dark-5)",
+        background: isDark ? "var(--mantine-color-dark-7)" : "var(--mantine-color-white)",
       }}
     >
       <Text fw={600} size="sm" mb="xs">

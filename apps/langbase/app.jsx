@@ -251,6 +251,33 @@ function LandingPage() {
         background: "#0f0f1a",
       }}
     >
+      {/* Header */}
+      <Box
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "1rem 2rem",
+          maxWidth: 1200,
+          margin: "0 auto",
+        }}
+      >
+        <Group gap="sm">
+          <IconCards size={28} color="#e94560" />
+          <Text fw={700} size="lg" style={{ color: "#e94560", letterSpacing: "-0.02em" }}>
+            LangBase
+          </Text>
+        </Group>
+        <Button
+          variant="subtle"
+          color="gray"
+          onClick={promptSignIn}
+          leftSection={<IconLogin size={16} />}
+        >
+          Sign In
+        </Button>
+      </Box>
+
       {/* Hero Section */}
       <Box
         style={{
@@ -297,19 +324,9 @@ function LandingPage() {
           mb="sm"
           style={{ lineHeight: 1.6 }}
         >
-          Learn high-frequency words. Practice them in real conversations.
+          Learn high-frequency words, and practice them in real conversations with AI.
         </Text>
-        <Text
-          size="md"
-          c="gray.6"
-          maw={600}
-          mb="xl"
-          style={{ lineHeight: 1.7 }}
-        >
-          A proven two-step method: First, <strong style={{ color: "#e94560" }}>memorize vocabulary</strong> with 
-          spaced repetition flashcards. Then, <strong style={{ color: "#f59e0b" }}>use those words</strong> in 
-          scenario-based AI conversations — ordering coffee, meeting friends, shopping, and more.
-        </Text>
+       
         <Button
           size="xl"
           variant="filled"
@@ -558,6 +575,47 @@ function LandingPage() {
         </Box>
       </Box>
 
+      {/* Supported Languages Section */}
+      <Box
+        style={{
+          padding: "4rem 2rem",
+          textAlign: "center",
+          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+        }}
+      >
+        <Box maw={800} mx="auto">
+          <Title order={2} ta="center" c="white" mb="xs" fw={700}>
+            Supported Languages
+          </Title>
+          <Text ta="center" c="gray.5" mb="lg" size="sm">
+            For English speakers learning these languages
+          </Text>
+          
+          <Group justify="center" gap="lg" mb="xl">
+            <Box ta="center">
+              <Text size="2.5rem" mb="xs">🇪🇸</Text>
+              <Text c="white" fw={500}>Spanish</Text>
+            </Box>
+            <Box ta="center">
+              <Text size="2.5rem" mb="xs">🇫🇷</Text>
+              <Text c="white" fw={500}>French</Text>
+            </Box>
+            <Box ta="center">
+              <Text size="2.5rem" mb="xs">🇳🇴</Text>
+              <Text c="white" fw={500}>Norwegian</Text>
+            </Box>
+            <Box ta="center">
+              <Text size="2.5rem" mb="xs">🇩🇪</Text>
+              <Text c="white" fw={500}>German</Text>
+            </Box>
+          </Group>
+          
+          <Text c="gray.6" size="xs" ta="center">
+            Currently available for English speakers only. More languages coming soon!
+          </Text>
+        </Box>
+      </Box>
+
       {/* Bottom CTA */}
       <Box
         style={{
@@ -617,6 +675,11 @@ function AppLayout() {
 
   // Hide header in study/practice mode for full-screen experience
   const isFullScreenMode = path.startsWith("/study/") || path.startsWith("/practice/");
+
+  // If user is not logged in, just render the route content (landing page) without AppShell
+  if (!user) {
+    return <RouteContent />;
+  }
 
   if (isFullScreenMode) {
     return <RouteContent />;

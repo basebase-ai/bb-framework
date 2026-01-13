@@ -25,6 +25,7 @@ import {
   Divider,
   Alert,
   CloseButton,
+  Loader,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -44,7 +45,7 @@ import {
   IconAlertCircle,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, serverTimestamp, writeBatch, doc } from "firebase/firestore";
 import { db } from "../../../framework/core/firebase-init.js";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
@@ -70,6 +71,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
   const [swappingCards, setSwappingCards] = useState(false);
   const [copying, setCopying] = useState(/** @type {string | null} */ (null));
   const [copiedDecks, setCopiedDecks] = useState(/** @type {Set<string>} */ (new Set()));
+  const [deleting, setDeleting] = useState(/** @type {string | null} */ (null));
 
   // Query for user's own decks
   const myDecksQueryOptions = useMemo(() => ({
@@ -255,31 +257,55 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
     if (!confirm("Are you sure you want to delete this deck? All cards will be permanently deleted.")) {
       return;
     }
+    
+    setDeleting(deckId);
     try {
-      // First, delete all cards belonging to this deck
-      const { deleteDoc, doc } = await import("firebase/firestore");
-      
+      // First, delete all cards belonging to this deck using batch writes
       const cardsQuery = query(
         collection(db, collections.cards),
         where("deckId", "==", deckId)
       );
       const cardsSnapshot = await getDocs(cardsQuery);
       
-      console.log(`[Delete] Removing ${cardsSnapshot.size} cards from deck...`);
-      for (const cardDoc of cardsSnapshot.docs) {
-        await deleteDoc(doc(db, collections.cards, cardDoc.id));
+      // Delete cards in batches of 500
+      const BATCH_SIZE = 500;
+      const cardDocs = cardsSnapshot.docs;
+      
+      for (let i = 0; i < cardDocs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const batchDocs = cardDocs.slice(i, i + BATCH_SIZE);
+        
+        batchDocs.forEach((cardDoc) => {
+          batch.delete(doc(db, collections.cards, cardDoc.id));
+        });
+        
+        await batch.commit();
       }
       
       // Then delete the deck itself
       await remove(deckId);
-      console.log(`[Delete] Deck and cards deleted successfully`);
+      
+      notifications.show({
+        title: "Deck deleted",
+        message: `Deck and ${cardsSnapshot.size} cards have been deleted.`,
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
     } catch (err) {
       console.error("Error deleting deck:", err);
+      notifications.show({
+        title: "Error",
+        message: "Failed to delete deck. Please try again.",
+        color: "red",
+      });
+    } finally {
+      setDeleting(null);
     }
   };
 
   /**
    * Copy a public deck and all its cards to the current user's account
+   * Uses batch writes for much faster copying (up to 500 cards per batch)
    * @param {string} deckId
    * @param {string} deckName
    */
@@ -294,6 +320,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
       );
       const cardsSnapshot = await getDocs(cardsQuery);
       
+      // Create the new deck first
       const newDeckRef = await addDoc(collection(db, collections.decks), {
         name: `${deckName} (copy)`,
         description: `Copied from community deck`,
@@ -306,25 +333,36 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
         updatedAt: serverTimestamp(),
       });
 
-      let importOrder = 0;
-      for (const cardDoc of cardsSnapshot.docs) {
-        const cardData = cardDoc.data();
-        await addDoc(collection(db, collections.cards), {
-          deckId: newDeckRef.id,
-          front: cardData.front,
-          back: cardData.back,
-          frontAudio: cardData.frontAudio || [],
-          backAudio: cardData.backAudio || [],
-          owner: user.uid,
-          box: 1,
-          nextReviewAt: null,
-          lastReviewedAt: null,
-          correctCount: 0,
-          incorrectCount: 0,
-          importOrder: importOrder++,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+      // Copy cards using batch writes (max 500 per batch)
+      const BATCH_SIZE = 500;
+      const cardDocs = cardsSnapshot.docs;
+      
+      for (let i = 0; i < cardDocs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const batchDocs = cardDocs.slice(i, i + BATCH_SIZE);
+        
+        batchDocs.forEach((cardDoc, index) => {
+          const cardData = cardDoc.data();
+          const newCardRef = doc(collection(db, collections.cards));
+          batch.set(newCardRef, {
+            deckId: newDeckRef.id,
+            front: cardData.front,
+            back: cardData.back,
+            frontAudio: cardData.frontAudio || [],
+            backAudio: cardData.backAudio || [],
+            owner: user.uid,
+            box: 1,
+            nextReviewAt: null,
+            lastReviewedAt: null,
+            correctCount: 0,
+            incorrectCount: 0,
+            importOrder: i + index,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
         });
+        
+        await batch.commit();
       }
 
       setCopiedDecks((prev) => new Set([...prev, deckId]));
@@ -382,6 +420,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
     const progress = cardCount > 0 ? (masteredCount / cardCount) * 100 : 0;
     const isCopied = copiedDecks.has(deck.id);
     const isCopying = copying === deck.id;
+    const isDeleting = deleting === deck.id;
 
     return (
       <Card
@@ -391,10 +430,11 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
         withBorder
         shadow="xs"
         style={{
-          cursor: isOwned ? "pointer" : "default",
+          cursor: isOwned && !isDeleting ? "pointer" : "default",
           transition: "all 0.2s ease",
+          opacity: isDeleting ? 0.5 : 1,
         }}
-        onClick={isOwned ? () => onViewDeck(deck.id) : undefined}
+        onClick={isOwned && !isDeleting ? () => onViewDeck(deck.id) : undefined}
         onMouseEnter={(e) => {
           e.currentTarget.style.borderColor = isOwned
             ? "var(--mantine-color-pink-7)"
@@ -432,14 +472,15 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
                   Edit
                 </Menu.Item>
                 <Menu.Item
-                  leftSection={<IconTrash size={16} />}
+                  leftSection={isDeleting ? <Loader size={16} /> : <IconTrash size={16} />}
                   color="red"
+                  disabled={isDeleting}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteDeck(deck.id);
                   }}
                 >
-                  Delete
+                  {isDeleting ? "Deleting..." : "Delete"}
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>

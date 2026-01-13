@@ -16,6 +16,7 @@ import {
   Switch,
   Loader,
   Center,
+  useMantineColorScheme,
 } from "@mantine/core";
 import {
   IconArrowLeft,
@@ -70,6 +71,9 @@ function tokenizeText(text) {
  * @param {{ documentId: string, onBack: () => void }} props
  */
 export function DocumentReader({ documentId, onBack }) {
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === "dark";
+  
   const { data: doc, loading: docLoading, update: updateDoc } = useDocument(
     collections.documents,
     documentId
@@ -329,11 +333,12 @@ export function DocumentReader({ documentId, onBack }) {
           p="md"
           mb="md"
           withBorder
+          shadow="xs"
           style={{
             position: "sticky",
             top: 0,
             zIndex: 100,
-            background: "var(--mantine-color-dark-7)",
+            background: isDark ? "var(--mantine-color-dark-7)" : "var(--mantine-color-white)",
           }}
         >
           <Group justify="space-between" wrap="nowrap">
@@ -414,9 +419,13 @@ export function DocumentReader({ documentId, onBack }) {
         <Paper
           p="xl"
           withBorder
-          bg="dark.8"
+          shadow="xs"
           radius="md"
-          style={{ flex: 1, overflow: "auto" }}
+          style={{ 
+            flex: 1, 
+            overflow: "auto",
+            background: isDark ? "var(--mantine-color-dark-8)" : "var(--mantine-color-white)",
+          }}
         >
           <Box
             ref={contentRef}
