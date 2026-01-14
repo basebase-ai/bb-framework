@@ -47,7 +47,7 @@ export const useUIStore = create((set) => ({
   cardSide: /** @type {'front' | 'back'} */ ("front"),
   
   // Tab state
-  activeTab: /** @type {'vocabulary' | 'reading' | 'conversation'} */ ("vocabulary"),
+  activeTab: /** @type {'vocabulary' | 'reading' | 'conversation'} */ ("conversation"),
 
   // Reading state
   selectedWord: null,

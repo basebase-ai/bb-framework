@@ -98,8 +98,19 @@ export function DocumentReader({ documentId, onBack }) {
   const { supported: speechSupported, speak } = useSpeech();
   const sourceLanguage = useUIStore((s) => s.sourceLanguage);
 
-  // State for vocabulary panel visibility - start hidden for mobile-friendly default
-  const [showVocabPanel, setShowVocabPanel] = useState(false);
+  // State for mobile sidebar visibility (desktop always shows sidebar)
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  
+  // Track if we're on mobile
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Check screen size on mount and resize
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Ref for the reading content area
   const contentRef = useRef(/** @type {HTMLDivElement | null} */ (null));
@@ -327,8 +338,8 @@ export function DocumentReader({ documentId, onBack }) {
   const langConfig = getLanguageConfig(doc.sourceLanguage);
 
   return (
-    <Box style={{ display: "flex", height: "calc(100vh - 100px)" }}>
-      {/* Main content area - takes full width since sidebar is overlay */}
+    <Box style={{ display: "flex", gap: isMobile ? 0 : "1rem", height: "calc(100vh - 100px)" }}>
+      {/* Main content area */}
       <Box style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         {/* Header - compact */}
         <Paper
@@ -387,16 +398,18 @@ export function DocumentReader({ documentId, onBack }) {
                 </Tooltip>
               )}
 
-              {/* Vocab panel toggle - with text label */}
-              <Button
-                variant={showVocabPanel ? "filled" : "light"}
-                color="pink"
-                size="xs"
-                leftSection={<IconVocabulary size={14} />}
-                onClick={() => setShowVocabPanel(!showVocabPanel)}
-              >
-                {showVocabPanel ? "Hide" : "Tools"}
-              </Button>
+              {/* Vocab panel toggle - mobile only */}
+              {isMobile && (
+                <Button
+                  variant={showMobileSidebar ? "filled" : "light"}
+                  color="pink"
+                  size="xs"
+                  leftSection={<IconVocabulary size={14} />}
+                  onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+                >
+                  {showMobileSidebar ? "Hide" : "Tools"}
+                </Button>
+              )}
             </Group>
           </Group>
         </Paper>
@@ -462,12 +475,25 @@ export function DocumentReader({ documentId, onBack }) {
         </Paper>
       </Box>
 
-      {/* Sidebar panels - slide-in drawer */}
-      {showVocabPanel && (
+      {/* Desktop sidebar - always visible */}
+      {!isMobile && (
+        <Stack gap="sm" style={{ width: 280, flexShrink: 0 }}>
+          <QuickTranslate />
+          <Box style={{ flex: 1, minHeight: 0 }}>
+            <VocabularyPanel 
+              linkedDeckId={linkedDeckId}
+              onLinkDeck={handleLinkDeck}
+            />
+          </Box>
+        </Stack>
+      )}
+      
+      {/* Mobile sidebar - slide-in drawer */}
+      {isMobile && showMobileSidebar && (
         <>
           {/* Backdrop overlay */}
           <Box
-            onClick={() => setShowVocabPanel(false)}
+            onClick={() => setShowMobileSidebar(false)}
             style={{
               position: "fixed",
               inset: 0,
@@ -496,7 +522,7 @@ export function DocumentReader({ documentId, onBack }) {
               <Text fw={600} size="sm">Translation Tools</Text>
               <ActionIcon 
                 variant="subtle" 
-                onClick={() => setShowVocabPanel(false)}
+                onClick={() => setShowMobileSidebar(false)}
                 size="sm"
               >
                 <IconX size={16} />
@@ -507,7 +533,7 @@ export function DocumentReader({ documentId, onBack }) {
               <VocabularyPanel 
                 linkedDeckId={linkedDeckId}
                 onLinkDeck={handleLinkDeck}
-                onClose={() => setShowVocabPanel(false)} 
+                onClose={() => setShowMobileSidebar(false)} 
               />
             </Box>
           </Stack>

@@ -64,7 +64,18 @@ export function ConversationChat({ conversationId, onBack }) {
   const [lookupWord, setLookupWord] = useState("");
   const [lookupResult, setLookupResult] = useState(/** @type {{ word: string, translation: string } | null} */ (null));
   const [lookupLoading, setLookupLoading] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  
+  // Track if we're on mobile
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Check screen size on mount and resize
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
   
   const messagesEndRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const chatContainerRef = useRef(/** @type {HTMLDivElement | null} */ (null));
@@ -107,7 +118,8 @@ export function ConversationChat({ conversationId, onBack }) {
   
   // Speech - pass language key to speak() function
   const { speak, speaking } = useSpeech();
-  const languageKey = scenario?.language || "norwegian";
+  // Language is now stored on the conversation instance, not the scenario
+  const languageKey = conversation?.language || "norwegian";
   const langInfo = SUPPORTED_LANGUAGES[languageKey] || null;
   
   // Set source language in UI store for VocabularyPanel speech
@@ -158,12 +170,18 @@ export function ConversationChat({ conversationId, onBack }) {
       setSending(true);
       
       try {
-        const langName = langInfo?.name || scenario.language;
+        const langName = langInfo?.name || "the target language";
         const scenarioTitle = scenario.title;
         const context = scenario.description || "";
+        const scenarioQuestions = scenario.questions || [];
+        
+        const firstQuestion = scenarioQuestions.length > 0 
+          ? `\nYour first goal is to eventually get the learner to answer: "${scenarioQuestions[0]}"`
+          : "";
         
         const prompt = `You are starting a conversation practice session. The scenario is: "${scenarioTitle}"
 ${context ? `Context: ${context}` : ""}
+${firstQuestion}
 
 You are playing a role in this scenario (e.g., a shopkeeper, a friend, a colleague, etc.).
 Start the conversation naturally in ${langName} with a greeting or opening line appropriate to the scenario.
@@ -227,14 +245,26 @@ Keep it short (1-2 sentences). Only respond in ${langName}.`;
       history.push({ role: "user", content: userMessage });
       
       // Build system prompt using scenario details
-      const langName = langInfo?.name || scenario.language;
+      const langName = langInfo?.name || "the target language";
       const scenarioTitle = scenario.title;
       const context = scenario.description || "";
+      const scenarioQuestions = scenario.questions || [];
+      
+      // Build questions section for the prompt
+      const questionsSection = scenarioQuestions.length > 0
+        ? `
+CONVERSATION GOALS:
+You should naturally try to get the learner to answer these questions during the conversation (in order when possible):
+${scenarioQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
+
+After you feel the learner has adequately answered a question (or after a few exchanges on that topic), smoothly transition to the next question. Don't rush - let the conversation flow naturally, but gently guide it to cover these topics.`
+        : "";
       
       const systemPrompt = `You are a helpful language practice partner. You are helping the user practice ${langName} conversation.
 
 The scenario is: "${scenarioTitle}"
 ${context ? `Additional context: ${context}` : ""}
+${questionsSection}
 
 Guidelines:
 - ONLY if the user's message has actual spelling mistakes, grammar errors, or incorrect word usage, provide a correction on its own line starting with "✏️ " followed by the corrected sentence. Then add a blank line and your response.
@@ -245,6 +275,7 @@ Guidelines:
 - Use vocabulary appropriate for an intermediate learner
 - Keep responses relatively short (1-3 sentences) to maintain a natural conversation flow
 - Stay in character for the scenario
+- Ask questions to keep the conversation going and encourage the learner to practice
 
 Example with correction (actual spelling error):
 ✏️ Jeg vil gjerne ha en kopp kaffe.
@@ -432,21 +463,23 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
           </Badge>
         </Group>
         
-        {/* Toggle sidebar button - with text label */}
-        <Button
-          variant={showSidebar ? "filled" : "light"}
-          color="pink"
-          size="xs"
-          leftSection={<IconVocabulary size={14} />}
-          onClick={() => setShowSidebar(!showSidebar)}
-        >
-          {showSidebar ? "Hide" : "Tools"}
-        </Button>
+        {/* Toggle sidebar button - mobile only */}
+        {isMobile && (
+          <Button
+            variant={showMobileSidebar ? "filled" : "light"}
+            color="pink"
+            size="xs"
+            leftSection={<IconVocabulary size={14} />}
+            onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+          >
+            {showMobileSidebar ? "Hide" : "Tools"}
+          </Button>
+        )}
       </Group>
       
       {/* Main chat area */}
-      <Box style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
-        {/* Messages + Input - takes full width since sidebar is overlay */}
+      <Box style={{ display: "flex", flex: 1, gap: isMobile ? 0 : "1rem", minHeight: 0, overflow: "hidden" }}>
+        {/* Messages + Input */}
         <Box style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
           {/* Messages - scrollable area */}
           <Box
@@ -510,54 +543,11 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
           </Group>
         </Box>
         
-      </Box>
-      
-      {/* Right sidebar: Lookup + Vocabulary panels - slide-in drawer */}
-      {showSidebar && (
-        <>
-          {/* Backdrop overlay */}
-          <Box
-            onClick={() => setShowSidebar(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.3)",
-              zIndex: 199,
-            }}
-          />
-          <Stack 
-            gap="sm"
-            style={{ 
-              width: 300, 
-              maxWidth: "90vw",
-              background: isDark ? "var(--mantine-color-dark-7)" : "var(--mantine-color-white)",
-              position: "fixed",
-              right: 0,
-              top: 0,
-              bottom: 0,
-              zIndex: 200,
-              padding: "1rem",
-              boxShadow: "-4px 0 20px rgba(0,0,0,0.15)",
-              overflowY: "auto",
-            }}
-          >
-            {/* Header with close button */}
-            <Group justify="space-between" mb="xs">
-              <Text fw={600} size="sm">Translation Tools</Text>
-              <ActionIcon 
-                variant="subtle" 
-                onClick={() => setShowSidebar(false)}
-                size="sm"
-              >
-                <IconX size={16} />
-              </ActionIcon>
-            </Group>
-            
+        {/* Desktop sidebar - always visible */}
+        {!isMobile && (
+          <Stack style={{ width: 280, flexShrink: 0 }} gap="sm">
             {/* Lookup panel */}
-            <Paper
-              withBorder
-              p="md"
-            >
+            <Paper withBorder p="md">
               <Text fw={600} size="sm" mb="sm">
                 <IconSearch size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
                 English → {langInfo?.name || "Target"}
@@ -624,7 +614,128 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
               </Text>
             </Paper>
             
-            {/* Vocabulary panel - save words to deck */}
+            {/* Vocabulary panel */}
+            <Box style={{ flex: 1, minHeight: 200 }}>
+              <VocabularyPanel 
+                linkedDeckId={linkedDeckId}
+                onLinkDeck={handleLinkDeck}
+                context="conversation"
+              />
+            </Box>
+          </Stack>
+        )}
+      </Box>
+      
+      {/* Mobile sidebar - slide-in drawer */}
+      {isMobile && showMobileSidebar && (
+        <>
+          {/* Backdrop overlay */}
+          <Box
+            onClick={() => setShowMobileSidebar(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.3)",
+              zIndex: 199,
+            }}
+          />
+          <Stack 
+            gap="sm"
+            style={{ 
+              width: 300, 
+              maxWidth: "90vw",
+              background: isDark ? "var(--mantine-color-dark-7)" : "var(--mantine-color-white)",
+              position: "fixed",
+              right: 0,
+              top: 0,
+              bottom: 0,
+              zIndex: 200,
+              padding: "1rem",
+              boxShadow: "-4px 0 20px rgba(0,0,0,0.15)",
+              overflowY: "auto",
+            }}
+          >
+            {/* Header with close button */}
+            <Group justify="space-between" mb="xs">
+              <Text fw={600} size="sm">Translation Tools</Text>
+              <ActionIcon 
+                variant="subtle" 
+                onClick={() => setShowMobileSidebar(false)}
+                size="sm"
+              >
+                <IconX size={16} />
+              </ActionIcon>
+            </Group>
+            
+            {/* Lookup panel */}
+            <Paper withBorder p="md">
+              <Text fw={600} size="sm" mb="sm">
+                <IconSearch size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                English → {langInfo?.name || "Target"}
+              </Text>
+              <Text size="xs" c="dimmed" mb="md">
+                Look up words to help compose your message
+              </Text>
+              
+              <Group gap="xs" mb="md">
+                <TextInput
+                  placeholder="Type English word..."
+                  value={lookupWord}
+                  onChange={(e) => setLookupWord(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLookup()}
+                  style={{ flex: 1 }}
+                  size="sm"
+                />
+                <ActionIcon
+                  variant="light"
+                  color="pink"
+                  onClick={handleLookup}
+                  loading={lookupLoading}
+                >
+                  <IconSearch size={16} />
+                </ActionIcon>
+              </Group>
+              
+              {lookupResult && (
+                <Paper withBorder p="sm">
+                  <Text size="xs" c="dimmed">
+                    {lookupResult.word}
+                  </Text>
+                  <Group gap="xs" mt="xs">
+                    <Text fw={600}>{lookupResult.translation}</Text>
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => handleSpeak(lookupResult.translation)}
+                    >
+                      <IconVolume size={12} />
+                    </ActionIcon>
+                  </Group>
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    color="pink"
+                    mt="xs"
+                    onClick={() => {
+                      setInput((prev) => prev + (prev ? " " : "") + lookupResult.translation);
+                      setLookupResult(null);
+                      setLookupWord("");
+                    }}
+                  >
+                    Insert into message
+                  </Button>
+                </Paper>
+              )}
+              
+              <Divider my="md" />
+              
+              <Text size="xs" c="dimmed">
+                <strong>Tip:</strong> Click any word in the AI's messages to see its English translation.
+                {linkedDeckId && " Words are saved to your deck!"}
+              </Text>
+            </Paper>
+            
+            {/* Vocabulary panel */}
             <Box style={{ flex: 1, minHeight: 200 }}>
               <VocabularyPanel 
                 linkedDeckId={linkedDeckId}

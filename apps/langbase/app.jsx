@@ -102,11 +102,11 @@ function HomePage() {
         mb="lg"
       >
         <Tabs.List>
-          <Tabs.Tab value="vocabulary" leftSection={<IconCards size={16} />}>
-            Vocabulary
-          </Tabs.Tab>
           <Tabs.Tab value="conversation" leftSection={<IconMessageCircle size={16} />}>
             Conversation
+          </Tabs.Tab>
+          <Tabs.Tab value="vocabulary" leftSection={<IconCards size={16} />}>
+            Vocabulary
           </Tabs.Tab>
           <Tabs.Tab value="reading" leftSection={<IconBook2 size={16} />}>
             Reading

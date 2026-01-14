@@ -36,15 +36,17 @@ import {
   IconEdit,
   IconSearch,
   IconWorld,
-  IconLanguage,
   IconUsers,
   IconCopy,
   IconPlayerPlay,
   IconHistory,
   IconArrowLeft,
+  IconSparkles,
+  IconX,
 } from "@tabler/icons-react";
 import { useCollection } from "../../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../../framework/hooks/useAuth.js";
+import { useFunction } from "../../../../framework/hooks/useFunction.js";
 import { collections, SUPPORTED_LANGUAGES } from "../../schema.js";
 
 /**
@@ -94,16 +96,21 @@ const languageOptions = Object.entries(SUPPORTED_LANGUAGES).map(([key, lang]) =>
  */
 export function ScenarioList({ onOpenConversation }) {
   const { user, loading: authLoading } = useAuth();
+  const { call: callLLM } = useFunction("askLLM");
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingScenario, setEditingScenario] = useState(/** @type {any} */ (null));
   const [selectedScenario, setSelectedScenario] = useState(/** @type {any} */ (null));
   const [copying, setCopying] = useState(false);
+  const [startConvoModalOpen, setStartConvoModalOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState("norwegian");
+  const [generatingQuestions, setGeneratingQuestions] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [language, setLanguage] = useState("norwegian");
+  const [questions, setQuestions] = useState(/** @type {string[]} */ ([]));
   const [isPublic, setIsPublic] = useState(false);
 
   // Query for user's scenarios
@@ -166,8 +173,7 @@ export function ScenarioList({ onOpenConversation }) {
     return userScenarios.filter(
       (s) =>
         s.title?.toLowerCase().includes(q) ||
-        s.description?.toLowerCase().includes(q) ||
-        SUPPORTED_LANGUAGES[s.language]?.name.toLowerCase().includes(q)
+        s.description?.toLowerCase().includes(q)
     );
   }, [userScenarios, searchQuery]);
 
@@ -178,8 +184,7 @@ export function ScenarioList({ onOpenConversation }) {
     return communityScenarios.filter(
       (s) =>
         s.title?.toLowerCase().includes(q) ||
-        s.description?.toLowerCase().includes(q) ||
-        SUPPORTED_LANGUAGES[s.language]?.name.toLowerCase().includes(q)
+        s.description?.toLowerCase().includes(q)
     );
   }, [communityScenarios, searchQuery]);
 
@@ -199,8 +204,56 @@ export function ScenarioList({ onOpenConversation }) {
   const resetForm = () => {
     setTitle("");
     setDescription("");
-    setLanguage("norwegian");
+    setQuestions([]);
     setIsPublic(false);
+  };
+
+  /**
+   * Generate questions based on scenario title/description
+   * @param {string} scenarioTitle
+   * @param {string} scenarioDescription
+   */
+  const generateQuestions = async (scenarioTitle, scenarioDescription) => {
+    setGeneratingQuestions(true);
+    try {
+      const prompt = `You are helping create a language learning conversation scenario titled "${scenarioTitle}".
+${scenarioDescription ? `Description: ${scenarioDescription}` : ""}
+
+Generate 5-7 questions (in English) that an AI conversation partner should try to get the learner to answer during this conversation. These questions should:
+- Be natural for the scenario context
+- Progress from simple to more complex
+- Help the learner practice relevant vocabulary and grammar
+- Cover different aspects of the topic
+
+Return ONLY a JSON array of strings, like: ["Question 1?", "Question 2?", ...]
+No other text or explanation.`;
+
+      const result = await callLLM({
+        provider: "openai",
+        model: "gpt-4o-mini",
+        message: prompt,
+        temperature: 0.7,
+      });
+
+      if (result?.response) {
+        try {
+          // Parse the JSON array from the response
+          const parsed = JSON.parse(result.response.trim());
+          if (Array.isArray(parsed)) {
+            setQuestions(parsed);
+          }
+        } catch {
+          // Try to extract questions if not valid JSON
+          const lines = result.response.split("\n").filter((l) => l.trim().endsWith("?"));
+          if (lines.length > 0) {
+            setQuestions(lines.map((l) => l.replace(/^[\d\.\-\*\s]+/, "").trim()));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to generate questions:", err);
+    }
+    setGeneratingQuestions(false);
   };
 
   /**
@@ -219,7 +272,7 @@ export function ScenarioList({ onOpenConversation }) {
     setEditingScenario(scenario);
     setTitle(scenario.title);
     setDescription(scenario.description || "");
-    setLanguage(scenario.language);
+    setQuestions(scenario.questions || []);
     setIsPublic(scenario.isPublic || false);
   };
 
@@ -232,7 +285,7 @@ export function ScenarioList({ onOpenConversation }) {
     const newScenario = await addScenario({
       title: title.trim(),
       description: description.trim() || null,
-      language,
+      questions: questions.length > 0 ? questions : null,
       isPublic,
       owner: user.uid,
     });
@@ -254,7 +307,7 @@ export function ScenarioList({ onOpenConversation }) {
     await updateScenario(editingScenario.id, {
       title: title.trim(),
       description: description.trim() || null,
-      language,
+      questions: questions.length > 0 ? questions : null,
       isPublic,
     });
     setEditingScenario(null);
@@ -265,7 +318,7 @@ export function ScenarioList({ onOpenConversation }) {
         ...selectedScenario,
         title: title.trim(),
         description: description.trim() || null,
-        language,
+        questions: questions.length > 0 ? questions : null,
         isPublic,
       });
     }
@@ -296,7 +349,7 @@ export function ScenarioList({ onOpenConversation }) {
       const newScenario = await addScenario({
         title: scenario.title,
         description: scenario.description || null,
-        language: scenario.language,
+        questions: scenario.questions || null,
         systemPrompt: scenario.systemPrompt || null,
         isPublic: false,
         owner: user.uid,
@@ -311,17 +364,28 @@ export function ScenarioList({ onOpenConversation }) {
   };
 
   /**
-   * Start a new conversation instance
+   * Open the start conversation modal
+   */
+  const openStartConvoModal = () => {
+    setSelectedLanguage("norwegian"); // Reset to default
+    setStartConvoModalOpen(true);
+  };
+
+  /**
+   * Start a new conversation instance with selected language
    */
   const handleStartNewConversation = async () => {
     if (!user?.uid || !selectedScenario) return;
     
     const newInstance = await addInstance({
       scenarioId: selectedScenario.id,
+      language: selectedLanguage,
       owner: user.uid,
       messageCount: 0,
       lastMessageAt: null,
     });
+    
+    setStartConvoModalOpen(false);
     
     if (newInstance?.id) {
       onOpenConversation(newInstance.id);
@@ -349,7 +413,6 @@ export function ScenarioList({ onOpenConversation }) {
 
   // If a scenario is selected, show its detail view with instances
   if (selectedScenario) {
-    const langInfo = SUPPORTED_LANGUAGES[selectedScenario.language] || { name: selectedScenario.language };
     const isOwner = selectedScenario.owner === user?.uid;
     
     return (
@@ -373,15 +436,6 @@ export function ScenarioList({ onOpenConversation }) {
                 {selectedScenario.description}
               </Text>
             )}
-            <Badge
-              variant="light"
-              color="pink"
-              size="sm"
-              mt="xs"
-              leftSection={<IconLanguage size={12} />}
-            >
-              {langInfo.name}
-            </Badge>
           </Box>
           {isOwner && (
             <Menu position="bottom-end" withinPortal>
@@ -411,13 +465,48 @@ export function ScenarioList({ onOpenConversation }) {
         <Button
           size="lg"
           leftSection={<IconPlus size={20} />}
-          onClick={handleStartNewConversation}
+          onClick={openStartConvoModal}
           variant="filled"
           color="pink"
           fullWidth
         >
           Start New Conversation
         </Button>
+        
+        {/* Language selection modal */}
+        <Modal
+          opened={startConvoModalOpen}
+          onClose={() => setStartConvoModalOpen(false)}
+          title="Choose Language"
+          centered
+          size="sm"
+        >
+          <Stack gap="md">
+            <Text size="sm" c="dimmed">
+              What language do you want to practice in this conversation?
+            </Text>
+            <Select
+              label="Language"
+              data={languageOptions}
+              value={selectedLanguage}
+              onChange={(val) => val && setSelectedLanguage(val)}
+              size="md"
+            />
+            <Group justify="flex-end" mt="md">
+              <Button variant="subtle" onClick={() => setStartConvoModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleStartNewConversation}
+                variant="filled"
+                color="pink"
+                leftSection={<IconPlayerPlay size={16} />}
+              >
+                Start
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
 
         {/* Past conversations */}
         <Divider my="sm" label={<Group gap="xs"><IconHistory size={14} /> Past Conversations</Group>} labelPosition="left" />
@@ -432,7 +521,9 @@ export function ScenarioList({ onOpenConversation }) {
           </Paper>
         ) : (
           <Stack gap="sm">
-            {sortedInstances.map((instance) => (
+            {sortedInstances.map((instance) => {
+              const instanceLang = SUPPORTED_LANGUAGES[instance.language] || { name: instance.language };
+              return (
               <Card
                 key={instance.id}
                 withBorder
@@ -459,6 +550,9 @@ export function ScenarioList({ onOpenConversation }) {
                       <Text size="sm" fw={500}>
                         {instance.messageCount || 0} messages
                       </Text>
+                      <Badge variant="light" color="pink" size="xs">
+                        {instanceLang.name}
+                      </Badge>
                     </Group>
                     <Text size="xs" c="dimmed">
                       {instance.lastMessageAt
@@ -492,7 +586,8 @@ export function ScenarioList({ onOpenConversation }) {
                   </Group>
                 </Group>
               </Card>
-            ))}
+              );
+            })}
           </Stack>
         )}
 
@@ -505,12 +600,15 @@ export function ScenarioList({ onOpenConversation }) {
           setTitle={setTitle}
           description={description}
           setDescription={setDescription}
-          language={language}
-          setLanguage={setLanguage}
+          questions={questions}
+          setQuestions={setQuestions}
           isPublic={isPublic}
           setIsPublic={setIsPublic}
           onSubmit={handleUpdate}
           submitLabel="Save Changes"
+          onGenerateQuestions={() => generateQuestions(title, description)}
+          generatingQuestions={generatingQuestions}
+          isCreate={false}
         />
       </Stack>
     );
@@ -566,12 +664,15 @@ export function ScenarioList({ onOpenConversation }) {
           setTitle={setTitle}
           description={description}
           setDescription={setDescription}
-          language={language}
-          setLanguage={setLanguage}
+          questions={questions}
+          setQuestions={setQuestions}
           isPublic={isPublic}
           setIsPublic={setIsPublic}
           onSubmit={handleCreate}
           submitLabel="Create Scenario"
+          onGenerateQuestions={() => generateQuestions(title, description)}
+          generatingQuestions={generatingQuestions}
+          isCreate={true}
         />
       </>
     );
@@ -668,12 +769,15 @@ export function ScenarioList({ onOpenConversation }) {
         setTitle={setTitle}
         description={description}
         setDescription={setDescription}
-        language={language}
-        setLanguage={setLanguage}
+        questions={questions}
+        setQuestions={setQuestions}
         isPublic={isPublic}
         setIsPublic={setIsPublic}
         onSubmit={handleCreate}
         submitLabel="Create Scenario"
+        onGenerateQuestions={() => generateQuestions(title, description)}
+        generatingQuestions={generatingQuestions}
+        isCreate={true}
       />
 
       {/* Edit Modal */}
@@ -685,12 +789,15 @@ export function ScenarioList({ onOpenConversation }) {
         setTitle={setTitle}
         description={description}
         setDescription={setDescription}
-        language={language}
-        setLanguage={setLanguage}
+        questions={questions}
+        setQuestions={setQuestions}
         isPublic={isPublic}
         setIsPublic={setIsPublic}
         onSubmit={handleUpdate}
         submitLabel="Save Changes"
+        onGenerateQuestions={() => generateQuestions(title, description)}
+        generatingQuestions={generatingQuestions}
+        isCreate={false}
       />
     </Stack>
   );
@@ -701,8 +808,6 @@ export function ScenarioList({ onOpenConversation }) {
  * @param {{ scenario: any, isOwner: boolean, onSelect?: () => void, onEdit?: () => void, onDelete?: () => void, onCopy?: () => void, copying?: boolean }} props
  */
 function ScenarioCard({ scenario, isOwner, onSelect, onEdit, onDelete, onCopy, copying }) {
-  const langInfo = SUPPORTED_LANGUAGES[scenario.language] || { name: scenario.language };
-
   return (
     <Card
       withBorder
@@ -747,17 +852,6 @@ function ScenarioCard({ scenario, isOwner, onSelect, onEdit, onDelete, onCopy, c
             {scenario.description}
           </Text>
         )}
-        
-        <Group gap="sm">
-          <Badge
-            variant="light"
-            color={isOwner ? "pink" : "cyan"}
-            size="sm"
-            leftSection={<IconLanguage size={12} />}
-          >
-            {langInfo.name}
-          </Badge>
-        </Group>
 
         <Group gap="xs" mt="xs">
           {isOwner ? (
@@ -813,7 +907,7 @@ function ScenarioCard({ scenario, isOwner, onSelect, onEdit, onDelete, onCopy, c
 
 /**
  * Scenario Modal Component
- * @param {{ opened: boolean, onClose: () => void, title: string, formTitle: string, setTitle: (v: string) => void, description: string, setDescription: (v: string) => void, language: string, setLanguage: (v: string) => void, isPublic: boolean, setIsPublic: (v: boolean) => void, onSubmit: () => void, submitLabel: string }} props
+ * @param {{ opened: boolean, onClose: () => void, title: string, formTitle: string, setTitle: (v: string) => void, description: string, setDescription: (v: string) => void, questions: string[], setQuestions: (v: string[]) => void, isPublic: boolean, setIsPublic: (v: boolean) => void, onSubmit: () => void, submitLabel: string, onGenerateQuestions: () => void, generatingQuestions: boolean, isCreate: boolean }} props
  */
 function ScenarioModal({
   opened,
@@ -823,15 +917,37 @@ function ScenarioModal({
   setTitle,
   description,
   setDescription,
-  language,
-  setLanguage,
+  questions,
+  setQuestions,
   isPublic,
   setIsPublic,
   onSubmit,
   submitLabel,
+  onGenerateQuestions,
+  generatingQuestions,
+  isCreate,
 }) {
+  const [newQuestion, setNewQuestion] = useState("");
+
+  const addQuestion = () => {
+    if (newQuestion.trim()) {
+      setQuestions([...questions, newQuestion.trim()]);
+      setNewQuestion("");
+    }
+  };
+
+  const removeQuestion = (/** @type {number} */ index) => {
+    setQuestions(questions.filter((_, i) => i !== index));
+  };
+
+  const updateQuestion = (/** @type {number} */ index, /** @type {string} */ value) => {
+    const updated = [...questions];
+    updated[index] = value;
+    setQuestions(updated);
+  };
+
   return (
-    <Modal opened={opened} onClose={onClose} title={title} centered size="md">
+    <Modal opened={opened} onClose={onClose} title={title} centered size="lg">
       <Stack gap="md">
         <TextInput
           label="Scenario Title"
@@ -847,14 +963,80 @@ function ScenarioModal({
           onChange={(e) => setDescription(e.target.value)}
           minRows={2}
         />
-        <Select
-          label="Language"
-          description="The language you want to practice"
-          data={languageOptions}
-          value={language}
-          onChange={(val) => val && setLanguage(val)}
-          required
-        />
+        
+        {/* Questions section */}
+        <Box>
+          <Group justify="space-between" mb="xs">
+            <Text fw={500} size="sm">Conversation Questions</Text>
+            <Button
+              size="xs"
+              variant="light"
+              color="pink"
+              leftSection={<IconSparkles size={14} />}
+              onClick={onGenerateQuestions}
+              loading={generatingQuestions}
+              disabled={!formTitle.trim()}
+            >
+              {questions.length > 0 ? "Regenerate" : "Generate with AI"}
+            </Button>
+          </Group>
+          <Text size="xs" c="dimmed" mb="sm">
+            The AI will try to get answers to these questions during the conversation, transitioning naturally between topics.
+          </Text>
+          
+          {questions.length > 0 ? (
+            <Stack gap="xs">
+              {questions.map((q, i) => (
+                <Group key={i} gap="xs" wrap="nowrap">
+                  <Text size="xs" c="dimmed" w={20}>{i + 1}.</Text>
+                  <TextInput
+                    value={q}
+                    onChange={(e) => updateQuestion(i, e.target.value)}
+                    size="xs"
+                    style={{ flex: 1 }}
+                  />
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="red"
+                    onClick={() => removeQuestion(i)}
+                  >
+                    <IconX size={14} />
+                  </ActionIcon>
+                </Group>
+              ))}
+            </Stack>
+          ) : (
+            <Paper withBorder p="md" ta="center">
+              <Text size="sm" c="dimmed">
+                {isCreate 
+                  ? "Enter a title and click 'Generate with AI' to create questions"
+                  : "No questions yet. Add some or generate with AI."}
+              </Text>
+            </Paper>
+          )}
+          
+          {/* Add new question manually */}
+          <Group gap="xs" mt="sm">
+            <TextInput
+              placeholder="Add a question manually..."
+              value={newQuestion}
+              onChange={(e) => setNewQuestion(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addQuestion()}
+              size="xs"
+              style={{ flex: 1 }}
+            />
+            <Button size="xs" variant="light" onClick={addQuestion} disabled={!newQuestion.trim()}>
+              Add
+            </Button>
+          </Group>
+        </Box>
+        
+        <Divider />
+        
+        <Text size="xs" c="dimmed">
+          You'll choose the language when you start a conversation.
+        </Text>
         <Switch
           label="Share this scenario publicly"
           description="Others can copy and use this scenario template"

@@ -226,12 +226,12 @@ export const schema = {
     },
   },
 
-  // Scenarios - Reusable conversation templates (can be shared)
+  // Scenarios - Reusable conversation templates (can be shared, language-independent)
   [`${APP_ID}_scenarios`]: {
     fields: {
       title: { type: "string", required: true }, // e.g., "Purchasing Clothing"
       description: { type: "string" }, // Optional context/instructions
-      language: { type: "string", required: true }, // Target language key
+      questions: { type: "array", items: { type: "string" } }, // Questions for AI to explore
       systemPrompt: { type: "string" }, // Custom LLM system prompt
       owner: { type: "string", required: true },
       isPublic: { type: "boolean", default: false },
@@ -251,6 +251,7 @@ export const schema = {
   [`${APP_ID}_conversations`]: {
     fields: {
       scenarioId: { type: "string", required: true }, // Reference to scenario
+      language: { type: "string", required: true }, // Language for this conversation
       owner: { type: "string", required: true },
       messageCount: { type: "number", default: 0 },
       lastMessageAt: { type: "timestamp" },
