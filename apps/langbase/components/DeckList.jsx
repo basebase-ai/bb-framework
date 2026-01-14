@@ -51,12 +51,14 @@ import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections, SUPPORTED_LANGUAGES } from "../schema.js";
 import { ImportModal } from "./ImportModal.jsx";
+import { useUIStore } from "../stores/uiStore.js";
 
 /**
  * @param {{ onViewDeck: (deckId: string) => void, onStudyDeck: (deckId: string) => void }} props
  */
 export function DeckList({ onViewDeck, onStudyDeck }) {
   const { user } = useAuth();
+  const primaryLanguage = useUIStore((s) => s.primaryLanguage);
   const [searchQuery, setSearchQuery] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -66,7 +68,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
   const [deckName, setDeckName] = useState("");
   const [deckDescription, setDeckDescription] = useState("");
   const [isPublic, setIsPublic] = useState(false);
-  const [deckLanguage, setDeckLanguage] = useState("norwegian");
+  const [deckLanguage, setDeckLanguage] = useState(primaryLanguage || "spanish");
   const [saving, setSaving] = useState(false);
   const [swappingCards, setSwappingCards] = useState(false);
   const [copying, setCopying] = useState(/** @type {string | null} */ (null));
@@ -107,12 +109,13 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
     });
   }, [myDecksRaw]);
 
-  // Filter public decks (exclude user's own) and sort by card count
+  // Filter public decks (exclude user's own, filter by primary language) and sort by card count
   const publicDecks = useMemo(() => {
     return publicDecksRaw
       .filter((deck) => deck.owner !== user?.uid)
+      .filter((deck) => !primaryLanguage || deck.language === primaryLanguage)
       .sort((a, b) => (b.cardCount || 0) - (a.cardCount || 0));
-  }, [publicDecksRaw, user?.uid]);
+  }, [publicDecksRaw, user?.uid, primaryLanguage]);
 
   // Filter both sets when searching
   const filteredMyDecks = myDecks.filter(
@@ -139,6 +142,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
         cardCount: 0,
         masteredCount: 0,
         isPublic,
+        language: deckLanguage,
         tags: [],
       });
       setDeckName("");
@@ -195,7 +199,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
       setDeckName("");
       setDeckDescription("");
       setIsPublic(false);
-      setDeckLanguage("norwegian");
+      setDeckLanguage(primaryLanguage || "spanish");
       setEditModalOpen(false);
     } catch (err) {
       console.error("Error updating deck:", err);
@@ -397,7 +401,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
     setDeckName("");
     setDeckDescription("");
     setIsPublic(false);
-    setDeckLanguage("norwegian");
+    setDeckLanguage(primaryLanguage || "spanish");
     setEditModalOpen(false);
   };
 
@@ -634,6 +638,11 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
           <Group gap="xs">
             <IconWorld size={20} color="var(--mantine-color-cyan-5)" />
             <Title order={4} c="gray.4">Community Decks</Title>
+            {primaryLanguage && SUPPORTED_LANGUAGES[primaryLanguage] && (
+              <Badge variant="light" color="cyan" size="sm">
+                {SUPPORTED_LANGUAGES[primaryLanguage].name}
+              </Badge>
+            )}
           </Group>
           <Text size="sm" c="dimmed" mb="sm">
             Public decks shared by the community. Copy one to start studying.
@@ -672,6 +681,16 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
             onChange={(e) => setDeckDescription(e.target.value)}
             minRows={3}
           />
+          <Select
+            label="Card Language"
+            description="Used for text-to-speech audio"
+            value={deckLanguage}
+            onChange={(v) => setDeckLanguage(v || primaryLanguage || "spanish")}
+            data={Object.entries(SUPPORTED_LANGUAGES).map(([key, lang]) => ({
+              value: key,
+              label: `${lang.flag} ${lang.name}`,
+            }))}
+          />
           <Switch
             label="Make this deck public"
             description="Other users can discover and copy this deck to study"
@@ -709,10 +728,10 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
             label="Card Language"
             description="Used for text-to-speech audio"
             value={deckLanguage}
-            onChange={(v) => setDeckLanguage(v || "norwegian")}
+            onChange={(v) => setDeckLanguage(v || primaryLanguage || "spanish")}
             data={Object.entries(SUPPORTED_LANGUAGES).map(([key, lang]) => ({
               value: key,
-              label: lang.name,
+              label: `${lang.flag} ${lang.name}`,
             }))}
           />
           <Switch

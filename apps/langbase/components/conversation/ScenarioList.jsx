@@ -48,6 +48,7 @@ import { useCollection } from "../../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../../framework/hooks/useAuth.js";
 import { useFunction } from "../../../../framework/hooks/useFunction.js";
 import { collections, SUPPORTED_LANGUAGES } from "../../schema.js";
+import { useUIStore } from "../../stores/uiStore.js";
 
 /**
  * Format date for display
@@ -85,10 +86,10 @@ function formatRelativeTime(timestamp) {
   return formatDate(timestamp);
 }
 
-// Language options for select
+// Language options for select (with flags)
 const languageOptions = Object.entries(SUPPORTED_LANGUAGES).map(([key, lang]) => ({
   value: key,
-  label: lang.name,
+  label: `${lang.flag} ${lang.name}`,
 }));
 
 /**
@@ -97,6 +98,7 @@ const languageOptions = Object.entries(SUPPORTED_LANGUAGES).map(([key, lang]) =>
 export function ScenarioList({ onOpenConversation }) {
   const { user, loading: authLoading } = useAuth();
   const { call: callLLM } = useFunction("askLLM");
+  const primaryLanguage = useUIStore((s) => s.primaryLanguage);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -104,7 +106,7 @@ export function ScenarioList({ onOpenConversation }) {
   const [selectedScenario, setSelectedScenario] = useState(/** @type {any} */ (null));
   const [copying, setCopying] = useState(false);
   const [startConvoModalOpen, setStartConvoModalOpen] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState("norwegian");
+  const [selectedLanguage, setSelectedLanguage] = useState(primaryLanguage || "spanish");
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
 
   // Form state
@@ -282,20 +284,23 @@ No other text or explanation.`;
   const handleCreate = async () => {
     if (!user?.uid || !title.trim()) return;
     
-    const newScenario = await addScenario({
+    const scenarioData = {
       title: title.trim(),
       description: description.trim() || null,
       questions: questions.length > 0 ? questions : null,
       isPublic,
       owner: user.uid,
-    });
+    };
+    
+    // addScenario returns the new document ID directly (not an object)
+    const newScenarioId = await addScenario(scenarioData);
     
     setCreateModalOpen(false);
     resetForm();
     
     // Navigate to the new scenario's detail view
-    if (newScenario?.id) {
-      setSelectedScenario({ ...newScenario, id: newScenario.id });
+    if (newScenarioId) {
+      setSelectedScenario({ ...scenarioData, id: newScenarioId });
     }
   };
 
@@ -346,16 +351,18 @@ No other text or explanation.`;
     if (!user?.uid) return;
     setCopying(true);
     try {
-      const newScenario = await addScenario({
+      const scenarioData = {
         title: scenario.title,
         description: scenario.description || null,
         questions: scenario.questions || null,
         systemPrompt: scenario.systemPrompt || null,
         isPublic: false,
         owner: user.uid,
-      });
-      if (newScenario?.id) {
-        setSelectedScenario({ ...newScenario, id: newScenario.id });
+      };
+      // addScenario returns the new document ID directly (not an object)
+      const newScenarioId = await addScenario(scenarioData);
+      if (newScenarioId) {
+        setSelectedScenario({ ...scenarioData, id: newScenarioId });
       }
     } catch (err) {
       console.error("Failed to copy scenario:", err);
@@ -367,7 +374,7 @@ No other text or explanation.`;
    * Open the start conversation modal
    */
   const openStartConvoModal = () => {
-    setSelectedLanguage("norwegian"); // Reset to default
+    setSelectedLanguage(primaryLanguage || "spanish"); // Use primary language as default
     setStartConvoModalOpen(true);
   };
 
@@ -377,7 +384,8 @@ No other text or explanation.`;
   const handleStartNewConversation = async () => {
     if (!user?.uid || !selectedScenario) return;
     
-    const newInstance = await addInstance({
+    // addInstance returns the new document ID directly (not an object)
+    const newInstanceId = await addInstance({
       scenarioId: selectedScenario.id,
       language: selectedLanguage,
       owner: user.uid,
@@ -387,8 +395,8 @@ No other text or explanation.`;
     
     setStartConvoModalOpen(false);
     
-    if (newInstance?.id) {
-      onOpenConversation(newInstance.id);
+    if (newInstanceId) {
+      onOpenConversation(newInstanceId);
     }
   };
 

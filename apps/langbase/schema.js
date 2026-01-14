@@ -13,7 +13,7 @@ export const APP_ID = "langbase";
 
 /**
  * Namespaced collection names
- * @type {{ apps: string, users: string, decks: string, cards: string, documents: string, vocabulary: string, scenarios: string, conversations: string, messages: string }}
+ * @type {{ apps: string, users: string, decks: string, cards: string, documents: string, vocabulary: string, scenarios: string, conversations: string, messages: string, userPreferences: string }}
  */
 export const collections = {
   // Global collections (no namespace needed - platform-managed)
@@ -28,6 +28,7 @@ export const collections = {
   scenarios: `${APP_ID}_scenarios`, // Reusable conversation templates
   conversations: `${APP_ID}_conversations`, // Individual chat instances
   messages: `${APP_ID}_messages`,
+  userPreferences: `${APP_ID}_user_preferences`, // User settings (primary language, etc.)
 };
 
 /**
@@ -54,19 +55,19 @@ export const LEITNER_INTERVALS = {
 
 /**
  * Supported source languages for reading
- * @type {Record<string, { code: string, name: string, speechCode: string }>}
+ * @type {Record<string, { code: string, name: string, speechCode: string, flag: string }>}
  */
 export const SUPPORTED_LANGUAGES = {
-  norwegian: { code: "no", name: "Norwegian", speechCode: "nb-NO" },
-  swedish: { code: "sv", name: "Swedish", speechCode: "sv-SE" },
-  danish: { code: "da", name: "Danish", speechCode: "da-DK" },
-  german: { code: "de", name: "German", speechCode: "de-DE" },
-  french: { code: "fr", name: "French", speechCode: "fr-FR" },
-  spanish: { code: "es", name: "Spanish", speechCode: "es-ES" },
-  italian: { code: "it", name: "Italian", speechCode: "it-IT" },
-  dutch: { code: "nl", name: "Dutch", speechCode: "nl-NL" },
-  portuguese: { code: "pt", name: "Portuguese", speechCode: "pt-PT" },
-  english: { code: "en", name: "English", speechCode: "en-US" },
+  norwegian: { code: "no", name: "Norwegian", speechCode: "nb-NO", flag: "🇳🇴" },
+  swedish: { code: "sv", name: "Swedish", speechCode: "sv-SE", flag: "🇸🇪" },
+  danish: { code: "da", name: "Danish", speechCode: "da-DK", flag: "🇩🇰" },
+  german: { code: "de", name: "German", speechCode: "de-DE", flag: "🇩🇪" },
+  french: { code: "fr", name: "French", speechCode: "fr-FR", flag: "🇫🇷" },
+  spanish: { code: "es", name: "Spanish", speechCode: "es-ES", flag: "🇪🇸" },
+  italian: { code: "it", name: "Italian", speechCode: "it-IT", flag: "🇮🇹" },
+  dutch: { code: "nl", name: "Dutch", speechCode: "nl-NL", flag: "🇳🇱" },
+  portuguese: { code: "pt", name: "Portuguese", speechCode: "pt-PT", flag: "🇵🇹" },
+  english: { code: "en", name: "English", speechCode: "en-US", flag: "🇺🇸" },
 };
 
 /**
@@ -278,6 +279,23 @@ export const schema = {
       createdAt: { type: "timestamp", auto: true },
     },
     indexes: [["conversationId"], ["conversationId", "createdAt"]],
+    rules: {
+      read: "auth != null && auth.uid == resource.data.owner",
+      write: "auth != null && auth.uid == resource.data.owner",
+      create: "auth != null && request.resource.data.owner == auth.uid",
+      delete: "auth != null && auth.uid == resource.data.owner",
+    },
+  },
+
+  // User preferences - stores primary language and other user settings
+  [`${APP_ID}_user_preferences`]: {
+    fields: {
+      primaryLanguage: { type: "string", required: true }, // Key from SUPPORTED_LANGUAGES
+      owner: { type: "string", required: true },
+      createdAt: { type: "timestamp", auto: true },
+      updatedAt: { type: "timestamp", auto: true },
+    },
+    indexes: [["owner"]],
     rules: {
       read: "auth != null && auth.uid == resource.data.owner",
       write: "auth != null && auth.uid == resource.data.owner",

@@ -6,7 +6,7 @@
  * - Plain text/CSV/TSV (Anki's text export with #separator directives)
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   Stack,
@@ -45,6 +45,7 @@ import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections, SUPPORTED_LANGUAGES } from "../schema.js";
 import { parseApkgFile, mapNotesToCards } from "../utils/apkgParser.js";
+import { useUIStore } from "../stores/uiStore.js";
 
 /** @typedef {"apkg" | "text"} ImportFormat */
 
@@ -304,6 +305,7 @@ function parseMultilineRecords(content, separator) {
  */
 export function ImportModal({ opened, onClose }) {
   const { user } = useAuth();
+  const primaryLanguage = useUIStore((s) => s.primaryLanguage);
   const [importFormat, setImportFormat] = useState(/** @type {ImportFormat} */ ("apkg"));
   const [deckName, setDeckName] = useState("");
   const [textContent, setTextContent] = useState("");
@@ -330,7 +332,14 @@ export function ImportModal({ opened, onClose }) {
   const [swapFrontBack, setSwapFrontBack] = useState(false);
   
   // Language for text-to-speech
-  const [deckLanguage, setDeckLanguage] = useState("norwegian");
+  const [deckLanguage, setDeckLanguage] = useState(primaryLanguage || "spanish");
+  
+  // Reset deck language to primary when modal opens
+  useEffect(() => {
+    if (opened && primaryLanguage) {
+      setDeckLanguage(primaryLanguage);
+    }
+  }, [opened, primaryLanguage]);
 
   const { add: addDeck } = useCollection(collections.decks);
   const { add: addCard } = useCollection(collections.cards);
@@ -648,7 +657,7 @@ export function ImportModal({ opened, onClose }) {
             onChange={(v) => setDeckLanguage(v || "norwegian")}
             data={Object.entries(SUPPORTED_LANGUAGES).map(([key, lang]) => ({
               value: key,
-              label: lang.name,
+              label: `${lang.flag} ${lang.name}`,
             }))}
           />
         </Group>

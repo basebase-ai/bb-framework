@@ -17,6 +17,7 @@ import {
   Loader,
   Center,
   Button,
+  Alert,
   useMantineColorScheme,
 } from "@mantine/core";
 import {
@@ -28,6 +29,7 @@ import {
   IconVocabulary,
   IconChevronRight,
   IconX,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import { useDocument } from "../../../../framework/hooks/useDocument.js";
 import { useUIStore } from "../../stores/uiStore.js";
@@ -95,8 +97,25 @@ export function DocumentReader({ documentId, onBack }) {
 
   // Pass linked deck to translation hook so cards get added to it
   const { translate } = useTranslation(linkedDeckId);
-  const { supported: speechSupported, speak } = useSpeech();
-  const sourceLanguage = useUIStore((s) => s.sourceLanguage);
+  const { supported: speechSupported, speak, getVoiceInfo, availableVoices } = useSpeech();
+  const sourceLanguageFromStore = useUIStore((s) => s.sourceLanguage);
+  
+  // Determine language key - prefer document language if available
+  const documentLangKey = useMemo(() => {
+    if (!doc?.sourceLanguage) return null;
+    // Find the key in SUPPORTED_LANGUAGES that matches the doc's source language code
+    const entry = Object.entries(SUPPORTED_LANGUAGES).find(
+      ([, lang]) => lang.code === doc.sourceLanguage
+    );
+    return entry ? entry[0] : null;
+  }, [doc?.sourceLanguage]);
+  
+  const effectiveLanguageKey = documentLangKey || sourceLanguageFromStore;
+  
+  // Check if voice is available for the document language
+  const voiceInfo = getVoiceInfo(effectiveLanguageKey);
+  const [voiceWarningDismissed, setVoiceWarningDismissed] = useState(false);
+  const langInfo = SUPPORTED_LANGUAGES[effectiveLanguageKey] || null;
 
   // State for mobile sidebar visibility (desktop always shows sidebar)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -413,6 +432,28 @@ export function DocumentReader({ documentId, onBack }) {
             </Group>
           </Group>
         </Paper>
+
+        {/* Voice not available warning */}
+        {availableVoices.length > 0 && !voiceInfo.hasVoice && !voiceWarningDismissed && (
+          <Alert 
+            variant="light" 
+            color="yellow" 
+            icon={<IconAlertTriangle size={16} />}
+            withCloseButton
+            onClose={() => setVoiceWarningDismissed(true)}
+            p="xs"
+            mb="sm"
+          >
+            <Text size="xs">
+              <strong>Audio not available for {langInfo?.name || "this language"}.</strong>{" "}
+              Your browser doesn't have a {langInfo?.name} voice installed.
+            </Text>
+            <Text size="xs" mt={4} c="dimmed">
+              <strong>To fix:</strong> On macOS, go to System Settings → Accessibility → Spoken Content → System Voice → Manage Voices, 
+              then download a {langInfo?.name} voice. On Windows, go to Settings → Time & Language → Speech → Add voices.
+            </Text>
+          </Alert>
+        )}
 
         {/* Reading content */}
         <Paper

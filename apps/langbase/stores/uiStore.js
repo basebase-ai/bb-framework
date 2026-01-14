@@ -23,6 +23,7 @@ import { create } from "zustand";
  * @property {'vocabulary' | 'reading' | 'conversation'} activeTab
  * @property {SelectedWord | null} selectedWord
  * @property {string} sourceLanguage
+ * @property {string | null} primaryLanguage - User's primary study language (from preferences)
  * @property {boolean} autoPlayAudio
  * @property {number} fontSize
  * @property {(deckId: string | null) => void} setSelectedDeckId
@@ -34,6 +35,7 @@ import { create } from "zustand";
  * @property {(word: SelectedWord | null) => void} setSelectedWord
  * @property {() => void} clearSelectedWord
  * @property {(lang: string) => void} setSourceLanguage
+ * @property {(lang: string | null) => void} setPrimaryLanguage
  * @property {(autoPlay: boolean) => void} setAutoPlayAudio
  * @property {(size: number) => void} setFontSize
  */
@@ -52,6 +54,7 @@ export const useUIStore = create((set) => ({
   // Reading state
   selectedWord: null,
   sourceLanguage: "norwegian",
+  primaryLanguage: /** @type {string | null} */ (null), // Loaded from user preferences
   autoPlayAudio: true,
   fontSize: 18,
 
@@ -85,6 +88,9 @@ export const useUIStore = create((set) => ({
 
   /** @param {string} lang */
   setSourceLanguage: (lang) => set({ sourceLanguage: lang }),
+
+  /** @param {string | null} lang */
+  setPrimaryLanguage: (lang) => set({ primaryLanguage: lang }),
 
   /** @param {boolean} autoPlay */
   setAutoPlayAudio: (autoPlay) => set({ autoPlayAudio: autoPlay }),

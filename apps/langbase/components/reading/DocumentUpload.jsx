@@ -1,7 +1,7 @@
 /**
  * DocumentUpload - Component for importing text or PDF files
  */
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Modal,
   Stack,
@@ -23,7 +23,8 @@ import {
 } from "@tabler/icons-react";
 import { useCollection } from "../../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../../framework/hooks/useAuth.js";
-import { collections, SUPPORTED_LANGUAGES, DEFAULT_SOURCE_LANGUAGE } from "../../schema.js";
+import { collections, SUPPORTED_LANGUAGES } from "../../schema.js";
+import { useUIStore } from "../../stores/uiStore.js";
 
 /**
  * @param {{ opened: boolean, onClose: () => void, onSuccess: (docId: string) => void }} props
@@ -31,13 +32,21 @@ import { collections, SUPPORTED_LANGUAGES, DEFAULT_SOURCE_LANGUAGE } from "../..
 export function DocumentUpload({ opened, onClose, onSuccess }) {
   const { user } = useAuth();
   const { add } = useCollection(collections.documents);
+  const primaryLanguage = useUIStore((s) => s.primaryLanguage);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [sourceLanguage, setSourceLanguage] = useState(DEFAULT_SOURCE_LANGUAGE);
+  const [sourceLanguage, setSourceLanguage] = useState(primaryLanguage || "spanish");
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
+  
+  // Reset source language to primary when modal opens
+  useEffect(() => {
+    if (opened && primaryLanguage) {
+      setSourceLanguage(primaryLanguage);
+    }
+  }, [opened, primaryLanguage]);
 
   /**
    * Count words in text
@@ -172,7 +181,7 @@ export function DocumentUpload({ opened, onClose, onSuccess }) {
   const languageOptions = Object.entries(SUPPORTED_LANGUAGES).map(
     ([key, lang]) => ({
       value: key,
-      label: lang.name,
+      label: `${lang.flag} ${lang.name}`,
     })
   );
 

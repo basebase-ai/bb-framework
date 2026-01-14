@@ -28,6 +28,8 @@ import {
   Tooltip,
   TextInput,
   Divider,
+  Alert,
+  CloseButton,
   useMantineColorScheme,
 } from "@mantine/core";
 import {
@@ -39,6 +41,7 @@ import {
   IconX,
   IconMessageCircle,
   IconVocabulary,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import { useDocument } from "../../../../framework/hooks/useDocument.js";
 import { useCollection } from "../../../../framework/hooks/useCollection.js";
@@ -117,10 +120,23 @@ export function ConversationChat({ conversationId, onBack }) {
   const { call: callLLM } = useFunction("askLLM");
   
   // Speech - pass language key to speak() function
-  const { speak, speaking } = useSpeech();
+  const { speak, speaking, getVoiceInfo, availableVoices } = useSpeech();
   // Language is now stored on the conversation instance, not the scenario
   const languageKey = conversation?.language || "norwegian";
   const langInfo = SUPPORTED_LANGUAGES[languageKey] || null;
+  
+  // Check if voice is available for this language
+  const voiceInfo = getVoiceInfo(languageKey);
+  const [voiceWarningDismissed, setVoiceWarningDismissed] = useState(false);
+  
+  // Debug: log language being used
+  useEffect(() => {
+    if (conversation) {
+      console.log("[ConversationChat] Conversation language field:", conversation.language);
+      console.log("[ConversationChat] Using languageKey:", languageKey);
+      console.log("[ConversationChat] Voice info:", voiceInfo);
+    }
+  }, [conversation, languageKey, voiceInfo]);
   
   // Set source language in UI store for VocabularyPanel speech
   const setSourceLanguage = useUIStore((s) => s.setSourceLanguage);
@@ -273,7 +289,7 @@ Guidelines:
 - Respond ONLY in ${langName} (both corrections and responses)
 - Keep responses conversational and natural
 - Use vocabulary appropriate for an intermediate learner
-- Keep responses relatively short (1-3 sentences) to maintain a natural conversation flow
+- IMPORTANT: Keep responses very short - ideally 1 sentence, under 15 words. This maintains a natural back-and-forth conversation pace.
 - Stay in character for the scenario
 - Ask questions to keep the conversation going and encourage the learner to practice
 
@@ -477,6 +493,27 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
         )}
       </Group>
       
+      {/* Voice not available warning */}
+      {availableVoices.length > 0 && !voiceInfo.hasVoice && !voiceWarningDismissed && (
+        <Alert 
+          variant="light" 
+          color="yellow" 
+          icon={<IconAlertTriangle size={16} />}
+          withCloseButton
+          onClose={() => setVoiceWarningDismissed(true)}
+          p="xs"
+        >
+          <Text size="xs">
+            <strong>Audio not available for {langInfo?.name || "this language"}.</strong>{" "}
+            Your browser doesn't have a {langInfo?.name} voice installed.
+          </Text>
+          <Text size="xs" mt={4} c="dimmed">
+            <strong>To fix:</strong> On macOS, go to System Settings → Accessibility → Spoken Content → System Voice → Manage Voices, 
+            then download a {langInfo?.name} voice. On Windows, go to Settings → Time & Language → Speech → Add voices.
+          </Text>
+        </Alert>
+      )}
+      
       {/* Main chat area */}
       <Box style={{ display: "flex", flex: 1, gap: isMobile ? 0 : "1rem", minHeight: 0, overflow: "hidden" }}>
         {/* Messages + Input */}
@@ -510,6 +547,8 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
                   />
                 ))
               )}
+              {/* Typing indicator while AI is thinking */}
+              {sending && <TypingIndicator />}
               <div ref={messagesEndRef} />
             </Stack>
           </Box>
@@ -533,7 +572,6 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
             />
             <Button
               onClick={handleSend}
-              loading={sending}
               disabled={!input.trim()}
               leftSection={<IconSend size={16} />}
               size="sm"
@@ -930,3 +968,48 @@ function MessageBubble({ message, isUser, onWordClick, onSpeak, speaking }) {
   );
 }
 
+/**
+ * Typing indicator - animated dots shown while AI is generating a response
+ */
+function TypingIndicator() {
+  return (
+    <Box style={{ display: "flex", justifyContent: "flex-start" }}>
+      <Paper
+        p="xs"
+        radius="md"
+        style={{
+          background: "var(--mantine-color-default)",
+          border: "1px solid var(--mantine-color-default-border)",
+        }}
+      >
+        <Group gap={3}>
+          {[0, 1, 2].map((i) => (
+            <Box
+              key={i}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "var(--mantine-color-dimmed)",
+                animation: "typing-bounce 1.4s infinite ease-in-out",
+                animationDelay: `${i * 0.16}s`,
+              }}
+            />
+          ))}
+        </Group>
+        <style>{`
+          @keyframes typing-bounce {
+            0%, 60%, 100% {
+              transform: translateY(0);
+              opacity: 0.4;
+            }
+            30% {
+              transform: translateY(-3px);
+              opacity: 1;
+            }
+          }
+        `}</style>
+      </Paper>
+    </Box>
+  );
+}

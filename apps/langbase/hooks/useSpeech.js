@@ -91,16 +91,34 @@ export function useSpeech() {
       window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(text);
+      const langConfig = SUPPORTED_LANGUAGES[languageKey];
       const voice = findVoice(languageKey);
+
+      // Debug logging for troubleshooting
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Speech] Language key:", languageKey);
+        console.log("[Speech] Lang config:", langConfig);
+        console.log("[Speech] Found voice:", voice?.name, voice?.lang);
+        console.log("[Speech] Available voices:", availableVoices.length);
+      }
 
       if (voice) {
         utterance.voice = voice;
         utterance.lang = voice.lang;
-      } else {
-        // Fallback to language code
-        const langConfig = SUPPORTED_LANGUAGES[languageKey];
-        if (langConfig) {
-          utterance.lang = langConfig.speechCode;
+      } else if (langConfig) {
+        // No voice found - set lang property and try to find ANY voice for this language
+        utterance.lang = langConfig.speechCode;
+        
+        // Try to find a voice that matches the language code prefix
+        const fallbackVoice = availableVoices.find(
+          (v) => v.lang.toLowerCase().startsWith(langConfig.code.toLowerCase())
+        );
+        if (fallbackVoice) {
+          utterance.voice = fallbackVoice;
+          utterance.lang = fallbackVoice.lang;
+          if (process.env.NODE_ENV === "development") {
+            console.log("[Speech] Using fallback voice:", fallbackVoice.name);
+          }
         }
       }
 
@@ -109,11 +127,14 @@ export function useSpeech() {
 
       utterance.onstart = () => setSpeaking(true);
       utterance.onend = () => setSpeaking(false);
-      utterance.onerror = () => setSpeaking(false);
+      utterance.onerror = (e) => {
+        console.error("[Speech] Error:", e);
+        setSpeaking(false);
+      };
 
       window.speechSynthesis.speak(utterance);
     },
-    [supported, findVoice]
+    [supported, findVoice, availableVoices]
   );
 
   /**
@@ -141,10 +162,23 @@ export function useSpeech() {
   return {
     speaking,
     supported,
-    hasVoice: true, // Will attempt even without exact voice
+    availableVoices,
     speak,
     stop,
     hasVoiceForLanguage,
+    /**
+     * Get diagnostic info for a language
+     * @param {string} languageKey
+     * @returns {{ hasVoice: boolean, voiceName: string | null, voiceLang: string | null }}
+     */
+    getVoiceInfo: (languageKey) => {
+      const voice = findVoice(languageKey);
+      return {
+        hasVoice: voice !== null,
+        voiceName: voice?.name || null,
+        voiceLang: voice?.lang || null,
+      };
+    },
   };
 }
 

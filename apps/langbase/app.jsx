@@ -16,7 +16,7 @@
  *   /chat/:id      - Conversation practice chat
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
   MantineProvider,
@@ -29,10 +29,15 @@ import {
   Box,
   Title,
   Tabs,
+  Modal,
+  Stack,
+  Select,
   useMantineColorScheme,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { IconLogin, IconLogout, IconUser, IconCards, IconBook2, IconMessageCircle, IconSun, IconMoon } from "@tabler/icons-react";
+import { IconLogin, IconLogout, IconUser, IconCards, IconBook2, IconMessageCircle, IconSun, IconMoon, IconLanguage, IconChevronDown } from "@tabler/icons-react";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../../framework/core/firebase-init.js";
 import { AppRouter, RouteContent } from "../../framework/components/AppRouter.jsx";
 import { useRoute } from "../../framework/hooks/useRoute.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
@@ -48,7 +53,7 @@ import { DocumentUpload } from "./components/reading/DocumentUpload.jsx";
 import { ScenarioList } from "./components/conversation/ScenarioList.jsx";
 import { ConversationChat } from "./components/conversation/ConversationChat.jsx";
 import { useUIStore } from "./stores/uiStore.js";
-import { APP_ID } from "./schema.js";
+import { APP_ID, collections, SUPPORTED_LANGUAGES } from "./schema.js";
 
 // Mantine CSS imports
 import "@mantine/core/styles.css";
@@ -661,13 +666,120 @@ function LandingPage() {
 // Layout Component
 // ============================================================================
 
+// Language options for select dropdowns (with flags)
+const languageOptions = Object.entries(SUPPORTED_LANGUAGES)
+  .filter(([key]) => key !== "english") // Don't show English as a study language
+  .map(([key, lang]) => ({
+    value: key,
+    label: `${lang.flag} ${lang.name}`,
+  }));
+
 function AppLayout() {
   const { user, promptSignIn } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   const { navigate, path } = useRoute();
   const [profileModalOpened, setProfileModalOpened] = useState(false);
+  const [languageSetupOpen, setLanguageSetupOpen] = useState(false);
+  const [selectedSetupLanguage, setSelectedSetupLanguage] = useState("spanish");
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const isDark = colorScheme === "dark";
+  
+  // Store state
+  const primaryLanguage = useUIStore((s) => s.primaryLanguage);
+  const setPrimaryLanguage = useUIStore((s) => s.setPrimaryLanguage);
+  const setSourceLanguage = useUIStore((s) => s.setSourceLanguage);
+  
+  // Load primary language from user preferences
+  const [prefsLoading, setPrefsLoading] = useState(true);
+  
+  useEffect(() => {
+    if (!user?.uid) {
+      setPrefsLoading(false);
+      return;
+    }
+    
+    // Set loading to true when starting to fetch for a user
+    setPrefsLoading(true);
+    
+    const prefsRef = doc(db, collections.userPreferences, user.uid);
+    console.log("[langbase] Loading preferences from:", collections.userPreferences, user.uid);
+    
+    getDoc(prefsRef).then((snap) => {
+      console.log("[langbase] Prefs doc exists:", snap.exists(), snap.exists() ? snap.data() : null);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.primaryLanguage) {
+          console.log("[langbase] Setting primaryLanguage:", data.primaryLanguage);
+          setPrimaryLanguage(data.primaryLanguage);
+          setSourceLanguage(data.primaryLanguage);
+        }
+      }
+      setPrefsLoading(false);
+    }).catch((err) => {
+      console.error("[langbase] Failed to load user preferences:", err);
+      setPrefsLoading(false);
+    });
+  }, [user?.uid, setPrimaryLanguage, setSourceLanguage]);
+  
+  // Show language setup modal for new users (after loading)
+  // Don't show if we already have a primaryLanguage set in the store (optimistic update)
+  useEffect(() => {
+    console.log("[langbase] Modal check - user:", !!user, "prefsLoading:", prefsLoading, "primaryLanguage:", primaryLanguage);
+    if (user && !prefsLoading && !primaryLanguage) {
+      console.log("[langbase] Opening language setup modal");
+      setLanguageSetupOpen(true);
+    }
+  }, [user, prefsLoading, primaryLanguage]);
+  
+  /**
+   * Handle language setup completion
+   */
+  const handleLanguageSetup = async () => {
+    if (!user?.uid) return;
+    
+    // Close modal immediately (optimistic)
+    setLanguageSetupOpen(false);
+    
+    // Update local state immediately
+    setPrimaryLanguage(selectedSetupLanguage);
+    setSourceLanguage(selectedSetupLanguage);
+    
+    // Save to user preferences collection
+    try {
+      const prefsRef = doc(db, collections.userPreferences, user.uid);
+      await setDoc(prefsRef, {
+        owner: user.uid,
+        primaryLanguage: selectedSetupLanguage,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (err) {
+      console.error("Failed to save language preference:", err);
+    }
+  };
+  
+  /**
+   * Handle language change from dropdown
+   * @param {string} lang
+   */
+  const handleLanguageChange = async (lang) => {
+    if (!user?.uid) return;
+    
+    // Update local state immediately
+    setPrimaryLanguage(lang);
+    setSourceLanguage(lang);
+    
+    // Save to user preferences collection
+    try {
+      const prefsRef = doc(db, collections.userPreferences, user.uid);
+      await setDoc(prefsRef, {
+        owner: user.uid,
+        primaryLanguage: lang,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (err) {
+      console.error("Failed to save language preference:", err);
+    }
+  };
 
   const handleNavigateHome = () => {
     navigate("/");
@@ -684,6 +796,8 @@ function AppLayout() {
   if (isFullScreenMode) {
     return <RouteContent />;
   }
+  
+  const currentLangInfo = primaryLanguage ? SUPPORTED_LANGUAGES[primaryLanguage] : null;
 
   return (
     <>
@@ -716,54 +830,90 @@ function AppLayout() {
             </Group>
 
             {user ? (
-              <Menu position="bottom-end" withinPortal>
-                <Menu.Target>
-                  <Group gap="xs" style={{ cursor: "pointer" }}>
-                    <Avatar
-                      src={profile?.photoURL}
-                      alt={profile?.displayName || user.email || "User"}
-                      size="sm"
-                      radius="xl"
-                      color="pink"
+              <Group gap="sm">
+                {/* Language selector dropdown */}
+                {currentLangInfo && (
+                  <Menu position="bottom-end" withinPortal>
+                    <Menu.Target>
+                      <Button
+                        variant="subtle"
+                        color="gray"
+                        size="xs"
+                        rightSection={<IconChevronDown size={14} />}
+                      >
+                        {currentLangInfo.flag} {currentLangInfo.name}
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Label>Studying</Menu.Label>
+                      {languageOptions.map((opt) => (
+                        <Menu.Item
+                          key={opt.value}
+                          onClick={() => handleLanguageChange(opt.value)}
+                          style={{
+                            fontWeight: opt.value === primaryLanguage ? 600 : 400,
+                            background: opt.value === primaryLanguage 
+                              ? (isDark ? "rgba(233, 69, 96, 0.15)" : "rgba(233, 69, 96, 0.1)")
+                              : undefined,
+                          }}
+                        >
+                          {opt.label}
+                        </Menu.Item>
+                      ))}
+                    </Menu.Dropdown>
+                  </Menu>
+                )}
+                
+                {/* User menu */}
+                <Menu position="bottom-end" withinPortal>
+                  <Menu.Target>
+                    <Group gap="xs" style={{ cursor: "pointer" }}>
+                      <Avatar
+                        src={profile?.photoURL}
+                        alt={profile?.displayName || user.email || "User"}
+                        size="sm"
+                        radius="xl"
+                        color="pink"
+                      >
+                        {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Text size="sm" c="gray.5" visibleFrom="sm">
+                        {profile?.displayName || user.email}
+                      </Text>
+                    </Group>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={<IconUser size={16} />}
+                      onClick={() => setProfileModalOpened(true)}
                     >
-                      {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
-                    </Avatar>
-                    <Text size="sm" c="gray.5">
-                      {profile?.displayName || user.email}
-                    </Text>
-                  </Group>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    leftSection={<IconUser size={16} />}
-                    onClick={() => setProfileModalOpened(true)}
-                  >
-                    Profile
-                  </Menu.Item>
-                  <Menu.Item
-                    leftSection={isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
-                    onClick={() => toggleColorScheme()}
-                  >
-                    {isDark ? "Light Mode" : "Dark Mode"}
-                  </Menu.Item>
-                  <Menu.Divider />
-                  <Menu.Item
-                    leftSection={<IconLogout size={16} />}
-                    color="red"
-                    onClick={() => {
-                      if (confirm("Are you sure you want to sign out?")) {
-                        import("firebase/auth").then(({ signOut }) => {
-                          import("../../framework/core/firebase-init.js").then(({ auth }) => {
-                            signOut(auth);
+                      Profile
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
+                      onClick={() => toggleColorScheme()}
+                    >
+                      {isDark ? "Light Mode" : "Dark Mode"}
+                    </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item
+                      leftSection={<IconLogout size={16} />}
+                      color="red"
+                      onClick={() => {
+                        if (confirm("Are you sure you want to sign out?")) {
+                          import("firebase/auth").then(({ signOut }) => {
+                            import("../../framework/core/firebase-init.js").then(({ auth }) => {
+                              signOut(auth);
+                            });
                           });
-                        });
-                      }
-                    }}
-                  >
-                    Sign Out
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
+                        }
+                      }}
+                    >
+                      Sign Out
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              </Group>
             ) : (
               <Button
                 variant="light"
@@ -790,6 +940,43 @@ function AppLayout() {
           onClose={() => setProfileModalOpened(false)}
         />
       )}
+      
+      {/* Language setup modal for new users */}
+      <Modal
+        opened={languageSetupOpen}
+        onClose={() => {}} // Prevent closing without selection
+        title="Welcome to LangBase!"
+        centered
+        withCloseButton={false}
+        closeOnClickOutside={false}
+        closeOnEscape={false}
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            What language are you learning? This will be your default for creating decks, conversations, and reading materials.
+          </Text>
+          <Select
+            label="I'm studying"
+            placeholder="Select a language"
+            data={languageOptions}
+            value={selectedSetupLanguage}
+            onChange={(val) => val && setSelectedSetupLanguage(val)}
+            size="md"
+            required
+          />
+          <Text size="xs" c="dimmed">
+            You can use Langbase to study multiple languages at once, just change this anytime in the header.
+          </Text>
+          <Button
+            onClick={handleLanguageSetup}
+            fullWidth
+            color="pink"
+            disabled={!selectedSetupLanguage}
+          >
+            Get Started
+          </Button>
+        </Stack>
+      </Modal>
     </>
   );
 }

@@ -40,6 +40,7 @@ import {
 import { useCollection } from "../../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../../framework/hooks/useAuth.js";
 import { collections, SUPPORTED_LANGUAGES } from "../../schema.js";
+import { useUIStore } from "../../stores/uiStore.js";
 
 /**
  * Get language name from code
@@ -77,6 +78,7 @@ function formatDate(timestamp) {
  */
 export function DocumentList({ onOpenDocument, onAddDocument, onStartSentencePractice }) {
   const { user, loading: authLoading } = useAuth();
+  const primaryLanguage = useUIStore((s) => s.primaryLanguage);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingDoc, setEditingDoc] = useState(/** @type {any} */ (null));
   const [editTitle, setEditTitle] = useState("");
@@ -144,11 +146,15 @@ export function DocumentList({ onOpenDocument, onAddDocument, onStartSentencePra
     }
   };
 
-  // Filter out user's own documents from public list
+  // Filter out user's own documents from public list and filter by primary language
   const communityDocuments = useMemo(() => {
     if (!publicDocuments || !user?.uid) return publicDocuments || [];
-    return publicDocuments.filter((doc) => doc.owner !== user.uid);
-  }, [publicDocuments, user?.uid]);
+    // Get the language code for the primary language
+    const primaryLangCode = primaryLanguage ? SUPPORTED_LANGUAGES[primaryLanguage]?.code : null;
+    return publicDocuments
+      .filter((doc) => doc.owner !== user.uid)
+      .filter((doc) => !primaryLangCode || doc.sourceLanguage === primaryLangCode);
+  }, [publicDocuments, user?.uid, primaryLanguage]);
 
   // Filter documents by search query
   const filteredUserDocs = useMemo(() => {
@@ -349,6 +355,11 @@ export function DocumentList({ onOpenDocument, onAddDocument, onStartSentencePra
             <Title order={4} c="gray.4">
               Community Readings
             </Title>
+            {primaryLanguage && SUPPORTED_LANGUAGES[primaryLanguage] && (
+              <Badge variant="light" color="cyan" size="sm">
+                {SUPPORTED_LANGUAGES[primaryLanguage].name}
+              </Badge>
+            )}
           </Group>
           <Text size="sm" c="dimmed" mb="sm">
             Public readings shared by the community. Click to read, or copy to your library for personal progress tracking.
