@@ -324,6 +324,22 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
       );
       const cardsSnapshot = await getDocs(cardsQuery);
       
+      // Sort cards by importOrder to preserve original ordering (e.g., frequency order)
+      // Fall back to createdAt for cards without importOrder
+      const sortedCardDocs = [...cardsSnapshot.docs].sort((a, b) => {
+        const aOrder = a.data().importOrder;
+        const bOrder = b.data().importOrder;
+        if (aOrder !== undefined && bOrder !== undefined) {
+          return aOrder - bOrder;
+        }
+        if (aOrder !== undefined) return -1;
+        if (bOrder !== undefined) return 1;
+        // Fall back to createdAt
+        const aTime = a.data().createdAt?.seconds || 0;
+        const bTime = b.data().createdAt?.seconds || 0;
+        return aTime - bTime;
+      });
+      
       // Create the new deck first
       const newDeckRef = await addDoc(collection(db, collections.decks), {
         name: `${deckName} (copy)`,
@@ -339,7 +355,7 @@ export function DeckList({ onViewDeck, onStudyDeck }) {
 
       // Copy cards using batch writes (max 500 per batch)
       const BATCH_SIZE = 500;
-      const cardDocs = cardsSnapshot.docs;
+      const cardDocs = sortedCardDocs;
       
       for (let i = 0; i < cardDocs.length; i += BATCH_SIZE) {
         const batch = writeBatch(db);

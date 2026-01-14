@@ -39,6 +39,7 @@ import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections, LEITNER_INTERVALS } from "../schema.js";
+import { useUIStore } from "../stores/uiStore.js";
 
 /**
  * @param {number} box
@@ -63,6 +64,14 @@ export function CardList({ deckId, onBack, onStudy }) {
   const [cardBack, setCardBack] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Card cache for faster subsequent loads
+  const cardCache = useUIStore((s) => s.cardCache);
+  const setCachedCards = useUIStore((s) => s.setCachedCards);
+  const updateCachedCard = useUIStore((s) => s.updateCachedCard);
+  const removeCachedCard = useUIStore((s) => s.removeCachedCard);
+  const addCachedCard = useUIStore((s) => s.addCachedCard);
+  const cachedData = cardCache[deckId];
+
   const { data: deck, loading: deckLoading, update: updateDeck } = useDocument(collections.decks, deckId);
 
   // Memoize query options (no orderBy to avoid composite index)
@@ -76,14 +85,24 @@ export function CardList({ deckId, onBack, onStudy }) {
   const {
     data: cardsRaw,
     loading: cardsLoading,
-    add,
-    update,
-    remove,
+    add: addCard,
+    update: updateCard,
+    remove: removeCard,
   } = useCollection(collections.cards, cardQueryOptions);
+
+  // Cache cards when they load from Firestore (only if not already cached)
+  useEffect(() => {
+    if (!cardsLoading && cardsRaw.length > 0 && !cachedData) {
+      setCachedCards(deckId, cardsRaw);
+    }
+  }, [cardsRaw, cardsLoading, deckId, cachedData, setCachedCards]);
+
+  // Use cached cards for instant display, fall back to live data
+  const cardsSource = cachedData?.cards || cardsRaw;
 
   // Sort client-side: imported cards by importOrder (asc), manual cards by createdAt (desc)
   const cards = useMemo(() => {
-    return [...cardsRaw].sort((a, b) => {
+    return [...cardsSource].sort((a, b) => {
       // If both have importOrder, sort by it (ascending = file order)
       if (a.importOrder !== undefined && b.importOrder !== undefined) {
         return a.importOrder - b.importOrder;
@@ -96,7 +115,33 @@ export function CardList({ deckId, onBack, onStudy }) {
       const bTime = b.createdAt?.seconds || 0;
       return bTime - aTime;
     });
-  }, [cardsRaw]);
+  }, [cardsSource]);
+
+  // Wrapper functions to update both Firestore and cache
+  const add = async (/** @type {Object} */ cardData) => {
+    const newCard = await addCard(cardData);
+    if (newCard && cachedData) {
+      addCachedCard(deckId, newCard);
+    }
+    return newCard;
+  };
+
+  const update = async (/** @type {string} */ cardId, /** @type {Object} */ updates) => {
+    await updateCard(cardId, updates);
+    if (cachedData) {
+      updateCachedCard(deckId, cardId, updates);
+    }
+  };
+
+  const remove = async (/** @type {string} */ cardId) => {
+    await removeCard(cardId);
+    if (cachedData) {
+      removeCachedCard(deckId, cardId);
+    }
+  };
+
+  // Show loading only if we have no cached data AND still loading from Firestore
+  const showLoading = !cachedData && cardsLoading;
 
   // Update deck stats when cards change
   useEffect(() => {
@@ -209,7 +254,7 @@ export function CardList({ deckId, onBack, onStudy }) {
     setEditModalOpen(false);
   };
 
-  if (deckLoading || cardsLoading) {
+  if (deckLoading || showLoading) {
     return (
       <Box py="xl" ta="center">
         <Loader color="pink" />

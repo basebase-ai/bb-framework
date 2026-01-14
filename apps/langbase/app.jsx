@@ -254,6 +254,7 @@ function LandingPage() {
       style={{
         minHeight: "100vh",
         background: "#0f0f1a",
+        overflowX: "hidden",
       }}
     >
       {/* Header */}
@@ -702,21 +703,18 @@ function AppLayout() {
     setPrefsLoading(true);
     
     const prefsRef = doc(db, collections.userPreferences, user.uid);
-    console.log("[langbase] Loading preferences from:", collections.userPreferences, user.uid);
     
     getDoc(prefsRef).then((snap) => {
-      console.log("[langbase] Prefs doc exists:", snap.exists(), snap.exists() ? snap.data() : null);
       if (snap.exists()) {
         const data = snap.data();
         if (data.primaryLanguage) {
-          console.log("[langbase] Setting primaryLanguage:", data.primaryLanguage);
           setPrimaryLanguage(data.primaryLanguage);
           setSourceLanguage(data.primaryLanguage);
         }
       }
       setPrefsLoading(false);
     }).catch((err) => {
-      console.error("[langbase] Failed to load user preferences:", err);
+      console.error("Failed to load user preferences:", err);
       setPrefsLoading(false);
     });
   }, [user?.uid, setPrimaryLanguage, setSourceLanguage]);
@@ -724,9 +722,7 @@ function AppLayout() {
   // Show language setup modal for new users (after loading)
   // Don't show if we already have a primaryLanguage set in the store (optimistic update)
   useEffect(() => {
-    console.log("[langbase] Modal check - user:", !!user, "prefsLoading:", prefsLoading, "primaryLanguage:", primaryLanguage);
     if (user && !prefsLoading && !primaryLanguage) {
-      console.log("[langbase] Opening language setup modal");
       setLanguageSetupOpen(true);
     }
   }, [user, prefsLoading, primaryLanguage]);
@@ -804,7 +800,7 @@ function AppLayout() {
       <AppShell
         header={{ height: 64 }}
         padding="md"
-        style={{ background: isDark ? "#0f0f1a" : undefined }}
+        style={{ background: isDark ? "#0f0f1a" : undefined, overflowX: "hidden" }}
       >
         <AppShell.Header
           style={{
@@ -986,6 +982,16 @@ function AppLayout() {
 // ============================================================================
 
 function App() {
+  // Prevent horizontal scrolling on mobile
+  useEffect(() => {
+    document.documentElement.style.overflowX = "hidden";
+    document.body.style.overflowX = "hidden";
+    return () => {
+      document.documentElement.style.overflowX = "";
+      document.body.style.overflowX = "";
+    };
+  }, []);
+
   return (
     <MantineProvider
       defaultColorScheme="dark"

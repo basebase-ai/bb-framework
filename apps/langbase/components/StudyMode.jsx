@@ -50,6 +50,7 @@ import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { collections, LEITNER_INTERVALS, SUPPORTED_LANGUAGES } from "../schema.js";
+import { useUIStore } from "../stores/uiStore.js";
 
 /**
  * Extract the main definition (first bold text) from card content
@@ -239,6 +240,12 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     window.speechSynthesis.speak(utterance);
   }, [deck?.language]);
 
+  // Card cache for faster subsequent loads
+  const cardCache = useUIStore((s) => s.cardCache);
+  const setCachedCards = useUIStore((s) => s.setCachedCards);
+  const updateCachedCard = useUIStore((s) => s.updateCachedCard);
+  const cachedData = cardCache[deckId];
+
   const cardQueryOptions = useMemo(() => ({
     where: user?.uid ? [
       ["deckId", "==", deckId],
@@ -247,10 +254,31 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   }), [deckId, user?.uid]);
 
   const {
-    data: allCards,
+    data: cardsFromFirestore,
     loading: cardsLoading,
-    update: updateCard,
+    update: updateCardInFirestore,
   } = useCollection(collections.cards, cardQueryOptions);
+
+  // Cache cards when they load from Firestore (only if not already cached)
+  useEffect(() => {
+    if (!cardsLoading && cardsFromFirestore.length > 0 && !cachedData) {
+      setCachedCards(deckId, cardsFromFirestore);
+    }
+  }, [cardsFromFirestore, cardsLoading, deckId, cachedData, setCachedCards]);
+
+  // Use cached cards for instant display, fall back to live data
+  const allCards = cachedData?.cards || cardsFromFirestore;
+
+  // Wrapper to update both Firestore and cache
+  const updateCard = async (/** @type {string} */ cardId, /** @type {Object} */ updates) => {
+    await updateCardInFirestore(cardId, updates);
+    if (cachedData) {
+      updateCachedCard(deckId, cardId, updates);
+    }
+  };
+
+  // Show loading only if we have no cached data AND still loading from Firestore
+  const showLoading = !cachedData && cardsLoading;
 
   // Calculate card counts by type (for study options screen)
   const cardCounts = useMemo(() => {
@@ -527,7 +555,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     }
   }, [allCards, deck, updateDeck]);
 
-  if (deckLoading || cardsLoading) {
+  if (deckLoading || showLoading) {
     return (
       <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Text c="dimmed">Loading study session...</Text>
@@ -875,11 +903,11 @@ export function StudyMode({ deckId, onBack, onComplete }) {
 
           <Transition mounted={showBack} transition="slide-up" duration={200}>
             {(styles) => (
-              <Group justify="center" gap="xl" mt="xl" style={styles}>
-                <Button size="xl" variant="light" color="red" leftSection={<IconX size={24} />} onClick={() => handleAnswer("hard")} disabled={isAnimating} style={{ minWidth: 150 }}>
+              <Group justify="center" gap="md" mt="xl" wrap="nowrap" style={styles}>
+                <Button size="lg" variant="light" color="red" leftSection={<IconX size={20} />} onClick={() => handleAnswer("hard")} disabled={isAnimating} style={{ minWidth: 120, flex: 1, maxWidth: 160 }}>
                   Hard
                 </Button>
-                <Button size="xl" variant="filled" color="green" leftSection={<IconCheck size={24} />} onClick={() => handleAnswer("easy")} disabled={isAnimating} style={{ minWidth: 150 }}>
+                <Button size="lg" variant="filled" color="green" leftSection={<IconCheck size={20} />} onClick={() => handleAnswer("easy")} disabled={isAnimating} style={{ minWidth: 120, flex: 1, maxWidth: 160 }}>
                   Easy
                 </Button>
               </Group>
