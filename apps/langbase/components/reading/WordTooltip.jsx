@@ -29,12 +29,17 @@ export function WordTooltip({ onClose }) {
   const tooltipRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const [adjustedPosition, setAdjustedPosition] = useState(/** @type {{ top: number, left: number } | null} */ (null));
 
-  // Handle click outside
+  // Handle click outside - use a small delay to prevent immediate dismissal on mobile
   useEffect(() => {
+    let mounted = true;
+    
     const handleClickOutside = (e) => {
-      if (tooltipRef.current && !tooltipRef.current.contains(e.target)) {
-        onClose();
-      }
+      // Small delay to allow tooltip to render and position itself
+      setTimeout(() => {
+        if (mounted && tooltipRef.current && !tooltipRef.current.contains(e.target)) {
+          onClose();
+        }
+      }, 50);
     };
 
     const handleEscape = (e) => {
@@ -43,11 +48,20 @@ export function WordTooltip({ onClose }) {
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
+    // Delay adding listeners to prevent immediate close on touch
+    const timer = setTimeout(() => {
+      if (mounted) {
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("touchstart", handleClickOutside);
+        document.addEventListener("keydown", handleEscape);
+      }
+    }, 100);
 
     return () => {
+      mounted = false;
+      clearTimeout(timer);
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
   }, [onClose]);
@@ -99,15 +113,17 @@ export function WordTooltip({ onClose }) {
   const { word, translation, position, loading, error } = selectedWord;
 
   // Calculate initial tooltip position, will be adjusted after render
+  // Use safe defaults that work on mobile - center horizontally if no adjusted position yet
+  const safeLeft = adjustedPosition?.left ?? Math.max(10, Math.min(position.x, window.innerWidth - 280));
+  const safeTop = adjustedPosition?.top ?? Math.max(10, Math.min(position.y + 10, window.innerHeight - 200));
+  
   const tooltipStyle = {
     position: /** @type {const} */ ("fixed"),
-    left: adjustedPosition?.left ?? Math.min(position.x, window.innerWidth - 280),
-    top: adjustedPosition?.top ?? position.y + 10,
-    zIndex: 1000,
-    maxWidth: 260,
-    minWidth: 180,
-    opacity: adjustedPosition ? 1 : 0, // Hide until position is calculated
-    transition: "opacity 0.1s ease",
+    left: safeLeft,
+    top: safeTop,
+    zIndex: 10000, // Higher z-index for mobile
+    maxWidth: Math.min(260, window.innerWidth - 20),
+    minWidth: Math.min(180, window.innerWidth - 20),
   };
 
   const handleSpeak = () => {

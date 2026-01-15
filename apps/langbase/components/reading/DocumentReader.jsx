@@ -219,7 +219,7 @@ export function DocumentReader({ documentId, onBack }) {
 
       // Play audio immediately if enabled
       if (autoPlayAudio && speechSupported) {
-        speak(word, sourceLanguage);
+        speak(word, effectiveLanguageKey);
       }
 
       // Build context from surrounding words
@@ -254,7 +254,7 @@ export function DocumentReader({ documentId, onBack }) {
         });
       }
     },
-    [doc?.sourceLanguage, translate, setSelectedWord, autoPlayAudio, speechSupported, speak, sourceLanguage, buildContext]
+    [doc?.sourceLanguage, translate, setSelectedWord, autoPlayAudio, speechSupported, speak, effectiveLanguageKey, buildContext]
   );
 
   /**
@@ -280,7 +280,7 @@ export function DocumentReader({ documentId, onBack }) {
 
     // Play audio if enabled
     if (autoPlayAudio && speechSupported) {
-      speak(selectedText, sourceLanguage);
+      speak(selectedText, effectiveLanguageKey);
     }
 
     // Set loading state
@@ -320,7 +320,7 @@ export function DocumentReader({ documentId, onBack }) {
     setTimeout(() => {
       isSelectingRef.current = false;
     }, 100);
-  }, [doc?.sourceLanguage, translate, setSelectedWord, autoPlayAudio, speechSupported, speak, sourceLanguage]);
+  }, [doc?.sourceLanguage, translate, setSelectedWord, autoPlayAudio, speechSupported, speak, effectiveLanguageKey]);
 
   // Listen for mouseup to detect text selection
   useEffect(() => {
@@ -491,13 +491,26 @@ export function DocumentReader({ documentId, onBack }) {
               return (
                 <span
                   key={index}
-                  onClick={(e) => handleWordClick(token.value, index, e.nativeEvent)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleWordClick(token.value, index, e.nativeEvent);
+                  }}
+                  onTouchEnd={(e) => {
+                    // Prevent default to avoid double-firing with onClick
+                    // and to prevent text selection on tap
+                    e.preventDefault();
+                    handleWordClick(token.value, index, e.nativeEvent);
+                  }}
                   style={{
                     cursor: "pointer",
                     borderRadius: "3px",
                     padding: "0 2px",
                     margin: "0 -2px",
                     transition: "all 0.15s ease",
+                    WebkitTapHighlightColor: "rgba(233, 69, 96, 0.3)",
+                    WebkitUserSelect: "none",
+                    userSelect: "none",
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = "rgba(233, 69, 96, 0.2)";
