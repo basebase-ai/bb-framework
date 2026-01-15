@@ -94,8 +94,8 @@ export function useSpeech() {
       const langConfig = SUPPORTED_LANGUAGES[languageKey];
       const voice = findVoice(languageKey);
 
-      // Debug logging for troubleshooting
-      if (process.env.NODE_ENV === "development") {
+      // Debug logging for troubleshooting (only in development)
+      if (import.meta.env?.DEV) {
         console.log("[Speech] Language key:", languageKey);
         console.log("[Speech] Lang config:", langConfig);
         console.log("[Speech] Found voice:", voice?.name, voice?.lang);
@@ -116,7 +116,7 @@ export function useSpeech() {
         if (fallbackVoice) {
           utterance.voice = fallbackVoice;
           utterance.lang = fallbackVoice.lang;
-          if (process.env.NODE_ENV === "development") {
+          if (import.meta.env?.DEV) {
             console.log("[Speech] Using fallback voice:", fallbackVoice.name);
           }
         }

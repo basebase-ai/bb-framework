@@ -441,8 +441,9 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
     setSelectedWord(null);
   };
   
-  // Loading state
-  if (convoLoading || scenarioLoading || (messagesLoading && !messages)) {
+  // Loading state - also wait for scenario if conversation has a scenarioId
+  const waitingForScenario = conversation?.scenarioId && !scenario && !scenarioLoading;
+  if (convoLoading || scenarioLoading || waitingForScenario || (messagesLoading && !messages)) {
     return (
       <Center py="xl">
         <Loader size="lg" />
@@ -450,7 +451,7 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
     );
   }
   
-  // Not found
+  // Not found - only show if we're definitely not loading and data is missing
   if (!conversation || !scenario) {
     return (
       <Stack align="center" py="xl" gap="md">
