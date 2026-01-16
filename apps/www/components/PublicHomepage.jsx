@@ -1,11 +1,14 @@
 /**
  * PublicHomepage - Marketing landing page
- * Vibrant coral/teal color palette
+ * Clean, modern design with floating integration icons
  */
 
-import React, { useState } from "react";
-import { Box, Text, Button, Group, Stack, Container, Burger, Drawer } from "@mantine/core";
-import { IconArrowRight, IconCheck } from "@tabler/icons-react";
+import React, { useState, useEffect } from "react";
+
+// Load Google Fonts (Instrument Serif for headlines, Inter for body)
+const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap";
+import { Box, Text, Button, Group, Stack, Container, Burger, Drawer, TextInput } from "@mantine/core";
+import { IconArrowRight, IconCheck, IconLayoutGrid } from "@tabler/icons-react";
 import { 
   SiSlack,
   SiAirtable,
@@ -24,20 +27,29 @@ import {
   SiJira,
 } from "react-icons/si";
 
-// Color palette
+// Color palette - Clean, modern
 const COLORS = {
-  coral: "#ff715b",       // Primary - Vibrant Coral
+  yellow: "#F5B800",      // Primary - Golden yellow for CTA
+  yellowLight: "#FFF8E1",
+  blue: "#3B82F6",        // Accent blue for underline
+  black: "#1a1a1a",       // Main text
+  darkGray: "#374151",    // Secondary text
+  gray: "#9CA3AF",        // Tertiary text
+  lightGray: "#E5E7EB",   // Borders
+  gridGray: "#F3F4F6",    // Grid background
+  white: "#FFFFFF",
+  // Keep legacy colors for sections below the fold
+  coral: "#ff715b",
   coralLight: "#fff0ed",
   coralDark: "#e5654f",
-  slate: "#416165",       // Dark Slate Grey
+  slate: "#416165",
   slateLight: "#5a7a7e",
   slateDark: "#334d4e",
-  teal: "#17bebb",        // Tropical Teal
+  teal: "#17bebb",
   tealLight: "#45cfcc",
   tealDark: "#14aaa8",
-  grey: "#e8eced",        // Light grey
+  grey: "#e8eced",
   greyLight: "#f4f6f6",
-  white: "#FFFFFF",
   offWhite: "#faf9f7",
 };
 
@@ -92,6 +104,51 @@ const PAIN_POINTS = [
   }
 ];
 
+/** @typedef {{ x: number; y: number; icon: React.ComponentType<{ size?: number; color?: string }>; label: string; color?: string }} FloatingIcon */
+
+/** @type {FloatingIcon[]} */
+const FLOATING_ICONS = [
+  { x: 9, y: 20, icon: SiSlack, label: "Slack", color: "#E01E5A" },
+  { x: 9, y: 80, icon: SiAirtable, label: "Airtable", color: "#18BFFF" },
+  { x: -2, y: 50, icon: SiGooglesheets, label: "Sheets", color: "#34A853" },
+  { x: 91, y: 20, icon: SiNotion, label: "Notion", color: "#000000" },
+  { x: 91, y: 80, icon: SiSalesforce, label: "Salesforce", color: "#00A1E0" },
+  { x: 102, y: 50, icon: SiStripe, label: "Stripe", color: "#635BFF" },
+];
+
+/** Basebase Logo SVG Component */
+function BasebaseLogo({ size = 28 }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56/45)}>
+      <path fill="#FF7300" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
+      <path fill="#FFBE00" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#FBBC05" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#FF7300" d="M7 0a7 7 0 0 1 7 7v16.052A1.948 1.948 0 0 1 12.052 25C5.396 25 0 19.604 0 12.948V7a7 7 0 0 1 7-7Z" />
+    </svg>
+  );
+}
+
+/** Icon Circle Component for floating integration icons */
+function IconCircle({ icon: Icon, color }) {
+  return (
+    <Box
+      style={{
+        width: 56,
+        height: 56,
+        borderRadius: "50%",
+        background: COLORS.white,
+        border: `1px solid ${COLORS.lightGray}`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+      }}
+    >
+      <Icon size={24} color={color} />
+    </Box>
+  );
+}
+
 /**
  * @param {{
  *   onSignIn: () => void;
@@ -115,47 +172,51 @@ export default function PublicHomepage({
   onNavigateToIntegrations,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const navCtaText = "Get Started";
+  const [appDescription, setAppDescription] = useState("");
+
+  // Load Google Fonts on mount
+  useEffect(() => {
+    const existingLink = document.querySelector(`link[href="${GOOGLE_FONTS_URL}"]`);
+    if (!existingLink) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = GOOGLE_FONTS_URL;
+      document.head.appendChild(link);
+    }
+  }, []);
 
   /** @type {React.CSSProperties} */
-  const navLinkStyle = { color: COLORS.slate, textDecoration: "none", cursor: "pointer" };
+  const navLinkStyle = { color: COLORS.black, textDecoration: "none", cursor: "pointer", fontWeight: 400 };
 
   return (
     <Box
       style={{
         minHeight: "100vh",
         background: COLORS.white,
-        fontFamily: "-apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
       {/* Navigation */}
       <Box
         component="nav"
         style={{
-          position: "sticky",
-          top: 0,
-          background: "rgba(255, 255, 255, 0.9)",
-          backdropFilter: "blur(20px)",
-          borderBottom: `1px solid ${COLORS.grey}`,
+          position: "relative",
+          background: COLORS.white,
           zIndex: 100,
         }}
       >
-        <Container size="lg">
-          <Group justify="space-between" h={64}>
+        <Container size="xl">
+          <Group justify="space-between" h={72} px="md">
             {/* Logo */}
-            <Group gap="xs" align="center">
-              <img 
-                src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695"
-                alt="Basebase"
-                style={{ height: 32, width: 32 }}
-              />
-              <Text fw={700} size="lg" style={{ color: COLORS.slate, letterSpacing: "-0.02em" }}>
+            <Group gap={8} align="center">
+              <BasebaseLogo size={28} />
+              <Text fw={500} size="xl" style={{ color: COLORS.black, letterSpacing: "-0.02em" }}>
                 Basebase
               </Text>
             </Group>
 
-            {/* Desktop Nav Links */}
-            <Group gap="xl" visibleFrom="sm">
+            {/* Desktop Nav Links - Right aligned, no button */}
+            <Group gap={40} visibleFrom="sm">
               <Text
                 size="sm"
                 style={navLinkStyle}
@@ -180,14 +241,6 @@ export default function PublicHomepage({
               >
                 Documentation
               </Text>
-              <Button 
-                variant="filled" 
-                size="xs" 
-                onClick={onSignIn}
-                style={{ background: COLORS.coral, border: "none" }}
-              >
-                {navCtaText}
-              </Button>
             </Group>
 
             {/* Mobile Burger */}
@@ -196,7 +249,7 @@ export default function PublicHomepage({
               onClick={() => setMobileMenuOpen((o) => !o)}
               hiddenFrom="sm"
               size="sm"
-              color={COLORS.slate}
+              color={COLORS.black}
             />
           </Group>
         </Container>
@@ -253,116 +306,322 @@ export default function PublicHomepage({
               onSignIn();
               setMobileMenuOpen(false);
             }}
-            style={{ background: COLORS.coral, border: "none", marginTop: 8 }}
+            style={{ background: COLORS.yellow, color: COLORS.black, border: "none", marginTop: 8 }}
           >
-            {navCtaText}
+            Get Started
           </Button>
         </Stack>
       </Drawer>
 
-      {/* Hero Section */}
+      {/* Hero Section with Grid Background */}
       <Box 
-        py={120}
         style={{
+          position: "relative",
+          minHeight: "calc(100vh - 72px)",
           background: COLORS.white,
+          overflow: "hidden",
         }}
       >
-        <Container size="md">
-          <Stack align="center" gap="xl">
-            <Stack align="center" gap="md">
-              <Text
-                size="xs"
-                fw={600}
-                style={{
-                  color: COLORS.coral,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.15em",
-                }}
-              >
-                Built for business operations
-              </Text>
-              <Text
-                component="h1"
-                ta="center"
-                style={{
-                  fontSize: "clamp(40px, 8vw, 72px)",
-                  fontWeight: 700,
-                  color: COLORS.slate,
-                  lineHeight: 1.05,
-                  letterSpacing: "-0.03em",
-                  margin: 0,
-                }}
-              >
-                Build business tools
-                <br />
-                <span style={{ color: COLORS.coral }}>in minutes, not months</span>
-              </Text>
-              <Text
-                ta="center"
-                size="xl"
-                style={{
-                  color: COLORS.slateLight,
-                  maxWidth: 540,
-                  lineHeight: 1.5,
-                }}
-              >
-                Connect your data. Build custom apps in minutes. 
-                Share instantly with your team. No engineers required.
-              </Text>
-            </Stack>
+        {/* Grid Background - Skewed like original */}
+        <svg
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "200%",
+            top: "-50%",
+            transform: "skewY(12deg)",
+            fill: "rgba(156, 163, 175, 0.3)",
+            stroke: "rgba(156, 163, 175, 0.3)",
+            pointerEvents: "none",
+            mask: "radial-gradient(600px circle at center, white, transparent)",
+            WebkitMask: "radial-gradient(600px circle at center, white, transparent)",
+          }}
+        >
+          <defs>
+            <pattern id="grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse" x="-1" y="-1">
+              <path d="M.5 40V.5H40" fill="none" strokeDasharray="0" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid-pattern)" />
+        </svg>
 
-            <Group gap="md">
-              <Button 
-                size="lg" 
+        {/* Floating Integration Icons with Curved Connection Lines - Desktop only */}
+        <Box visibleFrom="md" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          {/* SVG Connection Lines - Curved with animated gradients like original */}
+          <svg
+            fill="none"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 896,
+              height: 320,
+              marginTop: 175,
+              pointerEvents: "none",
+            }}
+            viewBox="0 0 896 320"
+          >
+            <defs>
+              {/* Animated gradients for left-to-right flow */}
+              <linearGradient id="grad-l1" gradientUnits="userSpaceOnUse" x1="80" y1="64" x2="208" y2="160">
+                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="-0.5;1.5" dur="1.5s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
+                  <animate attributeName="offset" values="-0.25;1.75" dur="1.5s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="0;2" dur="1.5s" repeatCount="indefinite" />
+                </stop>
+              </linearGradient>
+              <linearGradient id="grad-l2" gradientUnits="userSpaceOnUse" x1="80" y1="256" x2="208" y2="160">
+                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="-0.5;1.5" dur="1.75s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
+                  <animate attributeName="offset" values="-0.25;1.75" dur="1.75s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="0;2" dur="1.75s" repeatCount="indefinite" />
+                </stop>
+              </linearGradient>
+              <linearGradient id="grad-l3" gradientUnits="userSpaceOnUse" x1="0" y1="160" x2="208" y2="160">
+                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="-0.5;1.5" dur="2s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
+                  <animate attributeName="offset" values="-0.25;1.75" dur="2s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="0;2" dur="2s" repeatCount="indefinite" />
+                </stop>
+              </linearGradient>
+              {/* Animated gradients for right-to-left flow */}
+              <linearGradient id="grad-r1" gradientUnits="userSpaceOnUse" x1="816" y1="64" x2="688" y2="160">
+                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="-0.5;1.5" dur="1.6s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
+                  <animate attributeName="offset" values="-0.25;1.75" dur="1.6s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="0;2" dur="1.6s" repeatCount="indefinite" />
+                </stop>
+              </linearGradient>
+              <linearGradient id="grad-r2" gradientUnits="userSpaceOnUse" x1="816" y1="256" x2="688" y2="160">
+                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="-0.5;1.5" dur="1.85s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
+                  <animate attributeName="offset" values="-0.25;1.75" dur="1.85s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="0;2" dur="1.85s" repeatCount="indefinite" />
+                </stop>
+              </linearGradient>
+              <linearGradient id="grad-r3" gradientUnits="userSpaceOnUse" x1="896" y1="160" x2="688" y2="160">
+                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="-0.5;1.5" dur="2.1s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
+                  <animate attributeName="offset" values="-0.25;1.75" dur="2.1s" repeatCount="indefinite" />
+                </stop>
+                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
+                  <animate attributeName="offset" values="0;2" dur="2.1s" repeatCount="indefinite" />
+                </stop>
+              </linearGradient>
+            </defs>
+            {/* Left side curves - base gray lines */}
+            <path d="M 80,64 Q 144,144 208,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
+            <path d="M 80,256 Q 144,176 208,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
+            <path d="M 0,160 Q 104,160 208,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
+            {/* Left side curves - animated gradient overlay */}
+            <path d="M 80,64 Q 144,144 208,160" stroke="url(#grad-l1)" strokeWidth="2" strokeLinecap="round" />
+            <path d="M 80,256 Q 144,176 208,160" stroke="url(#grad-l2)" strokeWidth="2" strokeLinecap="round" />
+            <path d="M 0,160 Q 104,160 208,160" stroke="url(#grad-l3)" strokeWidth="2" strokeLinecap="round" />
+            {/* Right side curves - base gray lines */}
+            <path d="M 816,64 Q 752,144 688,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
+            <path d="M 816,256 Q 752,176 688,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
+            <path d="M 896,160 Q 792,160 688,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
+            {/* Right side curves - animated gradient overlay */}
+            <path d="M 816,64 Q 752,144 688,160" stroke="url(#grad-r1)" strokeWidth="2" strokeLinecap="round" />
+            <path d="M 816,256 Q 752,176 688,160" stroke="url(#grad-r2)" strokeWidth="2" strokeLinecap="round" />
+            <path d="M 896,160 Q 792,160 688,160" stroke="url(#grad-r3)" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          
+          {/* Floating Icons - positioned to match the SVG viewBox */}
+          <Box
+            style={{
+              position: "absolute",
+              top: 175,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 896,
+              height: 320,
+            }}
+          >
+            {/* Left column - Slack & Airtable */}
+            <Box style={{ position: "absolute", left: 80, top: 64, transform: "translate(-50%, -50%)" }}>
+              <IconCircle icon={SiSlack} color="#E01E5A" />
+            </Box>
+            <Box style={{ position: "absolute", left: 80, top: 256, transform: "translate(-50%, -50%)" }}>
+              <IconCircle icon={SiAirtable} color="#18BFFF" />
+            </Box>
+            {/* Far left - Sheets */}
+            <Box style={{ position: "absolute", left: 0, top: 160, transform: "translate(-50%, -50%)" }}>
+              <IconCircle icon={SiGooglesheets} color="#34A853" />
+            </Box>
+            {/* Right column - Notion & Salesforce */}
+            <Box style={{ position: "absolute", left: 816, top: 64, transform: "translate(-50%, -50%)" }}>
+              <IconCircle icon={SiNotion} color="#000000" />
+            </Box>
+            <Box style={{ position: "absolute", left: 816, top: 256, transform: "translate(-50%, -50%)" }}>
+              <IconCircle icon={SiSalesforce} color="#00A1E0" />
+            </Box>
+            {/* Far right - Stripe */}
+            <Box style={{ position: "absolute", left: 896, top: 160, transform: "translate(-50%, -50%)" }}>
+              <IconCircle icon={SiStripe} color="#635BFF" />
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Hero Content */}
+        <Container size="md" style={{ position: "relative", zIndex: 10 }}>
+          <Stack align="center" gap={32} py={100}>
+            {/* Headline - Using Instrument Serif like original */}
+            <Text
+              component="h1"
+              ta="center"
+              style={{
+                fontSize: "clamp(38px, 6vw, 67px)",
+                fontWeight: 700,
+                color: COLORS.black,
+                lineHeight: 1.2,
+                letterSpacing: "-0.02em",
+                margin: 0,
+                fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
+              }}
+            >
+              Build business tools in
+              <br />
+              <span 
+                style={{ 
+                  fontStyle: "italic",
+                  position: "relative",
+                  display: "inline-block",
+                  background: "transparent",
+                }}
+              >
+                minutes,
+                {/* Rough-notation style blue underline - hand-drawn look */}
+                <svg
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    width: "100%",
+                    height: 8,
+                    overflow: "visible",
+                    pointerEvents: "none",
+                  }}
+                  viewBox="0 0 200 8"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M2 5 C 30 3, 50 6, 100 4 S 150 5, 198 4"
+                    fill="none"
+                    stroke="#164CE3"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M198 5 C 160 6, 120 3, 80 5 S 40 4, 2 5"
+                    fill="none"
+                    stroke="#164CE3"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+              {" "}not months.
+            </Text>
+
+            {/* Search Input with Create Button */}
+            <Box
+              style={{
+                width: "100%",
+                maxWidth: 480,
+                marginTop: 24,
+              }}
+            >
+              <Group 
+                gap={0}
+                style={{
+                  background: COLORS.white,
+                  borderRadius: 100,
+                  border: `1px solid ${COLORS.lightGray}`,
+                  padding: 6,
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+                }}
+              >
+                <TextInput
+                  placeholder="Describe your app..."
+                  value={appDescription}
+                  onChange={(e) => setAppDescription(e.currentTarget.value)}
+                  variant="unstyled"
+                  style={{ flex: 1 }}
+                  styles={{
+                    input: {
+                      paddingLeft: 20,
+                      fontSize: 15,
+                      color: COLORS.black,
+                      "&::placeholder": {
+                        color: COLORS.gray,
+                      },
+                    },
+                  }}
+                />
+                <Button
+                  onClick={() => onCreateApp?.()}
+                  rightSection={<IconArrowRight size={16} />}
+                  style={{
+                    background: COLORS.yellow,
+                    color: COLORS.black,
+                    border: "none",
+                    borderRadius: 100,
+                    padding: "10px 20px",
+                    height: 42,
+                    fontWeight: 500,
+                  }}
+                >
+                  Create
+                </Button>
+              </Group>
+            </Box>
+
+            {/* Or Browse Apps */}
+            <Group gap="md" align="center">
+              <Text size="sm" style={{ color: COLORS.gray }}>or</Text>
+              <Button
                 variant="outline"
                 onClick={onSignIn}
-                style={{ 
-                  borderRadius: 980,
-                  padding: "14px 36px",
-                  height: "auto",
-                  borderColor: COLORS.coral,
-                  color: COLORS.coral,
-                  fontWeight: 600,
+                rightSection={<IconLayoutGrid size={16} />}
+                style={{
+                  borderColor: COLORS.lightGray,
+                  color: COLORS.black,
+                  borderRadius: 100,
+                  fontWeight: 500,
+                  padding: "8px 16px",
+                  height: 38,
                 }}
               >
-                Browse Apps
-              </Button>
-              <Button 
-                size="lg" 
-                onClick={() => onCreateApp?.()}
-                style={{ 
-                  borderRadius: 980,
-                  padding: "14px 36px",
-                  height: "auto",
-                  background: COLORS.coral,
-                  border: "none",
-                  fontWeight: 600,
-                }}
-              >
-                Create App
+                Browse apps
               </Button>
             </Group>
-
-            <Text size="xs" style={{ color: COLORS.slateLight }}>
-              No credit card required · Free forever for individuals
-            </Text>
           </Stack>
-        </Container>
-      </Box>
-
-      {/* Social proof bar */}
-      <Box py={40} style={{ background: COLORS.greyLight }}>
-        <Container size="lg">
-          <Text ta="center" size="sm" style={{ color: COLORS.slateLight }} mb="lg">
-            Trusted by revenue ops, marketing ops, and business teams
-          </Text>
-          <Group justify="center" gap={48}>
-            {["RevOps Teams", "MarTech Teams", "Finance Ops", "Customer Success", "Sales Ops"].map((team) => (
-              <Text key={team} size="sm" fw={500} style={{ color: COLORS.slate }}>
-                {team}
-              </Text>
-            ))}
-          </Group>
         </Container>
       </Box>
 
@@ -375,12 +634,13 @@ export default function PublicHomepage({
                 component="h2"
                 ta="center"
                 style={{
-                  fontSize: 44,
+                  fontSize: 53,
                   fontWeight: 700,
                   color: COLORS.slate,
                   letterSpacing: "-0.02em",
                   lineHeight: 1.1,
                   margin: 0,
+                  fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
                 }}
               >
                 Internal apps <span style={{ color: COLORS.coral }}>are hard</span>
@@ -425,12 +685,13 @@ export default function PublicHomepage({
                 component="h2"
                 ta="center"
                 style={{
-                  fontSize: 44,
+                  fontSize: 53,
                   fontWeight: 700,
                   color: COLORS.white,
                   letterSpacing: "-0.02em",
                   lineHeight: 1.1,
                   margin: 0,
+                  fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
                 }}
               >
                 How Basebase works
@@ -493,12 +754,13 @@ export default function PublicHomepage({
                 component="h2"
                 ta="center"
                 style={{
-                  fontSize: 44,
+                  fontSize: 53,
                   fontWeight: 700,
                   color: COLORS.slate,
                   letterSpacing: "-0.02em",
                   lineHeight: 1.1,
                   margin: 0,
+                  fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
                 }}
               >
                 Built for business people
@@ -549,12 +811,13 @@ export default function PublicHomepage({
                 component="h2"
                 ta="center"
                 style={{
-                  fontSize: 44,
+                  fontSize: 53,
                   fontWeight: 700,
                   color: COLORS.slate,
                   letterSpacing: "-0.02em",
                   lineHeight: 1.1,
                   margin: 0,
+                  fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
                 }}
               >
                 Connect <span style={{ color: COLORS.teal }}>everything</span>
@@ -624,12 +887,13 @@ export default function PublicHomepage({
                 component="h2"
                 ta="center"
                 style={{
-                  fontSize: 44,
+                  fontSize: 53,
                   fontWeight: 700,
                   color: COLORS.slate,
                   letterSpacing: "-0.02em",
                   lineHeight: 1.1,
                   margin: 0,
+                  fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
                 }}
               >
                 Perfect for <span style={{ color: COLORS.coral }}>ops teams</span>
@@ -681,12 +945,13 @@ export default function PublicHomepage({
               component="h2"
               ta="center"
               style={{
-                fontSize: 48,
+                fontSize: 58,
                 fontWeight: 700,
                 color: COLORS.white,
                 letterSpacing: "-0.02em",
                 lineHeight: 1.1,
                 margin: 0,
+                fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
               }}
             >
               Ready to build?
