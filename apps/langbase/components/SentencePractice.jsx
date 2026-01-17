@@ -67,6 +67,22 @@ function getBoxColor(box) {
 }
 
 /**
+ * Get human-readable label for Leitner box
+ * @param {number} box
+ * @returns {string}
+ */
+function getBoxLabel(box) {
+  const labels = {
+    1: "New",
+    2: "Learning",
+    3: "Reviewing",
+    4: "Familiar",
+    5: "Mastered",
+  };
+  return labels[box] || `Box ${box}`;
+}
+
+/**
  * @param {{ deckId: string, onBack: () => void }} props
  */
 export function SentencePractice({ deckId, onBack }) {
@@ -529,8 +545,8 @@ Generate the sentences now:`;
           )}
 
           {/* Box Selection */}
-          <Text fw={500} size="sm" mb="xs">Select Leitner Boxes to include:</Text>
-          <Group gap="xs" mb="lg">
+          <Text fw={500} size="sm" mb="xs">Select which cards to include:</Text>
+          <Group gap="xs" mb="lg" wrap="wrap">
             {[1, 2, 3, 4, 5].map((box) => {
               const count = boxCounts[box];
               const isSelected = selectedBoxes.includes(box);
@@ -541,10 +557,9 @@ Generate the sentences now:`;
                   variant={isSelected ? "filled" : "outline"}
                   color={getBoxColor(box)}
                   onClick={() => toggleBox(box)}
-                  leftSection={<IconBox size={14} />}
                   disabled={count === 0}
                 >
-                  Box {box} ({count})
+                  {getBoxLabel(box)} ({count})
                 </Button>
               );
             })}

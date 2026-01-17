@@ -53,6 +53,32 @@ import { collections, LEITNER_INTERVALS, SUPPORTED_LANGUAGES } from "../schema.j
 import { useUIStore } from "../stores/uiStore.js";
 
 /**
+ * Get box color for badge
+ * @param {number} box
+ * @returns {string}
+ */
+function getBoxColor(box) {
+  const colors = { 1: "red", 2: "orange", 3: "yellow", 4: "lime", 5: "green" };
+  return colors[box] || "gray";
+}
+
+/**
+ * Get human-readable label for Leitner box
+ * @param {number} box
+ * @returns {string}
+ */
+function getBoxLabel(box) {
+  const labels = {
+    1: "New",
+    2: "Learning",
+    3: "Reviewing",
+    4: "Familiar",
+    5: "Mastered",
+  };
+  return labels[box] || `Box ${box}`;
+}
+
+/**
  * Extract the main definition (first bold text) from card content
  * @param {string} content - The card content (may contain markdown or HTML)
  * @returns {{ definition: string | null, rest: string }}
@@ -112,8 +138,6 @@ function getNextReviewDate(box) {
 /**
  * @param {{ deckId: string, onBack: () => void, onComplete: () => void }} props
  */
-/** @typedef {'new' | 'struggling' | 'learning' | 'overdue' | 'all'} StudyType */
-
 export function StudyMode({ deckId, onBack, onComplete }) {
   const { user } = useAuth();
   const { colorScheme } = useMantineColorScheme();
@@ -121,7 +145,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   
   // Study options state (shown before studying)
   const [studyStarted, setStudyStarted] = useState(false);
-  const [studyType, setStudyType] = useState(/** @type {StudyType} */ ("all"));
+  const [selectedBoxes, setSelectedBoxes] = useState(/** @type {number[]} */ ([]));
   const [newCardsPerDay, setNewCardsPerDay] = useState(/** @type {number | ''} */ (40));
   
   // Study session state
@@ -289,6 +313,9 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     let strugglingCards = 0;  // In Box 1, have been reviewed (marked hard)
     let learningCards = 0;    // In Box 2-4, progressing
     
+    // Per-box counts
+    const boxCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    
     allCards.forEach((card) => {
       const isNew = !card.lastReviewedAt;
       const box = card.box || 1;
@@ -296,6 +323,9 @@ export function StudyMode({ deckId, onBack, onComplete }) {
         ? (card.nextReviewAt.toDate ? card.nextReviewAt.toDate() : new Date(card.nextReviewAt))
         : null;
       const isDue = !reviewDate || reviewDate <= now;
+      
+      // Count per box
+      if (box >= 1 && box <= 5) boxCounts[box]++;
       
       if (isNew) {
         newCards++;
@@ -324,9 +354,33 @@ export function StudyMode({ deckId, onBack, onComplete }) {
       reviewsDue,      // Reviews due now
       strugglingCards, 
       learningCards,
+      boxCounts,       // Per-box distribution
       dailyTotal: newToday + reviewsDue  // Today's manageable session
     };
   }, [allCards, newCardsPerDay]);
+
+  /**
+   * Toggle box selection
+   * @param {number} box
+   */
+  const toggleBox = useCallback((box) => {
+    setSelectedBoxes((prev) => {
+      if (prev.includes(box)) {
+        return prev.filter((b) => b !== box);
+      }
+      return [...prev, box].sort();
+    });
+  }, []);
+
+  // Calculate available cards based on selection
+  const availableCards = useMemo(() => {
+    if (selectedBoxes.length === 0) {
+      // All due cards mode
+      return cardCounts.dailyTotal;
+    }
+    // Sum of cards in selected boxes
+    return selectedBoxes.reduce((sum, box) => sum + cardCounts.boxCounts[box], 0);
+  }, [selectedBoxes, cardCounts]);
 
   // Filter and limit cards based on study options
   const dueCards = useMemo(() => {
@@ -339,6 +393,9 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     /** @type {typeof allCards} */
     const reviewCardsPool = [];
     
+    // If no boxes selected, use "all due cards" mode
+    const useAllMode = selectedBoxes.length === 0;
+    
     allCards.forEach((card) => {
       if (reviewedCardIds.has(card.id)) return;
       
@@ -349,25 +406,22 @@ export function StudyMode({ deckId, onBack, onComplete }) {
         : null;
       const isDue = !reviewDate || reviewDate <= now;
       
-      // Filter by study type
-      switch (studyType) {
-        case "new":
-          if (isNew) newCardsPool.push(card);
-          break;
-        case "struggling":
-          if (!isNew && box === 1) reviewCardsPool.push(card);
-          break;
-        case "learning":
-          if (!isNew && box >= 2 && box <= 4) reviewCardsPool.push(card);
-          break;
-        case "all":
-        default:
+      if (useAllMode) {
+        // All due cards mode (original behavior)
+        if (isNew) {
+          newCardsPool.push(card);
+        } else if (isDue) {
+          reviewCardsPool.push(card);
+        }
+      } else {
+        // Filter by selected boxes
+        if (selectedBoxes.includes(box)) {
           if (isNew) {
             newCardsPool.push(card);
-          } else if (isDue) {
+          } else {
             reviewCardsPool.push(card);
           }
-          break;
+        }
       }
     });
     
@@ -386,17 +440,10 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     sortCards(newCardsPool);
     sortCards(reviewCardsPool);
     
-    // For "all" mode: limit new cards, include all reviews
-    // For other modes: no limit on the selected type
-    if (studyType === "all") {
-      const limitedNew = newCardsPool.slice(0, newLimit);
-      return [...reviewCardsPool, ...limitedNew]; // Reviews first, then new
-    } else if (studyType === "new") {
-      return newCardsPool.slice(0, newLimit);
-    } else {
-      return reviewCardsPool;
-    }
-  }, [allCards, reviewedCardIds, studyType, newCardsPerDay]);
+    // Limit new cards, include all reviews
+    const limitedNew = newCardsPool.slice(0, newLimit);
+    return [...reviewCardsPool, ...limitedNew]; // Reviews first, then new
+  }, [allCards, reviewedCardIds, selectedBoxes, newCardsPerDay]);
 
   const currentCard = dueCards[currentIndex];
   // Use captured session size for stable progress tracking (doesn't change as cards are reviewed)
@@ -576,19 +623,18 @@ export function StudyMode({ deckId, onBack, onComplete }) {
             <Box w={28} />
           </Group>
 
-          {/* Today's Session - the main option */}
+          {/* Today's Session - the default option */}
           <Paper
             p="lg"
             radius="md"
-            onClick={() => cardCounts.dailyTotal > 0 && setStudyType("all")}
+            onClick={() => setSelectedBoxes([])}
             mb="lg"
             withBorder
             style={{
-              borderColor: studyType === "all" ? "var(--mantine-color-pink-6)" : undefined,
-              borderWidth: studyType === "all" ? 2 : 1,
-              cursor: cardCounts.dailyTotal > 0 ? "pointer" : "not-allowed",
+              borderColor: selectedBoxes.length === 0 ? "var(--mantine-color-pink-6)" : undefined,
+              borderWidth: selectedBoxes.length === 0 ? 2 : 1,
+              cursor: "pointer",
               transition: "all 0.2s ease",
-              opacity: cardCounts.dailyTotal > 0 ? 1 : 0.5,
             }}
           >
             <Group justify="space-between" align="center">
@@ -618,57 +664,32 @@ export function StudyMode({ deckId, onBack, onComplete }) {
             mb="lg"
           />
 
-          {/* Additional options - collapsed by default */}
-          <Text c="dimmed" size="xs" mb="sm">Or focus on a specific type:</Text>
-          <SimpleGrid cols={3} spacing="sm" mb="xl">
-            <Paper
-              p="sm"
-              radius="md"
-              onClick={() => cardCounts.newCards > 0 && setStudyType("new")}
-              withBorder
-              style={{
-                borderColor: studyType === "new" ? "var(--mantine-color-cyan-6)" : undefined,
-                cursor: cardCounts.newCards > 0 ? "pointer" : "not-allowed",
-                textAlign: "center",
-                opacity: cardCounts.newCards > 0 ? 1 : 0.4,
-              }}
-            >
-              <Text fw={600} c="cyan" size="lg">{cardCounts.newToday}</Text>
-              <Text size="xs" c="dimmed">New</Text>
-            </Paper>
-
-            <Paper
-              p="sm"
-              radius="md"
-              onClick={() => cardCounts.strugglingCards > 0 && setStudyType("struggling")}
-              withBorder
-              style={{
-                borderColor: studyType === "struggling" ? "var(--mantine-color-red-6)" : undefined,
-                cursor: cardCounts.strugglingCards > 0 ? "pointer" : "not-allowed",
-                textAlign: "center",
-                opacity: cardCounts.strugglingCards > 0 ? 1 : 0.4,
-              }}
-            >
-              <Text fw={600} c="red" size="lg">{cardCounts.strugglingCards}</Text>
-              <Text size="xs" c="dimmed">Struggling</Text>
-            </Paper>
-
-            <Paper
-              p="sm"
-              radius="md"
-              onClick={() => cardCounts.learningCards > 0 && setStudyType("learning")}
-              withBorder
-              style={{
-                borderColor: studyType === "learning" ? "var(--mantine-color-green-6)" : undefined,
-                cursor: cardCounts.learningCards > 0 ? "pointer" : "not-allowed",
-                textAlign: "center",
-                opacity: cardCounts.learningCards > 0 ? 1 : 0.4,
-              }}
-            >
-              <Text fw={600} c="green" size="lg">{cardCounts.learningCards}</Text>
-              <Text size="xs" c="dimmed">Learning</Text>
-            </Paper>
-          </SimpleGrid>
+          {/* Box selection */}
+          <Text c="dimmed" size="xs" mb="sm">Or select specific levels to study:</Text>
+          <Group gap="xs" mb="lg" justify="center" wrap="wrap">
+            {[1, 2, 3, 4, 5].map((box) => {
+              const count = cardCounts.boxCounts[box];
+              const isSelected = selectedBoxes.includes(box);
+              return (
+                <Button
+                  key={box}
+                  size="sm"
+                  variant={isSelected ? "filled" : "outline"}
+                  color={getBoxColor(box)}
+                  onClick={() => toggleBox(box)}
+                  disabled={count === 0}
+                >
+                  {getBoxLabel(box)} ({count})
+                </Button>
+              );
+            })}
+          </Group>
+          
+          {selectedBoxes.length > 0 && (
+            <Text size="xs" c="dimmed" ta="center" mb="lg">
+              {availableCards} cards from selected levels
+            </Text>
+          )}
 
           <Group justify="center" gap="md">
             <Button variant="light" color="gray" onClick={onBack}>
@@ -680,12 +701,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
               size="lg"
               leftSection={<IconCards size={20} />}
               onClick={() => setStudyStarted(true)}
-              disabled={
-                (studyType === "new" && cardCounts.newCards === 0) ||
-                (studyType === "struggling" && cardCounts.strugglingCards === 0) ||
-                (studyType === "learning" && cardCounts.learningCards === 0) ||
-                (studyType === "all" && cardCounts.dailyTotal === 0)
-              }
+              disabled={availableCards === 0}
             >
               Start Studying
             </Button>
