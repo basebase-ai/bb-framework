@@ -20,7 +20,6 @@ import {
   Modal,
   Divider,
   CloseButton,
-  Select,
 } from "@mantine/core";
 import {
   IconBook,
@@ -34,8 +33,6 @@ import {
   IconEdit,
   IconUsers,
   IconCopy,
-  IconMessages,
-  IconCards,
 } from "@tabler/icons-react";
 import { useCollection } from "../../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../../framework/hooks/useAuth.js";
@@ -72,11 +69,10 @@ function formatDate(timestamp) {
 /**
  * @param {{ 
  *   onOpenDocument: (id: string) => void, 
- *   onAddDocument: () => void,
- *   onStartSentencePractice?: (deckId: string) => void 
+ *   onAddDocument: () => void
  * }} props
  */
-export function DocumentList({ onOpenDocument, onAddDocument, onStartSentencePractice }) {
+export function DocumentList({ onOpenDocument, onAddDocument }) {
   const { user, loading: authLoading } = useAuth();
   const primaryLanguage = useUIStore((s) => s.primaryLanguage);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,8 +80,6 @@ export function DocumentList({ onOpenDocument, onAddDocument, onStartSentencePra
   const [editTitle, setEditTitle] = useState("");
   const [editIsPublic, setEditIsPublic] = useState(false);
   const [copying, setCopying] = useState(false);
-  const [showDeckSelectModal, setShowDeckSelectModal] = useState(false);
-  const [selectedDeckForPractice, setSelectedDeckForPractice] = useState(/** @type {string | null} */ (null));
 
   // Query for user's documents
   const docQueryOptions = useMemo(
@@ -103,14 +97,6 @@ export function DocumentList({ onOpenDocument, onAddDocument, onStartSentencePra
     []
   );
 
-  // Query for user's decks (for sentence practice selection)
-  const deckQueryOptions = useMemo(
-    () => ({
-      where: user?.uid ? [["owner", "==", user.uid]] : [],
-    }),
-    [user?.uid]
-  );
-
   const {
     data: userDocuments,
     loading,
@@ -123,28 +109,6 @@ export function DocumentList({ onOpenDocument, onAddDocument, onStartSentencePra
     collections.documents,
     publicQueryOptions
   );
-
-  const { data: userDecks } = useCollection(collections.decks, deckQueryOptions);
-
-  // Deck options for the sentence practice modal
-  const deckOptions = useMemo(() => {
-    if (!userDecks) return [];
-    return userDecks.map((deck) => ({
-      value: deck.id,
-      label: `${deck.name} (${deck.cardCount || 0} cards)`,
-    }));
-  }, [userDecks]);
-
-  /**
-   * Handle starting sentence practice with selected deck
-   */
-  const handleStartPractice = () => {
-    if (selectedDeckForPractice && onStartSentencePractice) {
-      onStartSentencePractice(selectedDeckForPractice);
-      setShowDeckSelectModal(false);
-      setSelectedDeckForPractice(null);
-    }
-  };
 
   // Filter out user's own documents from public list and filter by primary language
   const communityDocuments = useMemo(() => {
@@ -289,7 +253,7 @@ export function DocumentList({ onOpenDocument, onAddDocument, onStartSentencePra
 
   return (
     <Stack gap="md">
-      {/* Header with search, sentences button, and add */}
+      {/* Header with search and add */}
       <Group justify="space-between" mb="md">
         <TextInput
           placeholder="Search documents..."
@@ -299,26 +263,14 @@ export function DocumentList({ onOpenDocument, onAddDocument, onStartSentencePra
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{ flex: 1, maxWidth: 300 }}
         />
-        <Group gap="sm">
-          {onStartSentencePractice && (
-            <Button
-              leftSection={<IconMessages size={18} />}
-              onClick={() => setShowDeckSelectModal(true)}
-              variant="light"
-              color="cyan"
-            >
-              Sentences
-            </Button>
-          )}
-          <Button
-            leftSection={<IconPlus size={18} />}
-            onClick={onAddDocument}
-            variant="light"
-            color="pink"
-          >
-            Import Document
-          </Button>
-        </Group>
+        <Button
+          leftSection={<IconPlus size={18} />}
+          onClick={onAddDocument}
+          variant="light"
+          color="pink"
+        >
+          Import Document
+        </Button>
       </Group>
 
       {/* User's Documents */}
@@ -412,75 +364,6 @@ export function DocumentList({ onOpenDocument, onAddDocument, onStartSentencePra
               Save Changes
             </Button>
           </Group>
-        </Stack>
-      </Modal>
-
-      {/* Deck Selection Modal for Sentence Practice */}
-      <Modal
-        opened={showDeckSelectModal}
-        onClose={() => {
-          setShowDeckSelectModal(false);
-          setSelectedDeckForPractice(null);
-        }}
-        title="Sentence Practice"
-        centered
-      >
-        <Stack gap="md">
-          <Group gap="xs">
-            <IconMessages size={20} color="var(--mantine-color-cyan-5)" />
-            <Text fw={500}>Practice reading sentences</Text>
-          </Group>
-          <Text size="sm" c="dimmed">
-            Generate practice sentences using vocabulary you're learning from one of your flashcard decks.
-          </Text>
-
-          {deckOptions.length > 0 ? (
-            <>
-              <Select
-                label="Select a vocabulary deck"
-                placeholder="Choose a deck..."
-                data={deckOptions}
-                value={selectedDeckForPractice}
-                onChange={setSelectedDeckForPractice}
-                leftSection={<IconCards size={16} />}
-              />
-              <Group justify="flex-end" mt="md">
-                <Button
-                  variant="subtle"
-                  onClick={() => {
-                    setShowDeckSelectModal(false);
-                    setSelectedDeckForPractice(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  color="cyan"
-                  onClick={handleStartPractice}
-                  disabled={!selectedDeckForPractice}
-                  leftSection={<IconMessages size={16} />}
-                >
-                  Start Practice
-                </Button>
-              </Group>
-            </>
-          ) : (
-            <Stack align="center" py="md" gap="sm">
-              <IconCards size={48} color="var(--mantine-color-dimmed)" style={{ opacity: 0.5 }} />
-              <Text size="sm" c="dimmed" ta="center">
-                You don't have any vocabulary decks yet. Create a deck in the Vocabulary tab first, then come back to practice sentences.
-              </Text>
-              <Button
-                variant="subtle"
-                onClick={() => {
-                  setShowDeckSelectModal(false);
-                  setSelectedDeckForPractice(null);
-                }}
-              >
-                Close
-              </Button>
-            </Stack>
-          )}
         </Stack>
       </Modal>
     </Stack>

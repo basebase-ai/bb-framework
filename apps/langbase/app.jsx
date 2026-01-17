@@ -94,11 +94,6 @@ function HomePage() {
     navigate(`/chat/${convoId}`);
   };
 
-  /** @param {string} deckId */
-  const handleStartSentencePractice = (deckId) => {
-    navigate(`/practice/${deckId}`);
-  };
-
   return (
     <Box>
       <Tabs
@@ -135,7 +130,6 @@ function HomePage() {
           <DocumentList
             onOpenDocument={handleOpenDocument}
             onAddDocument={() => setUploadOpen(true)}
-            onStartSentencePractice={handleStartSentencePractice}
           />
           <DocumentUpload
             opened={uploadOpen}
@@ -160,11 +154,17 @@ function DeckViewPage() {
     navigate(`/study/${deckId}`);
   };
 
+  /** @param {string} deckId */
+  const handleSentencePractice = (deckId) => {
+    navigate(`/practice/${deckId}`);
+  };
+
   return (
     <CardList
       deckId={params.id || ""}
       onBack={handleBack}
       onStudy={handleStudy}
+      onSentencePractice={handleSentencePractice}
     />
   );
 }
@@ -191,12 +191,10 @@ function StudyPage() {
 
 function PracticePage() {
   const { params, navigate } = useRoute();
-  const setActiveTab = useUIStore((s) => s.setActiveTab);
 
   const handleBack = () => {
-    // Navigate to home and show the Reading tab (since sentence practice is now part of reading)
-    setActiveTab("reading");
-    navigate("/");
+    // Navigate back to the deck view
+    navigate(`/deck/${params.id}`);
   };
 
   return (

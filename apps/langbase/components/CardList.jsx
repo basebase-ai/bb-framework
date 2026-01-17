@@ -34,6 +34,7 @@ import {
   IconTrash,
   IconSearch,
   IconBox,
+  IconMessages,
 } from "@tabler/icons-react";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
@@ -51,9 +52,9 @@ function getBoxColor(box) {
 }
 
 /**
- * @param {{ deckId: string, onBack: () => void, onStudy: (deckId: string) => void }} props
+ * @param {{ deckId: string, onBack: () => void, onStudy: (deckId: string) => void, onSentencePractice?: (deckId: string) => void }} props
  */
-export function CardList({ deckId, onBack, onStudy }) {
+export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -296,6 +297,18 @@ export function CardList({ deckId, onBack, onStudy }) {
           >
             Study ({stats.dueForReview})
           </Button>
+          {onSentencePractice && (
+            <Button
+              variant="light"
+              color="violet"
+              leftSection={<IconMessages size={16} />}
+              onClick={() => onSentencePractice(deckId)}
+              disabled={stats.mastered < 3}
+              title={stats.mastered < 3 ? "Need at least 3 words in Box 2+ to practice" : ""}
+            >
+              Study with Sentences
+            </Button>
+          )}
           <Button
             variant="filled"
             color="pink"
