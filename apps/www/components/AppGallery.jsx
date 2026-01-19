@@ -1,18 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Box,
-  AppShell,
   Group,
   Avatar,
   Text,
   LoadingOverlay,
   Button,
-  Stack,
-  Title,
-  Textarea,
-  Paper,
+  Container,
 } from "@mantine/core";
-import { IconArrowRight } from "@tabler/icons-react";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
@@ -28,6 +23,21 @@ import AboutUs from "./AboutUs.jsx";
 import Pricing from "./Pricing.jsx";
 import IntegrationsPage from "./IntegrationsPage.jsx";
 import { APP_ID } from "../schema.js";
+
+// Load Google Fonts (matching landing page)
+const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap";
+
+/** Basebase Logo SVG Component */
+function BasebaseLogo({ size = 28 }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56/45)}>
+      <path fill="#FF7300" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
+      <path fill="#FFBE00" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#FBBC05" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#FF7300" d="M7 0a7 7 0 0 1 7 7v16.052A1.948 1.948 0 0 1 12.052 25C5.396 25 0 19.604 0 12.948V7a7 7 0 0 1 7-7Z" />
+    </svg>
+  );
+}
 
 /**
  * Parse route from URL path
@@ -59,7 +69,17 @@ export default function AppGallery({ onSignIn }) {
   const { user, promptSignIn } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   const { path, navigate } = useRouter();
-  const [builderPrompt, setBuilderPrompt] = useState("");
+
+  // Load Google Fonts on mount
+  useEffect(() => {
+    const existingLink = document.querySelector(`link[href="${GOOGLE_FONTS_URL}"]`);
+    if (!existingLink) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = GOOGLE_FONTS_URL;
+      document.head.appendChild(link);
+    }
+  }, []);
   
   const { data: allApps = [], loading, update: updateItem, remove: removeItem } = useCollection("apps");
   
@@ -154,15 +174,8 @@ export default function AppGallery({ onSignIn }) {
     navigateToApp(null);
   };
 
-  const handleBuildIt = () => {
-    const trimmed = builderPrompt.trim();
-    const promptParam = encodeURIComponent(trimmed);
-    const baseUrl = "https://builder.basebase.com/";
-    const target = trimmed ? `${baseUrl}?prompt=${promptParam}` : baseUrl;
-    window.open(target, "_blank");
-  };
-
-  // Debug logging
+  /** @type {React.CSSProperties} */
+  const navLinkStyle = { color: "#1a1a1a", textDecoration: "none", cursor: "pointer", fontWeight: 400 };
 
   // Route to appropriate view
   if (route.view === "terms") {
@@ -178,184 +191,172 @@ export default function AppGallery({ onSignIn }) {
     return <Pricing onBack={navigateToHome} onSignIn={navigateToGallery} />;
   }
   if (route.view === "integrations") {
-    return <IntegrationsPage onBack={navigateToHome} />;
+    return (
+      <IntegrationsPage
+        onBack={navigateToHome}
+        onSignIn={onSignIn || promptSignIn}
+        onNavigateToGallery={navigateToGallery}
+        onOpenProfile={() => setProfileModalOpened(true)}
+        userPhotoURL={profile?.photoURL}
+        userDisplayName={profile?.displayName || user?.email}
+      />
+    );
   }
   if (route.view === "home") {
     return (
       <PublicHomepage 
-        onSignIn={navigateToGallery}
+        onSignIn={onSignIn || promptSignIn}
         onCreateApp={() => window.open("https://builder.basebase.com/?new=true", "_blank")}
         isAuthenticated={!!user}
+        userPhotoURL={profile?.photoURL}
+        userDisplayName={profile?.displayName || user?.email}
         onNavigateToTerms={navigateToTerms}
         onNavigateToPrivacy={navigateToPrivacy}
         onNavigateToAbout={navigateToAbout}
         onNavigateToPricing={navigateToPricing}
         onNavigateToIntegrations={navigateToIntegrations}
+        onNavigateToGallery={navigateToGallery}
+        onOpenProfile={() => setProfileModalOpened(true)}
       />
     );
   }
 
-  // Gallery content (only for authenticated users - AuthProvider handles this)
+  // Gallery content
   return (
-    <AppShell
-      header={{ height: 64 }}
-      padding="xs"
+    <Box
       style={{
-        background: "#faf9f7",
+        minHeight: "100vh",
+        background: "#FFFFFF",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      <AppShell.Header 
-        style={{ 
-          background: "rgba(255, 255, 255, 0.9)",
-          backdropFilter: "blur(20px)",
-          borderBottom: "1px solid #e8eced",
+      {/* Navigation - matching landing page */}
+      <Box
+        component="nav"
+        style={{
+          position: "relative",
+          background: "#FFFFFF",
+          zIndex: 100,
         }}
       >
-        <Group h="100%" px="md" justify="space-between" maw={1400} mx="auto">
-          <Group 
-            gap="xs" 
-            align="center"
-            style={{ cursor: "pointer" }}
-            onClick={navigateToHome}
-          >
-            <img 
-              src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695"
-              alt="Basebase"
-              style={{ height: 32, width: 32 }}
-            />
-            <Text fw={700} size="lg" style={{ color: "#416165", letterSpacing: "-0.02em" }}>
-              Basebase
-            </Text>
-          </Group>
-          {user ? (
+        <Container size="xl">
+          <Group justify="space-between" h={72} px="md">
+            {/* Logo */}
             <Group 
-              gap="xs"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setProfileModalOpened(true)}
+              gap={8} 
+              align="center"
+              style={{ cursor: "pointer" }}
+              onClick={navigateToHome}
             >
-              <Avatar
-                src={profile?.photoURL}
-                alt={profile?.displayName || user.email}
-                size="sm"
-                radius="xl"
-                color="coral"
-              />
-              <Text size="sm" style={{ color: "#5a7a7e" }}>
-                {profile?.displayName || user.email}
+              <BasebaseLogo size={28} />
+              <Text fw={500} size="xl" style={{ color: "#1a1a1a", letterSpacing: "-0.02em" }}>
+                Basebase
               </Text>
             </Group>
-          ) : (
-            <Button
-              variant="light"
-              color="coral"
-              size="xs"
-              onClick={() => (onSignIn || promptSignIn)()}
-            >
-              Sign in
-            </Button>
-          )}
-        </Group>
-      </AppShell.Header>
 
-      <AppShell.Main>
-        <Box
-          maw={1400}
-          mx="auto"
-          w="100%"
-          p={{ base: 0, sm: 'sm' }}
-          py={{ base: 0, sm: 'md' }}
-        >
-          <LoadingOverlay visible={loading} />
-          
-          {/* Hero builder CTA */}
-          <Paper
-            shadow="xs"
-            radius="md"
-            p={{ base: "lg", sm: "xl" }}
-            mb="md"
+            {/* Desktop Nav Links */}
+            <Group gap={32}>
+              <Text
+                size="sm"
+                style={{ ...navLinkStyle, fontWeight: 500 }}
+              >
+                App Gallery
+              </Text>
+              <Text
+                size="sm"
+                style={navLinkStyle}
+                onClick={() => navigateToIntegrations()}
+              >
+                Integrations
+              </Text>
+              <Text
+                component="a"
+                href="https://docs.basebase.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="sm"
+                style={navLinkStyle}
+              >
+                Documentation
+              </Text>
+              {user ? (
+                <Group
+                  gap="xs"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setProfileModalOpened(true)}
+                >
+                  <Avatar
+                    src={profile?.photoURL}
+                    alt={profile?.displayName || user.email || "User"}
+                    size="sm"
+                    radius="xl"
+                    color="orange"
+                  >
+                    {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
+                  </Avatar>
+                </Group>
+              ) : (
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  onClick={() => (onSignIn || promptSignIn)()}
+                  style={{ color: "#1a1a1a" }}
+                >
+                  Sign in
+                </Button>
+              )}
+            </Group>
+          </Group>
+        </Container>
+      </Box>
+
+      {/* Main Content */}
+      <Container size="xl" py="xl">
+        <LoadingOverlay visible={loading} />
+        
+        {/* App Gallery Headline */}
+        {!selectedAppDetails && (
+          <Text
+            component="h1"
+            ta="center"
+            mb="xl"
             style={{
-              backgroundColor: "#f8f9fa",
-              border: "1px solid #e9ecef",
-              maxWidth: 760,
-              margin: "0 auto",
+              fontSize: "clamp(32px, 5vw, 53px)",
+              fontWeight: 700,
+              color: "#1a1a1a",
+              lineHeight: 1.2,
+              letterSpacing: "-0.02em",
+              margin: 0,
+              marginBottom: 32,
+              fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
             }}
           >
-            <Stack gap="md" align="center" w="100%">
-              <Title order={3} style={{ color: "#1D1D1F", letterSpacing: "-0.02em" }} ta="center">
-                What do you want to build?
-              </Title>
-              <Textarea
-                placeholder="Describe your app idea... (e.g., CRM that pulls Salesforce + HubSpot, shows renewals, health scores, and reminders)"
-                size="md"
-                minRows={3}
-                maxRows={6}
-                autosize
-                value={builderPrompt}
-                onChange={(e) => setBuilderPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault();
-                    handleBuildIt();
-                  }
-                }}
-                w="100%"
-                styles={{
-                  input: {
-                    backgroundColor: "#fdfefe",
-                    border: "1px solid #dee2e6",
-                  },
-                }}
-              />
-              <Group justify="space-between" w="100%" align="center" wrap="wrap" gap="xs">
-                <Text size="xs" c="dimmed">
-                  Press ⌘+Enter to start building
-                </Text>
-                <Button
-                  size="md"
-                  variant="filled"
-                  color="coral"
-                  radius="md"
-                  onClick={handleBuildIt}
-                  rightSection={<IconArrowRight size={16} />}
-                  disabled={!builderPrompt.trim()}
-                >
-                  Build it
-                </Button>
-              </Group>
-            </Stack>
-          </Paper>
-          
-        <Text
-          size="xs"
-          style={{ color: "#5a7a7e", padding: "24px 8px", textAlign: "center" }}
-          weight={400}
-        >
-          Or select one of the apps below to use, edit, or fork
-        </Text>
+            App Gallery
+          </Text>
+        )}
 
-          {selectedAppDetails ? (
-            <AppDetailsPage
-              app={selectedAppDetails}
-              onBack={handleBackFromDetails}
-              onUpdate={handleUpdateApp}
-              onDelete={handleDeleteApp}
-            />
-          ) : (
-            <AppGrid
-              apps={allApps}
-              loading={loading}
-              onShowDetails={handleShowDetails}
-              onCreateApp={() => window.open("https://builder.basebase.com/?new=true", "_blank")}
-            />
-          )}
-        </Box>
-      </AppShell.Main>
+        {selectedAppDetails ? (
+          <AppDetailsPage
+            app={selectedAppDetails}
+            onBack={handleBackFromDetails}
+            onUpdate={handleUpdateApp}
+            onDelete={handleDeleteApp}
+          />
+        ) : (
+          <AppGrid
+            apps={allApps}
+            loading={loading}
+            onShowDetails={handleShowDetails}
+            onCreateApp={() => window.open("https://builder.basebase.com/?new=true", "_blank")}
+          />
+        )}
+      </Container>
 
       {/* Modals */}
       <ProfileModal
         opened={profileModalOpened}
         onClose={() => setProfileModalOpened(false)}
       />
-    </AppShell>
+    </Box>
   );
 }

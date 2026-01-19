@@ -22,9 +22,10 @@ import {
   Collapse,
   ThemeIcon,
   TextInput,
+  Avatar,
 } from "@mantine/core";
 import { showNotification } from "@mantine/notifications";
-import { IconArrowLeft, IconThumbUp, IconChevronDown, IconChevronUp, IconPlug, IconPlus, IconPencil, IconSearch, IconX } from "@tabler/icons-react";
+import { IconThumbUp, IconChevronDown, IconChevronUp, IconPlug, IconPlus, IconPencil, IconSearch, IconX } from "@tabler/icons-react";
 import {
   SiSlack,
   SiAirtable,
@@ -43,9 +44,25 @@ import { doc, updateDoc, arrayUnion, serverTimestamp } from "firebase/firestore"
 import { db } from "../../../framework/core/firebase-init.js";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
 import { useAppMembership } from "../../../framework/hooks/useAppMembership.js";
 import { getCollection, APP_ID } from "../schema.js";
 import { IntegrationModal } from "./IntegrationModal.jsx";
+
+// Load Google Fonts (matching landing page)
+const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap";
+
+/** Basebase Logo SVG Component */
+function BasebaseLogo({ size = 28 }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56 / 45)}>
+      <path fill="#FF7300" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
+      <path fill="#FFBE00" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#FBBC05" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#FF7300" d="M7 0a7 7 0 0 1 7 7v16.052A1.948 1.948 0 0 1 12.052 25C5.396 25 0 19.604 0 12.948V7a7 7 0 0 1 7-7Z" />
+    </svg>
+  );
+}
 
 const COLORS = {
   coral: "#ff715b",
@@ -57,7 +74,11 @@ const COLORS = {
   grey: "#e8eced",
   greyLight: "#f4f6f6",
   white: "#FFFFFF",
+  black: "#1a1a1a",
 };
+
+/** @type {React.CSSProperties} */
+const navLinkStyle = { color: "#1a1a1a", textDecoration: "none", cursor: "pointer", fontWeight: 400 };
 
 /** @type {Record<string, React.ComponentType<{ size?: number; color?: string }>>} */
 const ICON_MAP = {
@@ -141,25 +162,55 @@ function statusBadge(status) {
 }
 
 /**
- * @param {{ onBack: () => void; onSignIn?: () => void }} props
+ * @param {{
+ *   onBack: () => void;
+ *   onSignIn?: () => void;
+ *   onNavigateToGallery?: () => void;
+ *   onOpenProfile?: () => void;
+ *   userPhotoURL?: string | null;
+ *   userDisplayName?: string | null;
+ * }} props
  */
-export default function IntegrationsPage({ onBack, onSignIn }) {
+export default function IntegrationsPage({
+  onBack,
+  onSignIn,
+  onNavigateToGallery,
+  onOpenProfile,
+  userPhotoURL,
+  userDisplayName,
+}) {
   const { user, promptSignIn } = useAuth();
+  const { profile } = useUserProfile(user?.uid);
   const { isOwner, isAdmin } = useAppMembership(APP_ID);
   const { data: rawIntegrations = [], loading, error } = useCollection(getCollection("integrations_public"));
   const [submittingId, setSubmittingId] = useState(/** @type {string | null} */ (null));
   const [expandedId, setExpandedId] = useState(/** @type {string | null} */ (null));
-  
+
   // Modal state for admin edit/create
   const [modalOpened, setModalOpened] = useState(false);
   const [modalMode, setModalMode] = useState(/** @type {"create" | "edit"} */ ("create"));
   const [selectedIntegration, setSelectedIntegration] = useState(/** @type {Integration | null} */ (null));
-  
+
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Use provided onSignIn callback or fall back to framework's promptSignIn
   const handleSignIn = onSignIn || promptSignIn;
+
+  // Get user info from props or profile
+  const displayPhotoURL = userPhotoURL || profile?.photoURL;
+  const displayName = userDisplayName || profile?.displayName || user?.email;
+
+  // Load Google Fonts on mount
+  useEffect(() => {
+    const existingLink = document.querySelector(`link[href="${GOOGLE_FONTS_URL}"]`);
+    if (!existingLink) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = GOOGLE_FONTS_URL;
+      document.head.appendChild(link);
+    }
+  }, []);
   
   /** Open modal to create a new integration */
   const handleCreate = useCallback(() => {
@@ -271,92 +322,168 @@ export default function IntegrationsPage({ onBack, onSignIn }) {
       style={{
         minHeight: "100vh",
         background: COLORS.white,
-        fontFamily: "-apple-system, 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      {/* Header */}
-      <Box py="md" style={{ background: COLORS.white, borderBottom: `1px solid ${COLORS.grey}` }}>
-        <Container size="lg">
-          <Group justify="space-between">
-            <Button
-              variant="subtle"
-              color="dark"
-              leftSection={<IconArrowLeft size={16} />}
+      {/* Navigation - matching landing page */}
+      <Box
+        component="nav"
+        style={{
+          position: "relative",
+          background: COLORS.white,
+          zIndex: 100,
+        }}
+      >
+        <Container size="xl">
+          <Group justify="space-between" h={72} px="md">
+            {/* Logo */}
+            <Group
+              gap={8}
+              align="center"
+              style={{ cursor: "pointer" }}
               onClick={onBack}
             >
-              Back
-            </Button>
-            <Text fw={700} style={{ color: COLORS.slate }}>
-              Basebase
-            </Text>
-            {(isOwner || isAdmin) ? (
-              <Button
-                variant="light"
-                color="teal"
+              <BasebaseLogo size={28} />
+              <Text fw={500} size="xl" style={{ color: COLORS.black, letterSpacing: "-0.02em" }}>
+                Basebase
+              </Text>
+            </Group>
+
+            {/* Desktop Nav Links */}
+            <Group gap={32}>
+              <Text
                 size="sm"
-                leftSection={<IconPlus size={16} />}
-                onClick={handleCreate}
+                style={navLinkStyle}
+                onClick={() => onNavigateToGallery?.()}
               >
-                Add
-              </Button>
-            ) : (
-              <Box style={{ width: 80 }} />
-            )}
+                App Gallery
+              </Text>
+              <Text
+                size="sm"
+                style={{ ...navLinkStyle, fontWeight: 500 }}
+              >
+                Integrations
+              </Text>
+              <Text
+                component="a"
+                href="https://docs.basebase.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="sm"
+                style={navLinkStyle}
+              >
+                Documentation
+              </Text>
+              {user ? (
+                <Group
+                  gap="xs"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => onOpenProfile?.()}
+                >
+                  <Avatar
+                    src={displayPhotoURL}
+                    alt={displayName || "User"}
+                    size="sm"
+                    radius="xl"
+                    color="orange"
+                  >
+                    {(displayName || "U").charAt(0).toUpperCase()}
+                  </Avatar>
+                </Group>
+              ) : (
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  onClick={handleSignIn}
+                  style={{ color: COLORS.black }}
+                >
+                  Sign in
+                </Button>
+              )}
+            </Group>
           </Group>
         </Container>
       </Box>
 
       {/* Hero */}
-      <Box py={64} style={{ background: COLORS.greyLight }}>
-        <Container size="lg">
-          <Stack gap="sm">
+      <Box py={80} style={{ background: COLORS.white }}>
+        <Container size="xl">
+          <Stack align="center" gap="md">
             <Text
               component="h1"
+              ta="center"
               style={{
-                fontSize: 44,
+                fontSize: "clamp(38px, 6vw, 53px)",
                 fontWeight: 700,
-                color: COLORS.slate,
+                color: COLORS.black,
                 letterSpacing: "-0.02em",
+                lineHeight: 1.2,
                 margin: 0,
+                fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
               }}
             >
               Integrations
             </Text>
-            <Text size="lg" style={{ color: COLORS.slateLight, maxWidth: 760, lineHeight: 1.6 }}>
+            <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 560, lineHeight: 1.6 }}>
               Vote for the integrations you want most. You can browse without signing in — voting requires an account.
             </Text>
+            <Button
+              component="a"
+              href="https://connections.basebase.com"
+              target="_blank"
+              size="lg"
+              variant="filled"
+              color="teal"
+              mt="sm"
+            >
+              Test Integrations
+            </Button>
           </Stack>
         </Container>
       </Box>
 
       {/* Search */}
       <Box py="xl" style={{ background: COLORS.white, borderBottom: `1px solid ${COLORS.grey}` }}>
-        <Container size="lg">
-          <TextInput
-            placeholder="Search integrations..."
-            size="lg"
-            leftSection={<IconSearch size={20} color={COLORS.slateLight} />}
-            rightSection={
-              searchQuery ? (
-                <ActionIcon
-                  variant="subtle"
-                  color="gray"
-                  onClick={() => setSearchQuery("")}
-                  aria-label="Clear search"
-                >
-                  <IconX size={16} />
-                </ActionIcon>
-              ) : null
-            }
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.currentTarget.value)}
-            styles={{
-              input: {
-                borderColor: COLORS.grey,
-                "&:focus": { borderColor: COLORS.teal },
-              },
-            }}
-          />
+        <Container size="xl">
+          <Group gap="md" align="flex-start">
+            <TextInput
+              placeholder="Search integrations..."
+              size="lg"
+              style={{ flex: 1 }}
+              leftSection={<IconSearch size={20} color={COLORS.slateLight} />}
+              rightSection={
+                searchQuery ? (
+                  <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Clear search"
+                  >
+                    <IconX size={16} />
+                  </ActionIcon>
+                ) : null
+              }
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.currentTarget.value)}
+              styles={{
+                input: {
+                  borderColor: COLORS.grey,
+                  "&:focus": { borderColor: COLORS.teal },
+                },
+              }}
+            />
+            {(isOwner || isAdmin) && (
+              <Button
+                variant="light"
+                color="teal"
+                size="lg"
+                leftSection={<IconPlus size={18} />}
+                onClick={handleCreate}
+              >
+                Add
+              </Button>
+            )}
+          </Group>
           {!loading && (
             <Text size="sm" mt="xs" style={{ color: COLORS.slateLight }}>
               {filteredIntegrations.length} integration{filteredIntegrations.length === 1 ? "" : "s"}
@@ -368,7 +495,7 @@ export default function IntegrationsPage({ onBack, onSignIn }) {
 
       {/* List */}
       <Box py={64}>
-        <Container size="lg">
+        <Container size="xl">
           <Stack gap="md">
             {error && (
               <Text c="red" size="sm">

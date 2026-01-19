@@ -7,9 +7,9 @@ import React, { useState, useEffect } from "react";
 
 // Load Google Fonts (Instrument Serif for headlines, Inter for body)
 const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap";
-import { Box, Text, Button, Group, Stack, Container, Burger, Drawer, TextInput } from "@mantine/core";
+import { Box, Text, Button, Group, Stack, Container, Burger, Drawer, Avatar } from "@mantine/core";
 import { IconArrowRight, IconCheck, IconLayoutGrid } from "@tabler/icons-react";
-import { 
+import {
   SiSlack,
   SiAirtable,
   SiGooglesheets,
@@ -119,7 +119,7 @@ const FLOATING_ICONS = [
 /** Basebase Logo SVG Component */
 function BasebaseLogo({ size = 28 }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56/45)}>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56 / 45)}>
       <path fill="#FF7300" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
       <path fill="#FFBE00" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
       <path fill="#FBBC05" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
@@ -154,25 +154,36 @@ function IconCircle({ icon: Icon, color }) {
  *   onSignIn: () => void;
  *   onCreateApp?: () => void;
  *   isAuthenticated?: boolean;
+ *   userPhotoURL?: string | null;
+ *   userDisplayName?: string | null;
  *   onNavigateToTerms?: () => void;
  *   onNavigateToPrivacy?: () => void;
  *   onNavigateToAbout?: () => void;
  *   onNavigateToPricing?: () => void;
  *   onNavigateToIntegrations?: () => void;
+ *   onNavigateToGallery?: () => void;
+ *   onOpenProfile?: () => void;
  * }} props
  */
 export default function PublicHomepage({
   onSignIn,
   onCreateApp,
   isAuthenticated = false,
+  userPhotoURL,
+  userDisplayName,
   onNavigateToTerms,
   onNavigateToPrivacy,
   onNavigateToAbout,
   onNavigateToPricing,
   onNavigateToIntegrations,
+  onNavigateToGallery,
+  onOpenProfile,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [appDescription, setAppDescription] = useState("");
+
+  const openBuilder = () => {
+    window.open("https://builder.basebase.com", "_blank");
+  };
 
   // Load Google Fonts on mount
   useEffect(() => {
@@ -215,21 +226,21 @@ export default function PublicHomepage({
               </Text>
             </Group>
 
-            {/* Desktop Nav Links - Right aligned, no button */}
-            <Group gap={40} visibleFrom="sm">
+            {/* Desktop Nav Links - Right aligned */}
+            <Group gap={32} visibleFrom="sm">
+              <Text
+                size="sm"
+                style={navLinkStyle}
+                onClick={() => onNavigateToGallery?.()}
+              >
+                App Gallery
+              </Text>
               <Text
                 size="sm"
                 style={navLinkStyle}
                 onClick={() => onNavigateToIntegrations?.()}
               >
                 Integrations
-              </Text>
-              <Text
-                size="sm"
-                style={navLinkStyle}
-                onClick={() => onNavigateToPricing?.()}
-              >
-                Pricing
               </Text>
               <Text
                 component="a"
@@ -241,6 +252,32 @@ export default function PublicHomepage({
               >
                 Documentation
               </Text>
+              {isAuthenticated ? (
+                <Group
+                  gap="xs"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => onOpenProfile?.()}
+                >
+                  <Avatar
+                    src={userPhotoURL}
+                    alt={userDisplayName || "User"}
+                    size="sm"
+                    radius="xl"
+                    color="orange"
+                  >
+                    {(userDisplayName || "U").charAt(0).toUpperCase()}
+                  </Avatar>
+                </Group>
+              ) : (
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  onClick={onSignIn}
+                  style={{ color: COLORS.black }}
+                >
+                  Sign in
+                </Button>
+              )}
             </Group>
 
             {/* Mobile Burger */}
@@ -271,22 +308,22 @@ export default function PublicHomepage({
             fw={500}
             style={navLinkStyle}
             onClick={() => {
-              onNavigateToIntegrations?.();
+              onNavigateToGallery?.();
               setMobileMenuOpen(false);
             }}
           >
-            Integrations
+            App Gallery
           </Text>
           <Text
             size="md"
             fw={500}
             style={navLinkStyle}
             onClick={() => {
-              onNavigateToPricing?.();
+              onNavigateToIntegrations?.();
               setMobileMenuOpen(false);
             }}
           >
-            Pricing
+            Integrations
           </Text>
           <Text
             component="a"
@@ -299,22 +336,46 @@ export default function PublicHomepage({
           >
             Documentation
           </Text>
-          <Button 
-            variant="filled" 
-            fullWidth
-            onClick={() => {
-              onSignIn();
-              setMobileMenuOpen(false);
-            }}
-            style={{ background: COLORS.yellow, color: COLORS.black, border: "none", marginTop: 8 }}
-          >
-            Get Started
-          </Button>
+          {isAuthenticated ? (
+            <Group
+              gap="xs"
+              style={{ cursor: "pointer" }}
+              onClick={() => {
+                onOpenProfile?.();
+                setMobileMenuOpen(false);
+              }}
+            >
+              <Avatar
+                src={userPhotoURL}
+                alt={userDisplayName || "User"}
+                size="sm"
+                radius="xl"
+                color="orange"
+              >
+                {(userDisplayName || "U").charAt(0).toUpperCase()}
+              </Avatar>
+              <Text size="sm" fw={500} style={{ color: COLORS.black }}>
+                {userDisplayName || "Profile"}
+              </Text>
+            </Group>
+          ) : (
+            <Button
+              variant="filled"
+              fullWidth
+              onClick={() => {
+                onSignIn();
+                setMobileMenuOpen(false);
+              }}
+              style={{ background: COLORS.yellow, color: COLORS.black, border: "none", marginTop: 8 }}
+            >
+              Sign in
+            </Button>
+          )}
         </Stack>
       </Drawer>
 
       {/* Hero Section with Grid Background */}
-      <Box 
+      <Box
         style={{
           position: "relative",
           minHeight: "calc(100vh - 72px)",
@@ -451,7 +512,7 @@ export default function PublicHomepage({
             <path d="M 816,256 Q 752,176 688,160" stroke="url(#grad-r2)" strokeWidth="2" strokeLinecap="round" />
             <path d="M 896,160 Q 792,160 688,160" stroke="url(#grad-r3)" strokeWidth="2" strokeLinecap="round" />
           </svg>
-          
+
           {/* Floating Icons - positioned to match the SVG viewBox */}
           <Box
             style={{
@@ -507,8 +568,8 @@ export default function PublicHomepage({
             >
               Build business tools in
               <br />
-              <span 
-                style={{ 
+              <span
+                style={{
                   fontStyle: "italic",
                   position: "relative",
                   display: "inline-block",
@@ -549,15 +610,17 @@ export default function PublicHomepage({
               {" "}not months.
             </Text>
 
-            {/* Search Input with Create Button */}
+            {/* Search Input with Create Button - clicking anywhere opens builder */}
             <Box
+              onClick={openBuilder}
               style={{
                 width: "100%",
                 maxWidth: 480,
                 marginTop: 24,
+                cursor: "pointer",
               }}
             >
-              <Group 
+              <Group
                 gap={0}
                 style={{
                   background: COLORS.white,
@@ -567,25 +630,18 @@ export default function PublicHomepage({
                   boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
                 }}
               >
-                <TextInput
-                  placeholder="Describe your app..."
-                  value={appDescription}
-                  onChange={(e) => setAppDescription(e.currentTarget.value)}
-                  variant="unstyled"
-                  style={{ flex: 1 }}
-                  styles={{
-                    input: {
-                      paddingLeft: 20,
-                      fontSize: 15,
-                      color: COLORS.black,
-                      "&::placeholder": {
-                        color: COLORS.gray,
-                      },
-                    },
+                <Text
+                  style={{
+                    flex: 1,
+                    paddingLeft: 20,
+                    fontSize: 15,
+                    color: COLORS.gray,
                   }}
-                />
+                >
+                  Describe your app...
+                </Text>
                 <Button
-                  onClick={() => onCreateApp?.()}
+                  component="span"
                   rightSection={<IconArrowRight size={16} />}
                   style={{
                     background: COLORS.yellow,
@@ -595,6 +651,7 @@ export default function PublicHomepage({
                     padding: "10px 20px",
                     height: 42,
                     fontWeight: 500,
+                    pointerEvents: "none",
                   }}
                 >
                   Create
@@ -766,7 +823,7 @@ export default function PublicHomepage({
                 Built for business people
               </Text>
               <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 540 }}>
-                Stop waiting for IT. Stop fighting with spreadsheets. 
+                Stop waiting for IT. Stop fighting with spreadsheets.
                 Build exactly what you need, when you need it.
               </Text>
             </Stack>
@@ -823,7 +880,7 @@ export default function PublicHomepage({
                 Connect <span style={{ color: COLORS.teal }}>everything</span>
               </Text>
               <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 500 }}>
-                Pull data from 100+ enterprise apps. Break down silos. 
+                Pull data from 100+ enterprise apps. Break down silos.
                 Get the unified view you've always wanted.
               </Text>
               <Button
@@ -899,7 +956,7 @@ export default function PublicHomepage({
                 Perfect for <span style={{ color: COLORS.coral }}>ops teams</span>
               </Text>
               <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 500 }}>
-                Revenue ops, marketing ops, and business teams use Basebase 
+                Revenue ops, marketing ops, and business teams use Basebase
                 to build the tools they need—fast.
               </Text>
             </Stack>
@@ -957,7 +1014,7 @@ export default function PublicHomepage({
               Ready to build?
             </Text>
             <Text ta="center" size="lg" style={{ color: COLORS.coralLight, maxWidth: 480 }}>
-              Stop waiting on IT. Start building the tools your business 
+              Stop waiting on IT. Start building the tools your business
               actually needs—in minutes, not months.
             </Text>
             <Button
@@ -989,7 +1046,7 @@ export default function PublicHomepage({
             <Stack gap="xs">
               <Text fw={700} style={{ color: COLORS.white }}>Basebase</Text>
               <Text size="xs" style={{ color: COLORS.grey, maxWidth: 280 }}>
-                Build the tools your business needs. 
+                Build the tools your business needs.
                 No engineers required.
               </Text>
             </Stack>
@@ -1051,8 +1108,8 @@ export default function PublicHomepage({
                 <Text size="xs" fw={600} style={{ color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Legal
                 </Text>
-                <Text 
-                  size="sm" 
+                <Text
+                  size="sm"
                   style={{ color: COLORS.white, cursor: "pointer" }}
                   onClick={() => {
                     if (onNavigateToTerms) onNavigateToTerms();
@@ -1060,8 +1117,8 @@ export default function PublicHomepage({
                 >
                   Terms of Service
                 </Text>
-                <Text 
-                  size="sm" 
+                <Text
+                  size="sm"
                   style={{ color: COLORS.white, cursor: "pointer" }}
                   onClick={() => {
                     if (onNavigateToPrivacy) onNavigateToPrivacy();

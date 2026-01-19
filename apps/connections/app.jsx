@@ -9,7 +9,6 @@ import {
   MantineProvider,
   AppShell,
   Group,
-  Title,
   Text,
   Avatar,
   Button,
@@ -18,6 +17,7 @@ import {
   NavLink,
   ScrollArea,
   Box,
+  Container,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import {
@@ -46,6 +46,24 @@ import { useNangoOAuth, NangoIntegrations } from "../../framework/hooks/useNango
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import { APP_ID } from "./schema.js";
+
+// Load Google Fonts (matching www landing page)
+const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap";
+
+/** Basebase Logo SVG Component */
+function BasebaseLogo({ size = 28 }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56 / 45)}>
+      <path fill="#FF7300" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
+      <path fill="#FFBE00" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#FBBC05" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#FF7300" d="M7 0a7 7 0 0 1 7 7v16.052A1.948 1.948 0 0 1 12.052 25C5.396 25 0 19.604 0 12.948V7a7 7 0 0 1 7-7Z" />
+    </svg>
+  );
+}
+
+/** @type {React.CSSProperties} */
+const navLinkStyle = { color: "#1a1a1a", textDecoration: "none", cursor: "pointer", fontWeight: 400 };
 
 // Integration Panels
 import {

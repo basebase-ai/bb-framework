@@ -3,7 +3,7 @@
  * This screen is shown without authentication - auth is handled by the editor
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Stack,
@@ -12,7 +12,8 @@ import {
   Textarea,
   Button,
   Group,
-  Image,
+  Container,
+  Avatar,
 } from "@mantine/core";
 import { IconArrowRight, IconEdit, IconGitFork } from "@tabler/icons-react";
 import {
@@ -27,10 +28,23 @@ import {
   SiLinear,
   SiGithub,
 } from "react-icons/si";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../../framework/core/firebase-init.js";
 
-// Basebase logo URL
-const LOGO_URL =
-  "https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914379318_basebase_orange_32.png?alt=media&token=d2f927fb-a1b4-43ec-a078-69bdc462974e";
+// Load Google Fonts (matching www landing page)
+const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap";
+
+/** Basebase Logo SVG Component */
+function BasebaseLogo({ size = 28 }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56 / 45)}>
+      <path fill="#FF7300" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
+      <path fill="#FFBE00" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#FBBC05" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#FF7300" d="M7 0a7 7 0 0 1 7 7v16.052A1.948 1.948 0 0 1 12.052 25C5.396 25 0 19.604 0 12.948V7a7 7 0 0 1 7-7Z" />
+    </svg>
+  );
+}
 
 // Integration logos to display
 const INTEGRATIONS = [
@@ -46,12 +60,35 @@ const INTEGRATIONS = [
   { icon: SiGithub, label: "GitHub", color: "#181717" },
 ];
 
+/** @type {React.CSSProperties} */
+const navLinkStyle = { color: "#1a1a1a", textDecoration: "none", cursor: "pointer", fontWeight: 400 };
+
 /**
  * @param {{ onSubmit: (prompt: string) => void }} props
  */
 export function LandingScreen({ onSubmit }) {
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUser, setCurrentUser] = useState(/** @type {import('firebase/auth').User | null} */ (null));
+
+  // Load Google Fonts on mount
+  useEffect(() => {
+    const existingLink = document.querySelector(`link[href="${GOOGLE_FONTS_URL}"]`);
+    if (!existingLink) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = GOOGLE_FONTS_URL;
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleSubmit = () => {
     const trimmedPrompt = prompt.trim();
@@ -72,22 +109,97 @@ export function LandingScreen({ onSubmit }) {
     <Box
       style={{
         minHeight: "100vh",
-        backgroundColor: "#f8f9fa",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        backgroundColor: "#FFFFFF",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      <Stack align="center" gap="xl" maw={700} w="100%" p="xl">
-        {/* Logo */}
-        <Group gap="sm" align="center">
-          <Image src={LOGO_URL} alt="Basebase" w={40} h={40} />
-          <Title order={1} c="dark" fw={600}>
-            Basebase
-          </Title>
-        </Group>
+      {/* Navigation - matching www landing page */}
+      <Box
+        component="nav"
+        style={{
+          position: "relative",
+          background: "#FFFFFF",
+          zIndex: 100,
+        }}
+      >
+        <Container size="xl">
+          <Group justify="space-between" h={72} px="md">
+            {/* Logo */}
+            <Group
+              gap={8}
+              align="center"
+              style={{ cursor: "pointer" }}
+              onClick={() => window.open("https://www.basebase.com", "_self")}
+            >
+              <BasebaseLogo size={28} />
+              <Text fw={500} size="xl" style={{ color: "#1a1a1a", letterSpacing: "-0.02em" }}>
+                Basebase
+              </Text>
+            </Group>
 
-        {/* Main prompt input */}
+            {/* Desktop Nav Links */}
+            <Group gap={32}>
+              <Text
+                size="sm"
+                style={navLinkStyle}
+                onClick={() => window.open("https://www.basebase.com/gallery", "_self")}
+              >
+                App Gallery
+              </Text>
+              <Text
+                size="sm"
+                style={navLinkStyle}
+                onClick={() => window.open("https://www.basebase.com/integrations", "_self")}
+              >
+                Integrations
+              </Text>
+              <Text
+                component="a"
+                href="https://docs.basebase.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="sm"
+                style={navLinkStyle}
+              >
+                Documentation
+              </Text>
+              {currentUser ? (
+                <Avatar
+                  src={currentUser.photoURL}
+                  alt={currentUser.displayName || currentUser.email || "User"}
+                  size="sm"
+                  radius="xl"
+                  color="orange"
+                >
+                  {(currentUser.displayName || currentUser.email || "U").charAt(0).toUpperCase()}
+                </Avatar>
+              ) : (
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  onClick={() => onSubmit("")}
+                  style={{ color: "#1a1a1a" }}
+                >
+                  Sign in
+                </Button>
+              )}
+            </Group>
+          </Group>
+        </Container>
+      </Box>
+
+      {/* Main Content */}
+      <Box
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "calc(100vh - 72px)",
+          backgroundColor: "#f8f9fa",
+        }}
+      >
+        <Stack align="center" gap="xl" maw={700} w="100%" p="xl">
+          {/* Main prompt input */}
         <Box
           p="xl"
           w="100%"
@@ -195,6 +307,7 @@ export function LandingScreen({ onSubmit }) {
           </Group>
         </Stack>
       </Stack>
+      </Box>
     </Box>
   );
 }
