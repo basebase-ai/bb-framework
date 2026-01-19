@@ -49,6 +49,7 @@ marked.setOptions({
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useDocument } from "../../../framework/hooks/useDocument.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
+import { useFunction } from "../../../framework/hooks/useFunction.js";
 import { collections, LEITNER_INTERVALS, SUPPORTED_LANGUAGES } from "../schema.js";
 import { useUIStore } from "../stores/uiStore.js";
 
@@ -158,7 +159,13 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voicesLoaded, setVoicesLoaded] = useState(false);
+  const [showExample, setShowExample] = useState(false);
+  const [exampleSentence, setExampleSentence] = useState(/** @type {{ target: string, english: string } | null} */ (null));
+  const [loadingExample, setLoadingExample] = useState(false);
   const cardContentRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  
+  // LLM for generating example sentences
+  const { call: callLLM } = useFunction("askLLM");
 
   /**
    * Play an audio URL
@@ -450,6 +457,54 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   const totalDue = sessionTotalCards ?? (dueCards.length + sessionStats.reviewed);
   const progress = totalDue > 0 ? (sessionStats.reviewed / totalDue) * 100 : 0;
 
+  /**
+   * Generate an example sentence for the current word
+   */
+  const generateExample = useCallback(async () => {
+    if (!currentCard || loadingExample) return;
+    
+    setLoadingExample(true);
+    setShowExample(true);
+    
+    const word = currentCard.front.replace(/\s*\([^)]*\)/g, "").trim();
+    // Extract the English meaning from the back of the card (strip markdown/HTML)
+    const meaning = (currentCard.back || "")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 200); // Limit length
+    const deckLang = deck?.language || "norwegian";
+    const langInfo = SUPPORTED_LANGUAGES[deckLang] || SUPPORTED_LANGUAGES.norwegian;
+    
+    const prompt = `Generate ONE simple example sentence in ${langInfo.name} using the word "${word}" with the meaning "${meaning}".
+The sentence should be 5-10 words long and easy to understand for a language learner.
+Use the word with THIS SPECIFIC MEANING, not other possible meanings.
+
+Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English translation"}`;
+    
+    try {
+      const result = await callLLM({
+        provider: "openai",
+        model: "gpt-4o-mini",
+        message: prompt,
+        options: { maxTokens: 200, temperature: 0.7 },
+      });
+      
+      const responseText = result?.response || "";
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        setExampleSentence({ target: parsed.target, english: parsed.english });
+      }
+    } catch (err) {
+      console.error("Error generating example:", err);
+      setExampleSentence({ target: "Error generating example", english: "" });
+    } finally {
+      setLoadingExample(false);
+    }
+  }, [currentCard, deck?.language, callLLM, loadingExample]);
+
   // Capture session size when study starts (so the denominator stays fixed)
   useEffect(() => {
     if (studyStarted && sessionTotalCards === null && dueCards.length > 0) {
@@ -563,6 +618,9 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     try {
       // Set showBack to false FIRST to prevent flash of next card's back
       setShowBack(false);
+      // Reset example state for next card
+      setShowExample(false);
+      setExampleSentence(null);
       
       await updateCard(currentCard.id, {
         box: newBox,
@@ -910,6 +968,32 @@ export function StudyMode({ deckId, onBack, onComplete }) {
               }
               return null;
             })()}
+
+            {/* Show Example button - only on front */}
+            {!showBack && (
+              <Box mt="md">
+                {!showExample && (
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      generateExample();
+                    }}
+                    loading={loadingExample}
+                  >
+                    Show Example
+                  </Button>
+                )}
+                
+                {showExample && exampleSentence && (
+                  <Paper p="sm" mt="sm" radius="md" bg={isDark ? "dark.6" : "gray.0"}>
+                    <Text size="sm" fw={500}>{exampleSentence.target}</Text>
+                  </Paper>
+                )}
+              </Box>
+            )}
 
             <Group gap="xs" mt="xl">
               <IconRotate size={16} color="var(--mantine-color-dimmed)" />

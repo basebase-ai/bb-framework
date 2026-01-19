@@ -42,6 +42,8 @@ import {
   IconMessageCircle,
   IconVocabulary,
   IconAlertTriangle,
+  IconPlus,
+  IconCheck,
 } from "@tabler/icons-react";
 import { useDocument } from "../../../../framework/hooks/useDocument.js";
 import { useCollection } from "../../../../framework/hooks/useCollection.js";
@@ -63,7 +65,7 @@ export function ConversationChat({ conversationId, onBack }) {
   const { user } = useAuth();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [selectedWord, setSelectedWord] = useState(/** @type {{ word: string, translation: string | null, loading: boolean, position: { x: number, y: number } } | null} */ (null));
+  const [selectedWord, setSelectedWord] = useState(/** @type {{ word: string, translation: string | null, loading: boolean, position: { x: number, y: number }, added?: boolean, adding?: boolean } | null} */ (null));
   const [lookupWord, setLookupWord] = useState("");
   const [lookupResult, setLookupResult] = useState(/** @type {{ word: string, translation: string } | null} */ (null));
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -151,7 +153,7 @@ export function ConversationChat({ conversationId, onBack }) {
   const linkedDeckId = conversation?.linkedDeckId || null;
   
   // Translation hook - when a deck is linked, translations get added as cards
-  const { translate: translateWithDeck } = useTranslation(linkedDeckId);
+  const { translate: translateWithDeck, addToCurrentDeck, addedWords } = useTranslation(linkedDeckId);
   
   /**
    * Handle linking a deck to this conversation
@@ -440,6 +442,84 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
   const handleContainerClick = () => {
     setSelectedWord(null);
   };
+
+  /**
+   * Handle text selection (highlight a phrase)
+   */
+  const handleTextSelection = useCallback(async () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+
+    const selectedText = selection.toString().trim();
+    if (!selectedText || selectedText.length < 2) return;
+
+    // Check if selection is within our chat container
+    if (!chatContainerRef.current) return;
+    const range = selection.getRangeAt(0);
+    if (!chatContainerRef.current.contains(range.commonAncestorContainer)) return;
+
+    // Get position for tooltip
+    const rect = range.getBoundingClientRect();
+    const posX = rect.left + rect.width / 2;
+    const posY = rect.top;
+
+    setSelectedWord({
+      word: selectedText,
+      translation: null,
+      loading: true,
+      position: { x: posX, y: posY },
+    });
+
+    try {
+      // Translate the selection
+      if (linkedDeckId && langInfo) {
+        const result = await translateWithDeck(selectedText, langInfo.code);
+        setSelectedWord((prev) =>
+          prev?.word === selectedText
+            ? { ...prev, translation: result?.translation || "Translation failed", loading: false }
+            : prev
+        );
+      } else {
+        const prompt = `Translate the ${langInfo?.name || "Norwegian"} phrase "${selectedText}" to English. Only respond with the translation, nothing else.`;
+        const result = await callLLM({
+          provider: "openai",
+          model: "gpt-4o-mini",
+          message: prompt,
+          temperature: 0.1,
+        });
+        setSelectedWord((prev) =>
+          prev?.word === selectedText
+            ? { ...prev, translation: result?.response || "Translation failed", loading: false }
+            : prev
+        );
+      }
+    } catch {
+      setSelectedWord((prev) =>
+        prev?.word === selectedText
+          ? { ...prev, translation: "Translation failed", loading: false }
+          : prev
+      );
+    }
+
+    // Clear the selection
+    selection.removeAllRanges();
+  }, [langInfo, linkedDeckId, translateWithDeck, callLLM]);
+
+  // Listen for mouseup to detect text selection
+  useEffect(() => {
+    const handleMouseUp = () => {
+      // Small delay to let selection finalize
+      setTimeout(() => {
+        handleTextSelection();
+      }, 10);
+    };
+
+    const container = chatContainerRef.current;
+    if (container) {
+      container.addEventListener("mouseup", handleMouseUp);
+      return () => container.removeEventListener("mouseup", handleMouseUp);
+    }
+  }, [handleTextSelection]);
   
   // Loading state - also wait for scenario if conversation has a scenarioId
   const waitingForScenario = conversation?.scenarioId && !scenario && !scenarioLoading;
@@ -800,7 +880,7 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
           top: selectedWord.position.y,
           transform: "translate(-50%, -100%)",
           zIndex: 10000,
-          minWidth: 120,
+          minWidth: 150,
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -816,18 +896,40 @@ Selvfølgelig! Vil du ha melk eller sukker?`;
           {selectedWord.loading ? (
             <Loader size="xs" />
           ) : (
-            <Group gap="xs">
-              <Text size="sm" c="dimmed">
-                {selectedWord.translation}
-              </Text>
-              <ActionIcon
-                size="xs"
-                variant="subtle"
-                onClick={() => handleSpeak(selectedWord.word)}
-              >
-                <IconVolume size={12} />
-              </ActionIcon>
-            </Group>
+            <>
+              <Group gap="xs">
+                <Text size="sm" c="dimmed">
+                  {selectedWord.translation}
+                </Text>
+                <ActionIcon
+                  size="xs"
+                  variant="subtle"
+                  onClick={() => handleSpeak(selectedWord.word)}
+                >
+                  <IconVolume size={12} />
+                </ActionIcon>
+              </Group>
+              {/* Add to deck button */}
+              {linkedDeckId && selectedWord.translation && (
+                <Button
+                  size="xs"
+                  variant={selectedWord.added || addedWords.has(selectedWord.word.toLowerCase()) ? "light" : "subtle"}
+                  color={selectedWord.added || addedWords.has(selectedWord.word.toLowerCase()) ? "green" : "pink"}
+                  leftSection={selectedWord.added || addedWords.has(selectedWord.word.toLowerCase()) ? <IconCheck size={12} /> : <IconPlus size={12} />}
+                  onClick={async () => {
+                    if (selectedWord.added || addedWords.has(selectedWord.word.toLowerCase())) return;
+                    setSelectedWord((prev) => prev ? { ...prev, adding: true } : null);
+                    const success = await addToCurrentDeck(selectedWord.word, selectedWord.translation);
+                    setSelectedWord((prev) => prev ? { ...prev, adding: false, added: success } : null);
+                  }}
+                  loading={selectedWord.adding}
+                  disabled={selectedWord.added || addedWords.has(selectedWord.word.toLowerCase())}
+                  fullWidth
+                >
+                  {selectedWord.added || addedWords.has(selectedWord.word.toLowerCase()) ? "Added" : "Add to deck"}
+                </Button>
+              )}
+            </>
           )}
         </Stack>
       </Paper>

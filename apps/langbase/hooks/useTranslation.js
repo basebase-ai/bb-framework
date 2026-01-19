@@ -90,7 +90,7 @@ function getCacheKey(word, sourceLanguage, context) {
 /**
  * Hook for translating words with localStorage caching and optional deck storage
  * @param {string | null} deckId - Optional deck ID to save cards to
- * @returns {{ translate: (word: string, sourceLanguage: string, context?: string) => Promise<TranslationResult>, loading: boolean, error: string | null }}
+ * @returns {{ translate: (word: string, sourceLanguage: string, context?: string) => Promise<TranslationResult>, addToCurrentDeck: (word: string, translation: string) => Promise<boolean>, loading: boolean, error: string | null, addedWords: Set<string> }}
  */
 export function useTranslation(deckId = null) {
   const { user } = useAuth();
@@ -251,9 +251,48 @@ Translate the word in brackets [${normalizedWord}] to English based on the conte
     [user, callLLM, deckId, existingCards, addCard, addedWords]
   );
 
+  /**
+   * Manually add a word/phrase + translation to the current deck
+   * @param {string} word - Word or phrase to add
+   * @param {string} translation - English translation
+   * @returns {Promise<boolean>} - Whether the card was added
+   */
+  const addToCurrentDeck = useCallback(
+    async (word, translation) => {
+      if (!deckId || !user) return false;
+      
+      const normalizedWord = word.toLowerCase().trim();
+      
+      // Check if already exists
+      const alreadyInDeck = existingCards?.some(
+        (c) => c.front.toLowerCase() === normalizedWord
+      ) || addedWords.has(normalizedWord);
+      
+      if (alreadyInDeck) return false;
+      
+      try {
+        setAddedWords((prev) => new Set([...prev, normalizedWord]));
+        await addCard({
+          deckId,
+          front: normalizedWord,
+          back: translation,
+          box: 1,
+          correctCount: 0,
+          incorrectCount: 0,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [deckId, user, existingCards, addCard, addedWords]
+  );
+
   return {
     translate,
+    addToCurrentDeck,
     loading,
     error,
+    addedWords,
   };
 }

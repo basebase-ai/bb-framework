@@ -10,16 +10,17 @@ import {
   Group,
   Loader,
   Box,
+  Button,
   useMantineColorScheme,
 } from "@mantine/core";
-import { IconVolume, IconX } from "@tabler/icons-react";
+import { IconVolume, IconX, IconPlus, IconCheck } from "@tabler/icons-react";
 import { useSpeech } from "../../hooks/useSpeech.js";
 import { useUIStore } from "../../stores/uiStore.js";
 
 /**
- * @param {{ onClose: () => void }} props
+ * @param {{ onClose: () => void, onAddToDeck?: (word: string, translation: string) => Promise<boolean>, linkedDeckId?: string | null, addedWords?: Set<string> }} props
  */
-export function WordTooltip({ onClose }) {
+export function WordTooltip({ onClose, onAddToDeck, linkedDeckId, addedWords }) {
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === "dark";
   
@@ -28,6 +29,8 @@ export function WordTooltip({ onClose }) {
   const { speak, speaking, supported } = useSpeech();
   const tooltipRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const [adjustedPosition, setAdjustedPosition] = useState(/** @type {{ top: number, left: number } | null} */ (null));
+  const [justAdded, setJustAdded] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   // Handle click outside - use a small delay to prevent immediate dismissal on mobile
   useEffect(() => {
@@ -130,6 +133,21 @@ export function WordTooltip({ onClose }) {
     speak(word, sourceLanguage);
   };
 
+  const handleAddToDeck = async () => {
+    if (!onAddToDeck || !translation) return;
+    setAdding(true);
+    const success = await onAddToDeck(word, translation);
+    setAdding(false);
+    if (success) {
+      setJustAdded(true);
+    }
+  };
+
+  // Check if word is already in deck
+  const normalizedWord = word?.toLowerCase().trim();
+  const isInDeck = addedWords?.has(normalizedWord) || justAdded;
+  const canAddToDeck = linkedDeckId && translation && !loading && !isInDeck;
+
   return (
     <Paper
       ref={tooltipRef}
@@ -189,6 +207,22 @@ export function WordTooltip({ onClose }) {
             <Text size="md" fw={500}>
               {translation}
             </Text>
+            {/* Add to deck button */}
+            {linkedDeckId && (
+              <Button
+                size="xs"
+                variant={isInDeck ? "light" : "subtle"}
+                color={isInDeck ? "green" : "pink"}
+                leftSection={isInDeck ? <IconCheck size={14} /> : <IconPlus size={14} />}
+                onClick={handleAddToDeck}
+                loading={adding}
+                disabled={isInDeck}
+                mt="sm"
+                fullWidth
+              >
+                {isInDeck ? "Added to deck" : "Add to deck"}
+              </Button>
+            )}
           </Box>
         ) : null}
       </Stack>

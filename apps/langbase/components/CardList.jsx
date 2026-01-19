@@ -57,6 +57,7 @@ function getBoxColor(box) {
 export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedBox, setSelectedBox] = useState(/** @type {number | null} */ (null));
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState(/** @type {{ id: string, front: string, back: string } | null} */ (null));
@@ -156,9 +157,17 @@ export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
     }
   }, [cards, deck, deckLoading, updateDeck]);
 
-  const filteredCards = cards.filter(
-    (card) => card.front?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCards = cards.filter((card) => {
+    // Filter by search query
+    if (searchQuery && !card.front?.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    // Filter by selected box
+    if (selectedBox !== null && (card.box || 1) !== selectedBox) {
+      return false;
+    }
+    return true;
+  });
 
   const stats = {
     total: cards.length,
@@ -295,7 +304,7 @@ export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
             onClick={() => onStudy(deckId)}
             disabled={stats.total === 0}
           >
-            Study ({stats.dueForReview})
+            Study
           </Button>
           {onSentencePractice && (
             <Button
@@ -321,14 +330,33 @@ export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
       </Group>
 
       <Paper p="md" withBorder shadow="xs">
-        <Text size="sm" fw={500} mb="sm">Leitner Box Distribution</Text>
+        <Group justify="space-between" mb="sm">
+          <Text size="sm" fw={500}>Leitner Box Distribution</Text>
+          {selectedBox !== null && (
+            <Button size="xs" variant="subtle" color="gray" onClick={() => setSelectedBox(null)}>
+              Clear filter
+            </Button>
+          )}
+        </Group>
         <Group gap="md">
           {[1, 2, 3, 4, 5].map((box) => {
             const count = stats[`box${box}`];
             const interval = LEITNER_INTERVALS[box];
+            const isSelected = selectedBox === box;
             return (
-              <Tooltip key={box} label={`Box ${box}: Review every ${interval} day${interval !== 1 ? "s" : ""}`}>
-                <Badge size="lg" variant="light" color={getBoxColor(box)} leftSection={<IconBox size={14} />}>
+              <Tooltip key={box} label={`Box ${box}: Review every ${interval} day${interval !== 1 ? "s" : ""}. Click to filter.`}>
+                <Badge
+                  size="lg"
+                  variant={isSelected ? "filled" : "light"}
+                  color={getBoxColor(box)}
+                  leftSection={<IconBox size={14} />}
+                  style={{
+                    cursor: "pointer",
+                    transform: isSelected ? "scale(1.1)" : "scale(1)",
+                    transition: "all 0.15s ease",
+                  }}
+                  onClick={() => setSelectedBox(isSelected ? null : box)}
+                >
                   {count}
                 </Badge>
               </Tooltip>
@@ -349,9 +377,13 @@ export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
         <Paper p="xl" withBorder shadow="xs">
           <Stack align="center" gap="md">
             <Text size="lg" c="dimmed" ta="center">
-              {searchQuery ? "No cards match your search" : "No cards yet. Add your first card!"}
+              {searchQuery
+                ? "No cards match your search"
+                : selectedBox !== null
+                  ? `No cards in Box ${selectedBox}`
+                  : "No cards yet. Add your first card!"}
             </Text>
-            {!searchQuery && (
+            {!searchQuery && selectedBox === null && (
               <Button variant="light" color="pink" leftSection={<IconPlus size={16} />} onClick={() => setCreateModalOpen(true)}>
                 Add Card
               </Button>

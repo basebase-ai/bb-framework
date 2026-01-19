@@ -96,7 +96,7 @@ export function DocumentReader({ documentId, onBack }) {
   const linkedDeckId = doc?.linkedDeckId || null;
 
   // Pass linked deck to translation hook so cards get added to it
-  const { translate } = useTranslation(linkedDeckId);
+  const { translate, addToCurrentDeck, addedWords } = useTranslation(linkedDeckId);
   const { supported: speechSupported, speak, getVoiceInfo, availableVoices } = useSpeech();
   const sourceLanguageFromStore = useUIStore((s) => s.sourceLanguage);
   
@@ -595,7 +595,14 @@ export function DocumentReader({ documentId, onBack }) {
       )}
 
       {/* Word tooltip */}
-      {selectedWord && <WordTooltip onClose={clearSelectedWord} />}
+      {selectedWord && (
+        <WordTooltip
+          onClose={clearSelectedWord}
+          onAddToDeck={addToCurrentDeck}
+          linkedDeckId={linkedDeckId}
+          addedWords={addedWords}
+        />
+      )}
     </Box>
   );
 }

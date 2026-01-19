@@ -34,8 +34,8 @@ import {
   Select,
   useMantineColorScheme,
 } from "@mantine/core";
-import { Notifications } from "@mantine/notifications";
-import { IconLogin, IconLogout, IconUser, IconCards, IconBook2, IconMessageCircle, IconSun, IconMoon, IconLanguage, IconChevronDown } from "@tabler/icons-react";
+import { Notifications, notifications } from "@mantine/notifications";
+import { IconLogin, IconLogout, IconUser, IconCards, IconBook2, IconMessageCircle, IconSun, IconMoon, IconLanguage, IconChevronDown, IconAlertTriangle, IconVolume } from "@tabler/icons-react";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../framework/core/firebase-init.js";
 import { AppRouter, RouteContent } from "../../framework/components/AppRouter.jsx";
@@ -53,6 +53,7 @@ import { DocumentUpload } from "./components/reading/DocumentUpload.jsx";
 import { ScenarioList } from "./components/conversation/ScenarioList.jsx";
 import { ConversationChat } from "./components/conversation/ConversationChat.jsx";
 import { useUIStore } from "./stores/uiStore.js";
+import { useSpeech } from "./hooks/useSpeech.js";
 import { APP_ID, collections, SUPPORTED_LANGUAGES } from "./schema.js";
 
 // Mantine CSS imports
@@ -683,6 +684,9 @@ function AppLayout() {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const isDark = colorScheme === "dark";
   
+  // Speech synthesis for voice checking
+  const { availableVoices, hasVoiceForLanguage, getVoiceInfo } = useSpeech();
+  
   // Store state
   const primaryLanguage = useUIStore((s) => s.primaryLanguage);
   const setPrimaryLanguage = useUIStore((s) => s.setPrimaryLanguage);
@@ -690,6 +694,40 @@ function AppLayout() {
   
   // Load primary language from user preferences
   const [prefsLoading, setPrefsLoading] = useState(true);
+  
+  /**
+   * Check voice availability and show notification
+   * @param {string} languageKey
+   */
+  const checkVoiceAndNotify = React.useCallback((languageKey) => {
+    // Wait a bit for voices to load (they load async in some browsers)
+    setTimeout(() => {
+      const langInfo = SUPPORTED_LANGUAGES[languageKey];
+      if (!langInfo) return;
+      
+      const voiceInfo = getVoiceInfo(languageKey);
+      
+      if (voiceInfo.hasVoice) {
+        notifications.show({
+          id: "voice-success",
+          title: `${langInfo.name} voice selected`,
+          message: `Using "${voiceInfo.voiceName}" (${voiceInfo.voiceLang}) for audio pronunciation.`,
+          color: "green",
+          icon: <IconVolume size={18} />,
+          autoClose: 5000,
+        });
+      } else {
+        notifications.show({
+          id: "voice-warning",
+          title: `No ${langInfo.name} voice available`,
+          message: `Your browser doesn't have a ${langInfo.name} text-to-speech voice. Audio pronunciation won't work. To fix: install ${langInfo.name} voices in your system settings.`,
+          color: "yellow",
+          icon: <IconAlertTriangle size={18} />,
+          autoClose: 10000,
+        });
+      }
+    }, 500);
+  }, [getVoiceInfo]);
   
   useEffect(() => {
     if (!user?.uid) {
@@ -716,6 +754,13 @@ function AppLayout() {
       setPrefsLoading(false);
     });
   }, [user?.uid, setPrimaryLanguage, setSourceLanguage]);
+  
+  // Check voice availability whenever primaryLanguage changes
+  useEffect(() => {
+    if (primaryLanguage && availableVoices.length > 0) {
+      checkVoiceAndNotify(primaryLanguage);
+    }
+  }, [primaryLanguage, availableVoices.length, checkVoiceAndNotify]);
   
   // Show language setup modal for new users (after loading)
   // Don't show if we already have a primaryLanguage set in the store (optimistic update)

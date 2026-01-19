@@ -68,6 +68,7 @@ export const SUPPORTED_LANGUAGES = {
   dutch: { code: "nl", name: "Dutch", speechCode: "nl-NL", flag: "🇳🇱" },
   portuguese: { code: "pt", name: "Portuguese", speechCode: "pt-PT", flag: "🇵🇹" },
   english: { code: "en", name: "English", speechCode: "en-US", flag: "🇺🇸" },
+  latin: { code: "la", name: "Latin", speechCode: "la-VA", flag: "🏛️" }, // For testing - no voice available
 };
 
 /**
