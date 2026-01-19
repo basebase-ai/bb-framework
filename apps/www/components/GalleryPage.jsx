@@ -1,5 +1,5 @@
 /**
- * GalleryPage - App gallery view (public, auth-aware)
+ * GalleryPage - Solution gallery view (public, auth-aware)
  * Shows all available apps with filtering and search
  */
 
@@ -28,9 +28,9 @@ export default function GalleryPage() {
   const { user, promptSignIn } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   const { navigate } = useRoute();
-  
+
   const { data: allApps = [], loading, update: updateItem, remove: removeItem } = useCollection("apps");
-  
+
   const [profileModalOpened, setProfileModalOpened] = useState(false);
 
   const handleShowDetails = (/** @type {{ id: string }} */ app) => {
@@ -51,21 +51,21 @@ export default function GalleryPage() {
       padding="xs"
       style={{ background: "#faf9f7" }}
     >
-      <AppShell.Header 
-        style={{ 
+      <AppShell.Header
+        style={{
           background: "rgba(255, 255, 255, 0.9)",
           backdropFilter: "blur(20px)",
           borderBottom: "1px solid #e8eced",
         }}
       >
         <Group h="100%" px="md" justify="space-between" maw={1400} mx="auto">
-          <Group 
-            gap="xs" 
+          <Group
+            gap="xs"
             align="center"
             style={{ cursor: "pointer" }}
             onClick={() => navigate("/")}
           >
-            <img 
+            <img
               src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695"
               alt="Basebase"
               style={{ height: 32, width: 32 }}
@@ -75,7 +75,7 @@ export default function GalleryPage() {
             </Text>
           </Group>
           {user ? (
-            <Group 
+            <Group
               gap="xs"
               style={{ cursor: 'pointer' }}
               onClick={() => setProfileModalOpened(true)}

@@ -18,6 +18,7 @@ import {
   ScrollArea,
   Box,
   Container,
+  Menu,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import {
@@ -38,7 +39,9 @@ import {
   SiCoda,
   SiGoogleads,
 } from "react-icons/si";
-import { TbApi } from "react-icons/tb";
+import { IconApi, IconLogout, IconUser } from "@tabler/icons-react";
+import { signOut } from "firebase/auth";
+import { auth } from "../../framework/core/firebase-init.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
 import { useFunction } from "../../framework/hooks/useFunction.js";
@@ -113,19 +116,38 @@ const INTEGRATION_CONFIG = [
   { id: "github", label: "GitHub", icon: SiGithub, color: "#333" },
   { id: "notion", label: "Notion", icon: SiNotion, color: "#000" },
   { id: "coda", label: "Coda", icon: SiCoda, color: "#F46A54" },
-  { id: "apify", label: "Apify", icon: TbApi, color: "#00D4AA" },
+  { id: "apify", label: "Apify", icon: IconApi, color: "#00D4AA" },
   { id: "calendar", label: "Google Calendar", icon: SiGooglecalendar, color: "#4285F4" },
   { id: "stripe", label: "Stripe", icon: SiStripe, color: "#635BFF" },
   { id: "linkedin", label: "LinkedIn (Airtop)", icon: SiLinkedin, color: "#0A66C2" },
 ];
 
 function AppContent() {
-  const { user } = useAuth();
+  const { user, promptSignIn } = useAuth();
   const { profile } = useUserProfile(user?.uid);
   /** @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]} */
   const [profileModalOpened, setProfileModalOpened] = useState(false);
   /** @type {[string, React.Dispatch<React.SetStateAction<string>>]} */
   const [activeTab, setActiveTab] = useState("gmail");
+
+  // Load Google Fonts on mount
+  useEffect(() => {
+    const existingLink = document.querySelector(`link[href="${GOOGLE_FONTS_URL}"]`);
+    if (!existingLink) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = GOOGLE_FONTS_URL;
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
 
   // OAuth connection status (checked automatically by useNangoOAuth)
   const { isConnected: gmailConnected } = useNangoOAuth(NangoIntegrations.googleMail);
@@ -227,7 +249,7 @@ function AppContent() {
       return (
         <Stack align="center" justify="center" h={400}>
           <Text c="dimmed" size="lg">
-            Please sign in to test integrations
+            Please sign in to connect your data
           </Text>
         </Stack>
       );
@@ -275,34 +297,98 @@ function AppContent() {
 
   return (
     <AppShell
-      header={{ height: 60 }}
+      header={{ height: 72 }}
       navbar={{ width: 250, breakpoint: "sm" }}
       padding="md"
+      style={{
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      }}
     >
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Title order={3}>Connection Manager</Title>
-
-          {user && (
-            <Group gap="sm">
-              <Button
-                variant="subtle"
-                size="sm"
-                onClick={() => setProfileModalOpened(true)}
-              >
-                {profile?.displayName || user.email}
-              </Button>
-              <Avatar
-                src={profile?.photoURL}
-                alt={profile?.displayName || user.email || "User"}
-                size="sm"
-                radius="xl"
-              >
-                {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
-              </Avatar>
+      <AppShell.Header style={{ background: "#FFFFFF", borderBottom: "1px solid #e5e7eb" }}>
+        <Container size="xl" h="100%">
+          <Group h="100%" px="md" justify="space-between">
+            {/* Logo */}
+            <Group
+              gap={8}
+              align="center"
+              style={{ cursor: "pointer" }}
+              onClick={() => window.open("https://www.basebase.com", "_self")}
+            >
+              <BasebaseLogo size={28} />
+              <Text fw={500} size="xl" style={{ color: "#1a1a1a", letterSpacing: "-0.02em" }}>
+                Basebase
+              </Text>
             </Group>
-          )}
-        </Group>
+
+            {/* Desktop Nav Links */}
+            <Group gap={32}>
+              <Text
+                size="sm"
+                style={navLinkStyle}
+                onClick={() => window.open("https://www.basebase.com/gallery", "_self")}
+              >
+                Solution Gallery
+              </Text>
+              <Text
+                size="sm"
+                style={{ ...navLinkStyle, fontWeight: 500 }}
+              >
+                Integrations
+              </Text>
+              <Text
+                component="a"
+                href="https://docs.basebase.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="sm"
+                style={navLinkStyle}
+              >
+                Documentation
+              </Text>
+              {user ? (
+                <Menu position="bottom-end" withArrow>
+                  <Menu.Target>
+                    <Avatar
+                      src={profile?.photoURL}
+                      alt={profile?.displayName || user.email || "User"}
+                      size="sm"
+                      radius="xl"
+                      color="orange"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
+                    </Avatar>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={<IconUser size={14} />}
+                      onClick={() => setProfileModalOpened(true)}
+                    >
+                      Profile
+                    </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item
+                      leftSection={<IconLogout size={14} />}
+                      color="red"
+                      onClick={handleSignOut}
+                    >
+                      Sign out
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              ) : (
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  onClick={promptSignIn}
+                  style={{ color: "#1a1a1a" }}
+                >
+                  Sign in
+                </Button>
+              )}
+            </Group>
+          </Group>
+        </Container>
       </AppShell.Header>
 
       <AppShell.Navbar p="xs">

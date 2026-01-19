@@ -52,10 +52,10 @@ function Design1Full({ onBack }) {
         zIndex: 10,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ 
-            width: 38, 
-            height: 38, 
-            background: 'linear-gradient(135deg, #F97316, #EF4444)', 
+          <div style={{
+            width: 38,
+            height: 38,
+            background: 'linear-gradient(135deg, #F97316, #EF4444)',
             borderRadius: 12,
             display: 'flex',
             alignItems: 'center',
@@ -78,7 +78,7 @@ function Design1Full({ onBack }) {
 
       {/* Hero */}
       <div style={{ textAlign: 'center', padding: '80px 24px 60px', maxWidth: 800, margin: '0 auto', position: 'relative', zIndex: 10 }}>
-        <div style={{ 
+        <div style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: 8,
@@ -93,16 +93,16 @@ function Design1Full({ onBack }) {
         }}>
           <span style={{ fontSize: 18 }}>🎉</span> Join 10,000+ creators building apps
         </div>
-        <h1 style={{ 
-          fontSize: 58, 
-          fontWeight: 700, 
-          color: '#7C2D12', 
+        <h1 style={{
+          fontSize: 58,
+          fontWeight: 700,
+          color: '#7C2D12',
           lineHeight: 1.1,
           marginBottom: 24,
           letterSpacing: '-0.02em',
         }}>
-          Build apps that<br/>
-          <span style={{ 
+          Build apps that<br />
+          <span style={{
             background: 'linear-gradient(135deg, #F97316, #EF4444, #DC2626)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -111,7 +111,7 @@ function Design1Full({ onBack }) {
         <p style={{ fontSize: 20, color: '#9A3412', lineHeight: 1.6, marginBottom: 40, maxWidth: 550, margin: '0 auto 40px', opacity: 0.85 }}>
           Skip the boring stuff. Describe what you want and get a real, working app in minutes. It's actually fun!
         </p>
-        
+
         {/* Chat Input */}
         <div style={{
           background: 'white',
@@ -123,18 +123,18 @@ function Design1Full({ onBack }) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px' }}>
             <span style={{ fontSize: 22 }}>💭</span>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="What do you want to create today?"
               style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, color: '#7C2D12' }}
             />
-            <button style={{ 
+            <button style={{
               padding: '12px 24px',
-              background: 'linear-gradient(135deg, #F97316, #EF4444)', 
-              border: 'none', 
-              borderRadius: 16, 
-              color: 'white', 
-              fontSize: 15, 
+              background: 'linear-gradient(135deg, #F97316, #EF4444)',
+              border: 'none',
+              borderRadius: 16,
+              color: 'white',
+              fontSize: 15,
               fontWeight: 600,
               cursor: 'pointer',
               boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)',
@@ -156,7 +156,7 @@ function Design1Full({ onBack }) {
         </div>
       </div>
 
-      {/* App Gallery */}
+      {/* Solution Gallery */}
       <div style={{ padding: '50px 48px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 10 }}>
         <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '0.05em', color: '#EA580C', marginBottom: 28, textAlign: 'center' }}>
           ✨ FROM THE COMMUNITY
@@ -168,18 +168,18 @@ function Design1Full({ onBack }) {
             { name: 'Team Wiki', emoji: '📚', bg: 'linear-gradient(135deg, #DBEAFE, #BFDBFE)' },
             { name: 'Event Planner', emoji: '🎉', bg: 'linear-gradient(135deg, #FEE2E2, #FECACA)' },
           ].map((app, i) => (
-            <div key={i} style={{ 
-              background: 'white', 
-              borderRadius: 20, 
-              padding: 24, 
+            <div key={i} style={{
+              background: 'white',
+              borderRadius: 20,
+              padding: 24,
               boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
               cursor: 'pointer',
               transition: 'transform 0.2s',
             }}>
-              <div style={{ 
-                height: 90, 
-                background: app.bg, 
-                borderRadius: 14, 
+              <div style={{
+                height: 90,
+                background: app.bg,
+                borderRadius: 14,
                 marginBottom: 16,
                 display: 'flex',
                 alignItems: 'center',
@@ -251,41 +251,41 @@ function Design2Full({ onBack }) {
 
       {/* Hero */}
       <div style={{ textAlign: 'center', padding: '120px 24px 80px', maxWidth: 900, margin: '0 auto' }}>
-        <h1 style={{ 
-          fontSize: 64, 
-          fontWeight: 700, 
-          color: 'white', 
+        <h1 style={{
+          fontSize: 64,
+          fontWeight: 700,
+          color: 'white',
           lineHeight: 1.1,
           marginBottom: 24,
           letterSpacing: '-0.03em',
         }}>
-          Build in minutes.<br/>
+          Build in minutes.<br />
           <span style={{ color: '#10B981' }}>Deploy instantly.</span>
         </h1>
         <p style={{ fontSize: 20, color: '#71717A', lineHeight: 1.6, marginBottom: 48, maxWidth: 600, margin: '0 auto 48px' }}>
           Everything pre-connected. Database, auth, APIs, AI—all wired up and ready. Just describe your app and go.
         </p>
-        
+
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 80 }}>
-          <button style={{ 
-            padding: '16px 32px', 
-            background: '#10B981', 
-            border: 'none', 
-            color: 'white', 
-            borderRadius: 8, 
-            fontSize: 16, 
-            fontWeight: 500, 
+          <button style={{
+            padding: '16px 32px',
+            background: '#10B981',
+            border: 'none',
+            color: 'white',
+            borderRadius: 8,
+            fontSize: 16,
+            fontWeight: 500,
             cursor: 'pointer',
           }}>Start Building Free →</button>
-          <button style={{ 
-            padding: '16px 32px', 
-            background: 'transparent', 
-            border: '1px solid rgba(255,255,255,0.2)', 
-            color: 'white', 
-            borderRadius: 8, 
-            fontSize: 16, 
+          <button style={{
+            padding: '16px 32px',
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.2)',
+            color: 'white',
+            borderRadius: 8,
+            fontSize: 16,
             cursor: 'pointer',
-          }}>Browse Apps</button>
+          }}>View Gallery</button>
         </div>
 
         {/* Features */}
@@ -295,10 +295,10 @@ function Design2Full({ onBack }) {
             { icon: '🌍', title: '1000+ Apps', desc: 'Browse and remix community apps. Free to use and customize.' },
             { icon: '🚀', title: 'Production Ready', desc: 'Real apps, real users. Share with colleagues in minutes.' },
           ].map((f, i) => (
-            <div key={i} style={{ 
-              background: 'rgba(255,255,255,0.03)', 
+            <div key={i} style={{
+              background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 12, 
+              borderRadius: 12,
               padding: 24,
             }}>
               <div style={{ fontSize: 28, marginBottom: 12 }}>{f.icon}</div>
@@ -364,10 +364,10 @@ function Design3Full({ onBack }) {
 
       {/* Hero */}
       <div style={{ textAlign: 'center', padding: '100px 24px 60px', maxWidth: 900, margin: '0 auto' }}>
-        <h1 style={{ 
-          fontSize: 52, 
-          fontWeight: 600, 
-          color: 'white', 
+        <h1 style={{
+          fontSize: 52,
+          fontWeight: 600,
+          color: 'white',
           lineHeight: 1.2,
           marginBottom: 20,
         }}>
@@ -388,19 +388,19 @@ function Design3Full({ onBack }) {
           textAlign: 'left',
         }}>
           <p style={{ fontSize: 24, color: '#71717A', lineHeight: 1.8 }}>
-            Make me <span style={{ color: 'white', borderBottom: '2px solid #F97316' }}>a productivity tool</span><br/>
-            for <span style={{ color: 'white', borderBottom: '2px solid #8B5CF6' }}>small teams</span><br/>
+            Make me <span style={{ color: 'white', borderBottom: '2px solid #F97316' }}>a productivity tool</span><br />
+            for <span style={{ color: 'white', borderBottom: '2px solid #8B5CF6' }}>small teams</span><br />
             that helps <span style={{ color: 'white', borderBottom: '2px solid #10B981' }}>track tasks and deadlines</span>
           </p>
-          <button style={{ 
+          <button style={{
             marginTop: 24,
-            padding: '14px 28px', 
-            background: 'white', 
-            border: 'none', 
-            color: '#18181B', 
-            borderRadius: 8, 
-            fontSize: 15, 
-            fontWeight: 500, 
+            padding: '14px 28px',
+            background: 'white',
+            border: 'none',
+            color: '#18181B',
+            borderRadius: 8,
+            fontSize: 15,
+            fontWeight: 500,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -414,10 +414,10 @@ function Design3Full({ onBack }) {
       </div>
 
       {/* Floating App Previews */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        gap: 20, 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 20,
         padding: '0 48px',
         perspective: '1000px',
       }}>
@@ -501,42 +501,42 @@ function Design4Full({ onBack }) {
 
       {/* Hero */}
       <div style={{ textAlign: 'center', padding: '140px 24px 100px', maxWidth: 800, margin: '0 auto' }}>
-        <h1 style={{ 
-          fontSize: 64, 
-          fontWeight: 700, 
-          color: '#000', 
+        <h1 style={{
+          fontSize: 64,
+          fontWeight: 700,
+          color: '#000',
           lineHeight: 1.1,
           marginBottom: 24,
           letterSpacing: '-0.04em',
         }}>
-          Apps that work.<br/>
+          Apps that work.<br />
           From day one.
         </h1>
         <p style={{ fontSize: 20, color: '#666', lineHeight: 1.6, marginBottom: 40, maxWidth: 540, margin: '0 auto 40px' }}>
           Basebase pre-connects your database, auth, APIs, and AI so you can ship in minutes, not months.
         </p>
-        
+
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-          <button style={{ 
-            padding: '14px 28px', 
-            background: '#000', 
-            border: 'none', 
-            color: 'white', 
-            borderRadius: 8, 
-            fontSize: 15, 
-            fontWeight: 500, 
+          <button style={{
+            padding: '14px 28px',
+            background: '#000',
+            border: 'none',
+            color: 'white',
+            borderRadius: 8,
+            fontSize: 15,
+            fontWeight: 500,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
           }}>▲ Start Building</button>
-          <button style={{ 
-            padding: '14px 28px', 
-            background: 'white', 
-            border: '1px solid #E5E5E5', 
-            color: '#000', 
-            borderRadius: 8, 
-            fontSize: 15, 
+          <button style={{
+            padding: '14px 28px',
+            background: 'white',
+            border: '1px solid #E5E5E5',
+            color: '#000',
+            borderRadius: 8,
+            fontSize: 15,
             cursor: 'pointer',
           }}>Browse 1,200+ Apps</button>
         </div>
@@ -641,10 +641,10 @@ function Design5Full({ onBack }) {
         zIndex: 10,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ 
-            width: 36, 
-            height: 36, 
-            background: 'linear-gradient(135deg, #8B5CF6, #EC4899)', 
+          <div style={{
+            width: 36,
+            height: 36,
+            background: 'linear-gradient(135deg, #8B5CF6, #EC4899)',
             borderRadius: 10,
           }} />
           <span style={{ fontSize: 22, fontWeight: 700, color: '#1E1B4B' }}>Basebase</span>
@@ -662,7 +662,7 @@ function Design5Full({ onBack }) {
 
       {/* Hero */}
       <div style={{ textAlign: 'center', padding: '100px 24px 60px', maxWidth: 800, margin: '0 auto', position: 'relative', zIndex: 10 }}>
-        <div style={{ 
+        <div style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: 8,
@@ -677,16 +677,16 @@ function Design5Full({ onBack }) {
         }}>
           <span style={{ fontSize: 16 }}>🎉</span> Now with AI superpowers
         </div>
-        <h1 style={{ 
-          fontSize: 60, 
-          fontWeight: 700, 
-          color: '#1E1B4B', 
+        <h1 style={{
+          fontSize: 60,
+          fontWeight: 700,
+          color: '#1E1B4B',
           lineHeight: 1.1,
           marginBottom: 24,
           letterSpacing: '-0.02em',
         }}>
-          Create apps that<br/>
-          <span style={{ 
+          Create apps that<br />
+          <span style={{
             background: 'linear-gradient(135deg, #8B5CF6, #EC4899, #F97316)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -695,7 +695,7 @@ function Design5Full({ onBack }) {
         <p style={{ fontSize: 20, color: '#6B7280', lineHeight: 1.6, marginBottom: 48 }}>
           No coding. No complexity. Just describe your dream app and watch it come to life. Share it with anyone in minutes.
         </p>
-        
+
         {/* Chat Input */}
         <div style={{
           background: 'white',
@@ -707,18 +707,18 @@ function Design5Full({ onBack }) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px' }}>
             <span style={{ fontSize: 20 }}>✨</span>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="What would you like to create today?"
               style={{ flex: 1, border: 'none', outline: 'none', fontSize: 17, color: '#1E1B4B' }}
             />
-            <button style={{ 
+            <button style={{
               padding: '12px 24px',
-              background: 'linear-gradient(135deg, #8B5CF6, #EC4899)', 
-              border: 'none', 
-              borderRadius: 16, 
-              color: 'white', 
-              fontSize: 15, 
+              background: 'linear-gradient(135deg, #8B5CF6, #EC4899)',
+              border: 'none',
+              borderRadius: 16,
+              color: 'white',
+              fontSize: 15,
               fontWeight: 500,
               cursor: 'pointer',
             }}>Create</button>
@@ -741,10 +741,10 @@ function Design5Full({ onBack }) {
       </div>
 
       {/* Stats */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        gap: 64, 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 64,
         padding: '60px 24px',
         position: 'relative',
         zIndex: 10,
@@ -820,20 +820,20 @@ function Design6Full({ onBack }) {
         <div style={{ marginBottom: 32 }}>
           <span style={{ color: '#8B949E', fontSize: 14 }}>$ describe your-app</span>
         </div>
-        <h1 style={{ 
-          fontSize: 48, 
-          fontWeight: 400, 
-          color: '#E6EDF3', 
+        <h1 style={{
+          fontSize: 48,
+          fontWeight: 400,
+          color: '#E6EDF3',
           lineHeight: 1.3,
           marginBottom: 24,
         }}>
-          <span style={{ color: '#3FB950' }}>Build</span> production apps<br/>
+          <span style={{ color: '#3FB950' }}>Build</span> production apps<br />
           <span style={{ color: '#58A6FF' }}>without</span> the boilerplate
         </h1>
         <p style={{ fontSize: 16, color: '#8B949E', lineHeight: 1.7, marginBottom: 40, maxWidth: 600 }}>
           Zero config. Zero API keys. Just describe what you need and ship it. Database, auth, and AI pre-connected.
         </p>
-        
+
         {/* Terminal Input */}
         <div style={{
           background: '#161B22',
@@ -849,15 +849,15 @@ function Design6Full({ onBack }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: '#3FB950' }}>$</span>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="basebase create 'a task tracker for my team'"
-              style={{ 
-                flex: 1, 
-                border: 'none', 
-                outline: 'none', 
-                fontSize: 14, 
-                color: '#E6EDF3', 
+              style={{
+                flex: 1,
+                border: 'none',
+                outline: 'none',
+                fontSize: 14,
+                color: '#E6EDF3',
                 background: 'transparent',
                 fontFamily: 'inherit',
               }}
@@ -920,10 +920,10 @@ function Design7Full({ onBack }) {
         margin: '0 auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ 
-            width: 40, 
-            height: 40, 
-            background: 'linear-gradient(135deg, #60A5FA, #A78BFA)', 
+          <div style={{
+            width: 40,
+            height: 40,
+            background: 'linear-gradient(135deg, #60A5FA, #A78BFA)',
             borderRadius: 12,
             display: 'flex',
             alignItems: 'center',
@@ -946,7 +946,7 @@ function Design7Full({ onBack }) {
 
       {/* Hero */}
       <div style={{ textAlign: 'center', padding: '100px 24px 80px', maxWidth: 800, margin: '0 auto' }}>
-        <div style={{ 
+        <div style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: 8,
@@ -960,15 +960,15 @@ function Design7Full({ onBack }) {
         }}>
           <span>💫</span> Your apps, effortlessly
         </div>
-        <h1 style={{ 
-          fontSize: 56, 
-          fontWeight: 700, 
-          color: '#1E3A5F', 
+        <h1 style={{
+          fontSize: 56,
+          fontWeight: 700,
+          color: '#1E3A5F',
           lineHeight: 1.15,
           marginBottom: 24,
         }}>
-          Build with ease.<br/>
-          <span style={{ 
+          Build with ease.<br />
+          <span style={{
             background: 'linear-gradient(135deg, #60A5FA, #A78BFA)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -977,7 +977,7 @@ function Design7Full({ onBack }) {
         <p style={{ fontSize: 19, color: '#64748B', lineHeight: 1.7, marginBottom: 40 }}>
           Everything you need is already connected. Just describe your idea and watch it become a real, working app you can share with anyone.
         </p>
-        
+
         {/* Soft Input */}
         <div style={{
           background: 'white',
@@ -989,18 +989,18 @@ function Design7Full({ onBack }) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '8px 16px' }}>
             <span style={{ fontSize: 24, opacity: 0.5 }}>💭</span>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="I want to build..."
               style={{ flex: 1, border: 'none', outline: 'none', fontSize: 17, color: '#1E3A5F' }}
             />
-            <button style={{ 
+            <button style={{
               padding: '14px 28px',
-              background: 'linear-gradient(135deg, #60A5FA, #A78BFA)', 
-              border: 'none', 
-              borderRadius: 18, 
-              color: 'white', 
-              fontSize: 15, 
+              background: 'linear-gradient(135deg, #60A5FA, #A78BFA)',
+              border: 'none',
+              borderRadius: 18,
+              color: 'white',
+              fontSize: 15,
               fontWeight: 500,
               cursor: 'pointer',
             }}>Create</button>
@@ -1069,10 +1069,10 @@ function Design8Full({ onBack }) {
         borderBottom: '3px solid #000',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ 
-            width: 36, 
-            height: 36, 
-            background: '#000', 
+          <div style={{
+            width: 36,
+            height: 36,
+            background: '#000',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1094,23 +1094,23 @@ function Design8Full({ onBack }) {
 
       {/* Hero */}
       <div style={{ padding: '100px 48px 80px', maxWidth: 1000, margin: '0 auto' }}>
-        <h1 style={{ 
-          fontSize: 72, 
-          fontWeight: 900, 
-          color: '#000', 
+        <h1 style={{
+          fontSize: 72,
+          fontWeight: 900,
+          color: '#000',
           lineHeight: 1.0,
           marginBottom: 32,
           fontFamily: "'JetBrains Mono', monospace",
           letterSpacing: '-0.03em',
         }}>
-          APPS THAT<br/>
+          APPS THAT<br />
           <span style={{ background: '#FACC15', padding: '0 8px' }}>JUST WORK.</span>
         </h1>
         <p style={{ fontSize: 20, color: '#000', lineHeight: 1.6, marginBottom: 48, maxWidth: 600, fontFamily: "'JetBrains Mono', monospace" }}>
-          No config. No API keys. No BS.<br/>
+          No config. No API keys. No BS.<br />
           Describe → Build → Ship.
         </p>
-        
+
         {/* Code Block Input */}
         <div style={{
           background: '#000',
@@ -1121,15 +1121,15 @@ function Design8Full({ onBack }) {
           <div style={{ color: '#888', fontSize: 14, marginBottom: 8 }}>// What do you want to build?</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: '#FACC15' }}>→</span>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder='"A CRM for my small business"'
-              style={{ 
-                flex: 1, 
-                border: 'none', 
-                outline: 'none', 
-                fontSize: 16, 
-                color: '#fff', 
+              style={{
+                flex: 1,
+                border: 'none',
+                outline: 'none',
+                fontSize: 16,
+                color: '#fff',
                 background: 'transparent',
                 fontFamily: 'inherit',
               }}
@@ -1144,8 +1144,8 @@ function Design8Full({ onBack }) {
             { num: '< 5 MIN', label: 'TO DEPLOY' },
             { num: '0', label: 'API KEYS NEEDED' },
           ].map((stat, i) => (
-            <div key={i} style={{ 
-              padding: 32, 
+            <div key={i} style={{
+              padding: 32,
               borderRight: i < 2 ? '3px solid #000' : 'none',
               textAlign: 'center',
             }}>
@@ -1222,10 +1222,10 @@ function Design9Full({ onBack }) {
         borderBottom: '1px solid rgba(255,255,255,0.1)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ 
-            width: 36, 
-            height: 36, 
-            background: 'linear-gradient(135deg, #06B6D4, #8B5CF6, #EC4899)', 
+          <div style={{
+            width: 36,
+            height: 36,
+            background: 'linear-gradient(135deg, #06B6D4, #8B5CF6, #EC4899)',
             borderRadius: 8,
           }} />
           <span style={{ fontSize: 20, fontWeight: 700, color: 'white' }}>basebase</span>
@@ -1243,16 +1243,16 @@ function Design9Full({ onBack }) {
 
       {/* Hero */}
       <div style={{ textAlign: 'center', padding: '120px 24px 80px', maxWidth: 900, margin: '0 auto', position: 'relative', zIndex: 10 }}>
-        <h1 style={{ 
-          fontSize: 64, 
-          fontWeight: 700, 
-          color: 'white', 
+        <h1 style={{
+          fontSize: 64,
+          fontWeight: 700,
+          color: 'white',
           lineHeight: 1.1,
           marginBottom: 24,
           letterSpacing: '-0.02em',
         }}>
-          Build the future.<br/>
-          <span style={{ 
+          Build the future.<br />
+          <span style={{
             background: 'linear-gradient(135deg, #06B6D4, #8B5CF6, #EC4899)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -1261,7 +1261,7 @@ function Design9Full({ onBack }) {
         <p style={{ fontSize: 20, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 48 }}>
           No APIs to configure. No databases to provision. Just pure creation. Describe your app and watch it materialize.
         </p>
-        
+
         {/* Neon Input */}
         <div style={{
           background: 'rgba(255,255,255,0.05)',
@@ -1273,25 +1273,25 @@ function Design9Full({ onBack }) {
           boxShadow: '0 0 40px rgba(139, 92, 246, 0.2)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
-            <div style={{ 
-              width: 8, 
-              height: 8, 
-              borderRadius: '50%', 
+            <div style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
               background: 'linear-gradient(135deg, #06B6D4, #8B5CF6)',
               boxShadow: '0 0 12px #8B5CF6',
             }} />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Describe your dream app..."
               style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, color: 'white', background: 'transparent' }}
             />
-            <button style={{ 
+            <button style={{
               padding: '12px 24px',
-              background: 'linear-gradient(135deg, #06B6D4, #8B5CF6, #EC4899)', 
-              border: 'none', 
-              borderRadius: 10, 
-              color: 'white', 
-              fontSize: 15, 
+              background: 'linear-gradient(135deg, #06B6D4, #8B5CF6, #EC4899)',
+              border: 'none',
+              borderRadius: 10,
+              color: 'white',
+              fontSize: 15,
               fontWeight: 500,
               cursor: 'pointer',
             }}>Create →</button>
@@ -1368,20 +1368,20 @@ function Design10Full({ onBack }) {
 
       {/* Hero */}
       <div style={{ padding: '120px 64px 100px', maxWidth: 1000, margin: '0 auto' }}>
-        <div style={{ 
-          fontSize: 12, 
-          color: '#9B9690', 
-          marginBottom: 24, 
+        <div style={{
+          fontSize: 12,
+          color: '#9B9690',
+          marginBottom: 24,
           fontFamily: "'JetBrains Mono', monospace",
           letterSpacing: '0.15em',
           textTransform: 'uppercase',
         }}>
           The app builder for everyone
         </div>
-        <h1 style={{ 
-          fontSize: 64, 
-          fontWeight: 400, 
-          color: '#2D2A26', 
+        <h1 style={{
+          fontSize: 64,
+          fontWeight: 400,
+          color: '#2D2A26',
           lineHeight: 1.15,
           marginBottom: 32,
           fontStyle: 'italic',
@@ -1392,7 +1392,7 @@ function Design10Full({ onBack }) {
         <p style={{ fontSize: 22, color: '#6B6760', lineHeight: 1.7, marginBottom: 48, maxWidth: 550 }}>
           We've connected everything you need—database, authentication, AI—so you can focus on what matters: building something meaningful.
         </p>
-        
+
         {/* Editorial Input */}
         <div style={{
           display: 'flex',
@@ -1402,26 +1402,26 @@ function Design10Full({ onBack }) {
           borderBottom: '2px solid #2D2A26',
           maxWidth: 500,
         }}>
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="What would you like to create?"
-            style={{ 
-              flex: 1, 
-              border: 'none', 
-              outline: 'none', 
-              fontSize: 18, 
-              color: '#2D2A26', 
+            style={{
+              flex: 1,
+              border: 'none',
+              outline: 'none',
+              fontSize: 18,
+              color: '#2D2A26',
               background: 'transparent',
               fontFamily: 'inherit',
               fontStyle: 'italic',
             }}
           />
-          <button style={{ 
+          <button style={{
             padding: '12px 28px',
-            background: '#2D2A26', 
-            border: 'none', 
-            color: '#FAF9F6', 
-            fontSize: 14, 
+            background: '#2D2A26',
+            border: 'none',
+            color: '#FAF9F6',
+            fontSize: 14,
             cursor: 'pointer',
             fontFamily: "'JetBrains Mono', monospace",
           }}>Begin →</button>
@@ -1435,10 +1435,10 @@ function Design10Full({ onBack }) {
             { title: 'Instant', desc: 'From idea to shareable app in minutes. Real production apps, not prototypes.' },
           ].map((f, i) => (
             <div key={i} style={{ flex: 1 }}>
-              <h3 style={{ 
-                fontSize: 14, 
-                color: '#2D2A26', 
-                marginBottom: 12, 
+              <h3 style={{
+                fontSize: 14,
+                color: '#2D2A26',
+                marginBottom: 12,
                 fontFamily: "'JetBrains Mono', monospace",
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
@@ -1488,8 +1488,8 @@ function Design11Full({ onBack }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <rect width="24" height="24" rx="6" fill="#1D1D1F"/>
-            <path d="M7 12h10M12 7v10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <rect width="24" height="24" rx="6" fill="#1D1D1F" />
+            <path d="M7 12h10M12 7v10" stroke="white" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </div>
         <div style={{ display: 'flex', gap: 32 }}>
@@ -1504,52 +1504,52 @@ function Design11Full({ onBack }) {
 
       {/* Hero */}
       <div style={{ textAlign: 'center', padding: '140px 24px 100px', maxWidth: 900, margin: '0 auto' }}>
-        <h1 style={{ 
-          fontSize: 80, 
-          fontWeight: 600, 
-          color: '#1D1D1F', 
+        <h1 style={{
+          fontSize: 80,
+          fontWeight: 600,
+          color: '#1D1D1F',
           lineHeight: 1.05,
           marginBottom: 20,
           letterSpacing: '-0.03em',
         }}>
           Basebase
         </h1>
-        <p style={{ 
-          fontSize: 28, 
-          fontWeight: 400, 
-          color: '#1D1D1F', 
+        <p style={{
+          fontSize: 28,
+          fontWeight: 400,
+          color: '#1D1D1F',
           lineHeight: 1.2,
           marginBottom: 16,
           letterSpacing: '-0.01em',
         }}>
           Build beautifully. Ship instantly.
         </p>
-        <p style={{ 
-          fontSize: 21, 
-          color: '#86868B', 
-          lineHeight: 1.4, 
-          marginBottom: 40, 
-          maxWidth: 500, 
+        <p style={{
+          fontSize: 21,
+          color: '#86868B',
+          lineHeight: 1.4,
+          marginBottom: 40,
+          maxWidth: 500,
           margin: '0 auto 40px',
           fontWeight: 400,
         }}>
           Everything you need. Nothing you don't.
         </p>
-        
+
         <div style={{ display: 'flex', gap: 20, justifyContent: 'center' }}>
-          <a href="#" style={{ 
-            padding: '18px 32px', 
-            background: '#0066CC', 
-            color: 'white', 
-            borderRadius: 980, 
-            fontSize: 17, 
+          <a href="#" style={{
+            padding: '18px 32px',
+            background: '#0066CC',
+            color: 'white',
+            borderRadius: 980,
+            fontSize: 17,
             fontWeight: 400,
             textDecoration: 'none',
           }}>Start building</a>
-          <a href="#" style={{ 
-            padding: '18px 32px', 
-            color: '#0066CC', 
-            fontSize: 17, 
+          <a href="#" style={{
+            padding: '18px 32px',
+            color: '#0066CC',
+            fontSize: 17,
             fontWeight: 400,
             textDecoration: 'none',
           }}>Watch the film ›</a>
@@ -1557,9 +1557,9 @@ function Design11Full({ onBack }) {
       </div>
 
       {/* Product showcase area */}
-      <div style={{ 
-        maxWidth: 1000, 
-        margin: '0 auto 120px', 
+      <div style={{
+        maxWidth: 1000,
+        margin: '0 auto 120px',
         padding: '0 48px',
       }}>
         <div style={{
@@ -1584,8 +1584,8 @@ function Design11Full({ onBack }) {
             <div style={{ display: 'flex', gap: 24 }}>
               <div style={{ width: 200 }}>
                 {['Dashboard', 'Projects', 'Team', 'Settings'].map((item, i) => (
-                  <div key={i} style={{ 
-                    padding: '12px 16px', 
+                  <div key={i} style={{
+                    padding: '12px 16px',
                     borderRadius: 8,
                     background: i === 0 ? '#F5F5F7' : 'transparent',
                     fontSize: 14,
@@ -1597,7 +1597,7 @@ function Design11Full({ onBack }) {
               <div style={{ flex: 1 }}>
                 <div style={{ height: 24, width: 180, background: '#F5F5F7', borderRadius: 6, marginBottom: 16 }} />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-                  {[1,2,3].map(i => (
+                  {[1, 2, 3].map(i => (
                     <div key={i} style={{ height: 100, background: '#F5F5F7', borderRadius: 12 }} />
                   ))}
                 </div>
@@ -1608,9 +1608,9 @@ function Design11Full({ onBack }) {
       </div>
 
       {/* Feature highlights */}
-      <div style={{ 
-        maxWidth: 1000, 
-        margin: '0 auto', 
+      <div style={{
+        maxWidth: 1000,
+        margin: '0 auto',
         padding: '0 48px 120px',
       }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32 }}>
@@ -1620,16 +1620,16 @@ function Design11Full({ onBack }) {
             { title: 'Beautiful by default', desc: 'Every app looks stunning. No design skills required.' },
           ].map((f, i) => (
             <div key={i} style={{ textAlign: 'center' }}>
-              <h3 style={{ 
-                fontSize: 24, 
-                fontWeight: 600, 
-                color: '#1D1D1F', 
+              <h3 style={{
+                fontSize: 24,
+                fontWeight: 600,
+                color: '#1D1D1F',
                 marginBottom: 12,
                 letterSpacing: '-0.01em',
               }}>{f.title}</h3>
-              <p style={{ 
-                fontSize: 17, 
-                color: '#86868B', 
+              <p style={{
+                fontSize: 17,
+                color: '#86868B',
                 lineHeight: 1.5,
               }}>{f.desc}</p>
             </div>
@@ -1638,30 +1638,30 @@ function Design11Full({ onBack }) {
       </div>
 
       {/* Community section */}
-      <div style={{ 
-        background: '#F5F5F7', 
+      <div style={{
+        background: '#F5F5F7',
         padding: '100px 48px',
         textAlign: 'center',
       }}>
-        <h2 style={{ 
-          fontSize: 48, 
-          fontWeight: 600, 
-          color: '#1D1D1F', 
+        <h2 style={{
+          fontSize: 48,
+          fontWeight: 600,
+          color: '#1D1D1F',
           marginBottom: 12,
           letterSpacing: '-0.02em',
         }}>
           Explore 1,200+ apps
         </h2>
-        <p style={{ 
-          fontSize: 21, 
-          color: '#86868B', 
+        <p style={{
+          fontSize: 21,
+          color: '#86868B',
           marginBottom: 32,
         }}>
           Built by creators. Free to use and customize.
         </p>
-        <a href="#" style={{ 
-          color: '#0066CC', 
-          fontSize: 21, 
+        <a href="#" style={{
+          color: '#0066CC',
+          fontSize: 21,
           textDecoration: 'none',
         }}>Browse the gallery ›</a>
       </div>
@@ -1691,9 +1691,9 @@ function Design11Full({ onBack }) {
 // ============================================================================
 function MiniPreview({ design, onClick }) {
   const { id, name, description, colors, accent } = design;
-  
+
   return (
-    <div 
+    <div
       onClick={onClick}
       style={{
         background: colors.bg,
@@ -1722,7 +1722,7 @@ function MiniPreview({ design, onClick }) {
           </div>
           <div style={{ width: 40, height: 16, background: accent, borderRadius: 8 }} />
         </div>
-        
+
         {/* Mini headline */}
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <div style={{ width: '80%', height: 12, background: colors.text, borderRadius: 4, margin: '0 auto 8px', opacity: 0.8 }} />
@@ -1730,13 +1730,13 @@ function MiniPreview({ design, onClick }) {
           <div style={{ width: '70%', height: 6, background: colors.text, borderRadius: 3, margin: '0 auto 4px', opacity: 0.3 }} />
           <div style={{ width: '50%', height: 6, background: colors.text, borderRadius: 3, margin: '0 auto', opacity: 0.3 }} />
         </div>
-        
+
         {/* Mini input */}
-        <div style={{ 
-          width: '75%', 
-          height: 28, 
-          background: colors.input, 
-          borderRadius: 8, 
+        <div style={{
+          width: '75%',
+          height: 28,
+          background: colors.input,
+          borderRadius: 8,
           margin: '0 auto',
           display: 'flex',
           alignItems: 'center',
@@ -1746,17 +1746,17 @@ function MiniPreview({ design, onClick }) {
           <div style={{ width: 20, height: 16, background: accent, borderRadius: 4 }} />
         </div>
       </div>
-      
+
       {/* Card Footer */}
-      <div style={{ 
-        padding: '16px 20px', 
+      <div style={{
+        padding: '16px 20px',
         background: colors.footer || 'rgba(0,0,0,0.03)',
         borderTop: `1px solid ${colors.border || 'rgba(0,0,0,0.06)'}`,
       }}>
-        <h3 style={{ 
-          fontSize: 16, 
-          fontWeight: 600, 
-          color: colors.footerText || '#1a1a1a', 
+        <h3 style={{
+          fontSize: 16,
+          fontWeight: 600,
+          color: colors.footerText || '#1a1a1a',
           marginBottom: 4,
         }}>{name}</h3>
         <p style={{ fontSize: 13, color: colors.footerSubtext || '#666', lineHeight: 1.4 }}>{description}</p>
@@ -1979,9 +1979,9 @@ function Gallery() {
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <h1 style={{ 
-            fontSize: 36, 
-            fontWeight: 700, 
+          <h1 style={{
+            fontSize: 36,
+            fontWeight: 700,
             color: '#0F172A',
             marginBottom: 12,
             letterSpacing: '-0.02em',
@@ -2000,18 +2000,18 @@ function Gallery() {
           gap: 24,
         }}>
           {designs.map((design) => (
-            <MiniPreview 
-              key={design.id} 
-              design={design} 
-              onClick={() => setSelectedDesign(design.id)} 
+            <MiniPreview
+              key={design.id}
+              design={design}
+              onClick={() => setSelectedDesign(design.id)}
             />
           ))}
         </div>
 
         {/* Footer note */}
-        <div style={{ 
-          textAlign: 'center', 
-          marginTop: 48, 
+        <div style={{
+          textAlign: 'center',
+          marginTop: 48,
           padding: 24,
           background: 'white',
           borderRadius: 12,
@@ -2021,9 +2021,9 @@ function Gallery() {
             <strong style={{ color: '#0F172A' }}>Key Messaging:</strong>
           </p>
           <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6 }}>
-            • <strong>For non-technical users:</strong> No stress, no coding, just describe and build<br/>
-            • <strong>Community:</strong> 1000+ free apps to use, remix, and customize<br/>
-            • <strong>Speed:</strong> Production-ready apps in minutes, share instantly<br/>
+            • <strong>For non-technical users:</strong> No stress, no coding, just describe and build<br />
+            • <strong>Community:</strong> 1000+ free apps to use, remix, and customize<br />
+            • <strong>Speed:</strong> Production-ready apps in minutes, share instantly<br />
             • <strong>Zero friction:</strong> No API keys, no sign-ups to other services—it just works
           </p>
         </div>

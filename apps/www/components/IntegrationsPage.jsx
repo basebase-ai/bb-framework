@@ -23,9 +23,12 @@ import {
   ThemeIcon,
   TextInput,
   Avatar,
+  Menu,
 } from "@mantine/core";
 import { showNotification } from "@mantine/notifications";
-import { IconThumbUp, IconChevronDown, IconChevronUp, IconPlug, IconPlus, IconPencil, IconSearch, IconX } from "@tabler/icons-react";
+import { IconThumbUp, IconChevronDown, IconChevronUp, IconPlug, IconPlus, IconPencil, IconSearch, IconX, IconLogout, IconUser } from "@tabler/icons-react";
+import { signOut } from "firebase/auth";
+import { auth } from "../../../framework/core/firebase-init.js";
 import {
   SiSlack,
   SiAirtable,
@@ -183,19 +186,27 @@ export default function IntegrationsPage({
   const { profile } = useUserProfile(user?.uid);
   const { isOwner, isAdmin } = useAppMembership(APP_ID);
   const { data: rawIntegrations = [], loading, error } = useCollection(getCollection("integrations_public"));
-  const [submittingId, setSubmittingId] = useState(/** @type {string | null} */ (null));
-  const [expandedId, setExpandedId] = useState(/** @type {string | null} */ (null));
+  const [submittingId, setSubmittingId] = useState(/** @type {string | null} */(null));
+  const [expandedId, setExpandedId] = useState(/** @type {string | null} */(null));
 
   // Modal state for admin edit/create
   const [modalOpened, setModalOpened] = useState(false);
-  const [modalMode, setModalMode] = useState(/** @type {"create" | "edit"} */ ("create"));
-  const [selectedIntegration, setSelectedIntegration] = useState(/** @type {Integration | null} */ (null));
+  const [modalMode, setModalMode] = useState(/** @type {"create" | "edit"} */("create"));
+  const [selectedIntegration, setSelectedIntegration] = useState(/** @type {Integration | null} */(null));
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
 
   // Use provided onSignIn callback or fall back to framework's promptSignIn
   const handleSignIn = onSignIn || promptSignIn;
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
 
   // Get user info from props or profile
   const displayPhotoURL = userPhotoURL || profile?.photoURL;
@@ -211,14 +222,14 @@ export default function IntegrationsPage({
       document.head.appendChild(link);
     }
   }, []);
-  
+
   /** Open modal to create a new integration */
   const handleCreate = useCallback(() => {
     setSelectedIntegration(null);
     setModalMode("create");
     setModalOpened(true);
   }, []);
-  
+
   /** Open modal to edit an existing integration */
   const handleEdit = useCallback((/** @type {Integration} */ integ) => {
     setSelectedIntegration(integ);
@@ -234,7 +245,7 @@ export default function IntegrationsPage({
       return a.name.localeCompare(b.name);
     });
   }, [integrations]);
-  
+
   // Filter by search query
   const filteredIntegrations = useMemo(() => {
     if (!searchQuery.trim()) return sortedIntegrations;
@@ -314,7 +325,7 @@ export default function IntegrationsPage({
     if (!pending) return;
     sessionStorage.removeItem(PENDING_VOTE_STORAGE_KEY);
     // Fire and forget; UI will update via realtime subscription.
-    submitVote(pending).catch(() => {});
+    submitVote(pending).catch(() => { });
   }, [submitVote, user?.uid]);
 
   return (
@@ -356,11 +367,12 @@ export default function IntegrationsPage({
                 style={navLinkStyle}
                 onClick={() => onNavigateToGallery?.()}
               >
-                App Gallery
+                Solution Gallery
               </Text>
               <Text
                 size="sm"
-                style={{ ...navLinkStyle, fontWeight: 500 }}
+                style={navLinkStyle}
+                onClick={() => window.open("https://connections.basebase.com", "_self")}
               >
                 Integrations
               </Text>
@@ -375,21 +387,36 @@ export default function IntegrationsPage({
                 Documentation
               </Text>
               {user ? (
-                <Group
-                  gap="xs"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => onOpenProfile?.()}
-                >
-                  <Avatar
-                    src={displayPhotoURL}
-                    alt={displayName || "User"}
-                    size="sm"
-                    radius="xl"
-                    color="orange"
-                  >
-                    {(displayName || "U").charAt(0).toUpperCase()}
-                  </Avatar>
-                </Group>
+                <Menu position="bottom-end" withArrow>
+                  <Menu.Target>
+                    <Avatar
+                      src={displayPhotoURL}
+                      alt={displayName || "User"}
+                      size="sm"
+                      radius="xl"
+                      color="orange"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {(displayName || "U").charAt(0).toUpperCase()}
+                    </Avatar>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={<IconUser size={14} />}
+                      onClick={() => onOpenProfile?.()}
+                    >
+                      Profile
+                    </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item
+                      leftSection={<IconLogout size={14} />}
+                      color="red"
+                      onClick={handleSignOut}
+                    >
+                      Sign out
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
               ) : (
                 <Button
                   variant="subtle"
@@ -436,7 +463,7 @@ export default function IntegrationsPage({
               color="teal"
               mt="sm"
             >
-              Test Integrations
+              Connect Now
             </Button>
           </Stack>
         </Container>
@@ -554,21 +581,21 @@ export default function IntegrationsPage({
                               {badge.label}
                             </Badge>
                           </Group>
-                        <Group gap="xs">
-                          <Text size="sm" style={{ color: COLORS.slateLight }}>
-                            {integration.voteCount} upvote{integration.voteCount === 1 ? "" : "s"}
-                          </Text>
-                          {hasScopes && (
-                            <Text
-                              size="sm"
-                              style={{ color: COLORS.teal, cursor: "pointer" }}
-                              onClick={() => setExpandedId(isExpanded ? null : integration.id)}
-                            >
-                              • {integration.scopes.length} scope{integration.scopes.length === 1 ? "" : "s"}
-                              {isExpanded ? <IconChevronUp size={14} style={{ verticalAlign: "middle", marginLeft: 2 }} /> : <IconChevronDown size={14} style={{ verticalAlign: "middle", marginLeft: 2 }} />}
+                          <Group gap="xs">
+                            <Text size="sm" style={{ color: COLORS.slateLight }}>
+                              {integration.voteCount} upvote{integration.voteCount === 1 ? "" : "s"}
                             </Text>
-                          )}
-                        </Group>
+                            {hasScopes && (
+                              <Text
+                                size="sm"
+                                style={{ color: COLORS.teal, cursor: "pointer" }}
+                                onClick={() => setExpandedId(isExpanded ? null : integration.id)}
+                              >
+                                • {integration.scopes.length} scope{integration.scopes.length === 1 ? "" : "s"}
+                                {isExpanded ? <IconChevronUp size={14} style={{ verticalAlign: "middle", marginLeft: 2 }} /> : <IconChevronDown size={14} style={{ verticalAlign: "middle", marginLeft: 2 }} />}
+                              </Text>
+                            )}
+                          </Group>
                         </Stack>
                       </Group>
 
@@ -603,7 +630,7 @@ export default function IntegrationsPage({
                         </Text>
                       </Group>
                     </Group>
-                    
+
                     {hasScopes && (
                       <Collapse in={isExpanded}>
                         <Box mt="sm" pt="sm" style={{ borderTop: `1px solid ${COLORS.grey}` }}>
@@ -631,7 +658,7 @@ export default function IntegrationsPage({
           </Stack>
         </Container>
       </Box>
-      
+
       {/* Admin Modal */}
       <IntegrationModal
         opened={modalOpened}

@@ -7,7 +7,11 @@ import {
   LoadingOverlay,
   Button,
   Container,
+  Menu,
 } from "@mantine/core";
+import { IconLogout, IconUser } from "@tabler/icons-react";
+import { signOut } from "firebase/auth";
+import { auth } from "../../../framework/core/firebase-init.js";
 import { useCollection } from "../../../framework/hooks/useCollection.js";
 import { useAuth } from "../../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../../framework/hooks/useUserProfile.js";
@@ -30,7 +34,7 @@ const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Instrument+Se
 /** Basebase Logo SVG Component */
 function BasebaseLogo({ size = 28 }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56/45)}>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56 / 45)}>
       <path fill="#FF7300" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
       <path fill="#FFBE00" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
       <path fill="#FBBC05" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
@@ -51,13 +55,13 @@ function parseRoute(path) {
   if (path === "/pricing") return { view: "pricing" };
   if (path === "/integrations") return { view: "integrations" };
   if (path === "/gallery") return { view: "gallery" };
-  
+
   // Check for /gallery/app/{appId}
   const appMatch = path.match(/^\/gallery\/app\/([^/]+)/);
   if (appMatch) {
     return { view: "app-details", appId: appMatch[1] };
   }
-  
+
   // Default to homepage
   return { view: "home" };
 }
@@ -80,27 +84,35 @@ export default function AppGallery({ onSignIn }) {
       document.head.appendChild(link);
     }
   }, []);
-  
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
+
   const { data: allApps = [], loading, update: updateItem, remove: removeItem } = useCollection("apps");
-  
+
   // Parse route from current path
   const route = useMemo(() => parseRoute(path), [path]);
-  
+
   // Get this app's logo from the apps collection
   const appLogo = useMemo(() => {
     const thisApp = allApps.find(a => a.id === APP_ID);
     return thisApp?.logoURL;
   }, [allApps]);
-  
+
   const [profileModalOpened, setProfileModalOpened] = useState(false);
-  
+
   // Get selected app from route
   const selectedAppId = route.appId || null;
   const selectedAppDetails = useMemo(() => {
     if (!selectedAppId) return null;
     return allApps.find(a => a.id === selectedAppId) || null;
   }, [selectedAppId, allApps]);
-  
+
   // Navigation helpers
   const navigateToGallery = () => {
     console.log("[AppGallery] navigateToGallery called");
@@ -139,7 +151,7 @@ export default function AppGallery({ onSignIn }) {
         ...data,
         updatedAt: new Date(),
       });
-      
+
       if (!silent) {
         showNotification({
           title: "Success",
@@ -204,7 +216,7 @@ export default function AppGallery({ onSignIn }) {
   }
   if (route.view === "home") {
     return (
-      <PublicHomepage 
+      <PublicHomepage
         onSignIn={onSignIn || promptSignIn}
         onCreateApp={() => window.open("https://builder.basebase.com/?new=true", "_blank")}
         isAuthenticated={!!user}
@@ -242,8 +254,8 @@ export default function AppGallery({ onSignIn }) {
         <Container size="xl">
           <Group justify="space-between" h={72} px="md">
             {/* Logo */}
-            <Group 
-              gap={8} 
+            <Group
+              gap={8}
               align="center"
               style={{ cursor: "pointer" }}
               onClick={navigateToHome}
@@ -260,12 +272,12 @@ export default function AppGallery({ onSignIn }) {
                 size="sm"
                 style={{ ...navLinkStyle, fontWeight: 500 }}
               >
-                App Gallery
+                Solution Gallery
               </Text>
               <Text
                 size="sm"
                 style={navLinkStyle}
-                onClick={() => navigateToIntegrations()}
+                onClick={() => window.open("https://connections.basebase.com", "_self")}
               >
                 Integrations
               </Text>
@@ -280,21 +292,36 @@ export default function AppGallery({ onSignIn }) {
                 Documentation
               </Text>
               {user ? (
-                <Group
-                  gap="xs"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => setProfileModalOpened(true)}
-                >
-                  <Avatar
-                    src={profile?.photoURL}
-                    alt={profile?.displayName || user.email || "User"}
-                    size="sm"
-                    radius="xl"
-                    color="orange"
-                  >
-                    {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
-                  </Avatar>
-                </Group>
+                <Menu position="bottom-end" withArrow>
+                  <Menu.Target>
+                    <Avatar
+                      src={profile?.photoURL}
+                      alt={profile?.displayName || user.email || "User"}
+                      size="sm"
+                      radius="xl"
+                      color="orange"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
+                    </Avatar>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={<IconUser size={14} />}
+                      onClick={() => setProfileModalOpened(true)}
+                    >
+                      Profile
+                    </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item
+                      leftSection={<IconLogout size={14} />}
+                      color="red"
+                      onClick={handleSignOut}
+                    >
+                      Sign out
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
               ) : (
                 <Button
                   variant="subtle"
@@ -313,8 +340,8 @@ export default function AppGallery({ onSignIn }) {
       {/* Main Content */}
       <Container size="xl" py="xl">
         <LoadingOverlay visible={loading} />
-        
-        {/* App Gallery Headline */}
+
+        {/* Solution Gallery Headline */}
         {!selectedAppDetails && (
           <Text
             component="h1"
@@ -331,7 +358,7 @@ export default function AppGallery({ onSignIn }) {
               fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
             }}
           >
-            App Gallery
+            Solution Gallery
           </Text>
         )}
 

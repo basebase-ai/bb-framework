@@ -31,8 +31,8 @@ import {
   IconKey,
   IconBrandLinkedin,
   IconSearch,
+  IconApi,
 } from "@tabler/icons-react";
-import { TbApi } from "react-icons/tb";
 import { useFunction } from "../../../../framework/hooks/useFunction.js";
 import { LinkedInProfileCard } from "./LinkedInProfileCard.jsx";
 
@@ -255,7 +255,7 @@ export function ApifyPanel({ user, onConnectionChange }) {
         <Group justify="space-between" align="center">
           <Group gap="md">
             <ThemeIcon size={44} radius="md" variant="light" color="gray">
-              <TbApi size={24} color="#00D4AA" />
+              <IconApi size={24} color="#00D4AA" />
             </ThemeIcon>
             <div>
               <Text fw={500} size="lg">
@@ -305,7 +305,7 @@ export function ApifyPanel({ user, onConnectionChange }) {
               onClick={handleConnect}
               loading={credLoading}
               color="teal"
-              leftSection={<TbApi size={16} />}
+              leftSection={<IconApi size={16} />}
             >
               Connect Apify
             </Button>

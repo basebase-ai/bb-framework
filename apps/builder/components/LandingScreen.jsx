@@ -14,8 +14,9 @@ import {
   Group,
   Container,
   Avatar,
+  Menu,
 } from "@mantine/core";
-import { IconArrowRight, IconEdit, IconGitFork } from "@tabler/icons-react";
+import { IconArrowRight, IconEdit, IconGitFork, IconLogout } from "@tabler/icons-react";
 import {
   SiSlack,
   SiAirtable,
@@ -28,7 +29,7 @@ import {
   SiLinear,
   SiGithub,
 } from "react-icons/si";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "../../../framework/core/firebase-init.js";
 
 // Load Google Fonts (matching www landing page)
@@ -69,7 +70,7 @@ const navLinkStyle = { color: "#1a1a1a", textDecoration: "none", cursor: "pointe
 export function LandingScreen({ onSubmit }) {
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentUser, setCurrentUser] = useState(/** @type {import('firebase/auth').User | null} */ (null));
+  const [currentUser, setCurrentUser] = useState(/** @type {import('firebase/auth').User | null} */(null));
 
   // Load Google Fonts on mount
   useEffect(() => {
@@ -96,6 +97,14 @@ export function LandingScreen({ onSubmit }) {
 
     setIsSubmitting(true);
     onSubmit(trimmedPrompt);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
   };
 
   const handleKeyDown = (/** @type {React.KeyboardEvent} */ e) => {
@@ -144,12 +153,12 @@ export function LandingScreen({ onSubmit }) {
                 style={navLinkStyle}
                 onClick={() => window.open("https://www.basebase.com/gallery", "_self")}
               >
-                App Gallery
+                Solution Gallery
               </Text>
               <Text
                 size="sm"
                 style={navLinkStyle}
-                onClick={() => window.open("https://www.basebase.com/integrations", "_self")}
+                onClick={() => window.open("https://connections.basebase.com", "_self")}
               >
                 Integrations
               </Text>
@@ -164,15 +173,29 @@ export function LandingScreen({ onSubmit }) {
                 Documentation
               </Text>
               {currentUser ? (
-                <Avatar
-                  src={currentUser.photoURL}
-                  alt={currentUser.displayName || currentUser.email || "User"}
-                  size="sm"
-                  radius="xl"
-                  color="orange"
-                >
-                  {(currentUser.displayName || currentUser.email || "U").charAt(0).toUpperCase()}
-                </Avatar>
+                <Menu position="bottom-end" withArrow>
+                  <Menu.Target>
+                    <Avatar
+                      src={currentUser.photoURL}
+                      alt={currentUser.displayName || currentUser.email || "User"}
+                      size="sm"
+                      radius="xl"
+                      color="orange"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {(currentUser.displayName || currentUser.email || "U").charAt(0).toUpperCase()}
+                    </Avatar>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={<IconLogout size={14} />}
+                      color="red"
+                      onClick={handleSignOut}
+                    >
+                      Sign out
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
               ) : (
                 <Button
                   variant="subtle"
@@ -200,113 +223,113 @@ export function LandingScreen({ onSubmit }) {
       >
         <Stack align="center" gap="xl" maw={700} w="100%" p="xl">
           {/* Main prompt input */}
-        <Box
-          p="xl"
-          w="100%"
-          style={{
-            backgroundColor: "white",
-            borderRadius: 12,
-            border: "1px solid #e9ecef",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          }}
-        >
-          <Stack gap="md">
-            <Title order={3} c="dark" ta="center">
-              What do you want to build?
-            </Title>
+          <Box
+            p="xl"
+            w="100%"
+            style={{
+              backgroundColor: "white",
+              borderRadius: 12,
+              border: "1px solid #e9ecef",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+            }}
+          >
+            <Stack gap="md">
+              <Title order={3} c="dark" ta="center">
+                What do you want to build?
+              </Title>
 
-            <Textarea
-              placeholder="Describe your app idea... (e.g., 'A customer success dashboard that pulls data from Salesforce and HubSpot, shows renewal dates, health scores, and lets reps log activities')"
-              size="md"
-              minRows={3}
-              maxRows={6}
-              autosize
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
-              autoFocus
-              styles={{
-                input: {
-                  backgroundColor: "#f8f9fa",
-                  border: "1px solid #dee2e6",
-                  "&:focus": {
-                    borderColor: "#228be6",
+              <Textarea
+                placeholder="Describe your app idea... (e.g., 'A customer success dashboard that pulls data from Salesforce and HubSpot, shows renewal dates, health scores, and lets reps log activities')"
+                size="md"
+                minRows={3}
+                maxRows={6}
+                autosize
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={handleKeyDown}
+                autoFocus
+                styles={{
+                  input: {
+                    backgroundColor: "#f8f9fa",
+                    border: "1px solid #dee2e6",
+                    "&:focus": {
+                      borderColor: "#228be6",
+                    },
                   },
-                },
-              }}
-            />
+                }}
+              />
 
-            <Group justify="space-between" align="center">
-              <Text size="xs" c="dimmed">
-                Press ⌘+Enter to start building
+              <Group justify="space-between" align="center">
+                <Text size="xs" c="dimmed">
+                  Press ⌘+Enter to start building
+                </Text>
+                <Button
+                  size="sm"
+                  variant="filled"
+                  onClick={handleSubmit}
+                  loading={isSubmitting}
+                  disabled={!prompt.trim()}
+                  rightSection={<IconArrowRight size={16} />}
+                >
+                  Build it
+                </Button>
+              </Group>
+            </Stack>
+          </Box>
+
+          {/* Action buttons */}
+          <Group gap="md">
+            <Button
+              variant="light"
+              color="gray"
+              size="md"
+              leftSection={<IconEdit size={18} />}
+              component="a"
+              href="https://www.basebase.com/gallery"
+              target="_blank"
+            >
+              Edit existing...
+            </Button>
+            <Button
+              variant="light"
+              color="gray"
+              size="md"
+              leftSection={<IconGitFork size={18} />}
+              component="a"
+              href="https://www.basebase.com/gallery"
+              target="_blank"
+            >
+              Fork existing...
+            </Button>
+          </Group>
+
+          {/* Features */}
+          <Stack align="center" gap="md">
+            <Group gap="lg" justify="center">
+              <Text size="sm" c="dimmed">
+                🔗 Connected to 100+ APIs
               </Text>
-              <Button
-                size="sm"
-                variant="filled"
-                onClick={handleSubmit}
-                loading={isSubmitting}
-                disabled={!prompt.trim()}
-                rightSection={<IconArrowRight size={16} />}
-              >
-                Build it
-              </Button>
+              <Text size="sm" c="dimmed">
+                👁️ Live preview
+              </Text>
+              <Text size="sm" c="dimmed">
+                🚀 Instant deploy
+              </Text>
+            </Group>
+
+            {/* Integration logos */}
+            <Group gap="md" justify="center" align="center" style={{ opacity: 0.6 }}>
+              {INTEGRATIONS.map(({ icon: Icon, label, color }) => (
+                <Box key={label} title={label} style={{ display: "flex", alignItems: "center" }}>
+                  <Icon size={20} color={color} />
+                </Box>
+              ))}
+              <Text size="sm" c="dimmed" style={{ lineHeight: "20px" }}>
+                etc.
+              </Text>
             </Group>
           </Stack>
-        </Box>
-
-        {/* Action buttons */}
-        <Group gap="md">
-          <Button
-            variant="light"
-            color="gray"
-            size="md"
-            leftSection={<IconEdit size={18} />}
-            component="a"
-            href="https://www.basebase.com/gallery"
-            target="_blank"
-          >
-            Edit existing...
-          </Button>
-          <Button
-            variant="light"
-            color="gray"
-            size="md"
-            leftSection={<IconGitFork size={18} />}
-            component="a"
-            href="https://www.basebase.com/gallery"
-            target="_blank"
-          >
-            Fork existing...
-          </Button>
-        </Group>
-
-        {/* Features */}
-        <Stack align="center" gap="md">
-          <Group gap="lg" justify="center">
-            <Text size="sm" c="dimmed">
-              🔗 Connected to 100+ APIs
-            </Text>
-            <Text size="sm" c="dimmed">
-              👁️ Live preview
-            </Text>
-            <Text size="sm" c="dimmed">
-              🚀 Instant deploy
-            </Text>
-          </Group>
-
-          {/* Integration logos */}
-          <Group gap="md" justify="center" align="center" style={{ opacity: 0.6 }}>
-            {INTEGRATIONS.map(({ icon: Icon, label, color }) => (
-              <Box key={label} title={label} style={{ display: "flex", alignItems: "center" }}>
-                <Icon size={20} color={color} />
-              </Box>
-            ))}
-            <Text size="sm" c="dimmed" style={{ lineHeight: "20px" }}>
-              etc.
-            </Text>
-          </Group>
         </Stack>
-      </Stack>
       </Box>
     </Box>
   );

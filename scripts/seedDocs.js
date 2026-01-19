@@ -920,7 +920,7 @@ Basebase integrations are compliant with:
 
 Don't see the integration you need?
 
-1. Go to **www.basebase.com/integrations**
+1. Go to **connections.basebase.com**
 2. Vote for existing requests or submit new ones
 3. Popular requests get prioritized
 

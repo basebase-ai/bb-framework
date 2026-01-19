@@ -472,7 +472,7 @@ export default function Pricing({ onBack, onSignIn }) {
                 border: "none",
               }}
             >
-              Browse App Gallery
+              Browse Solution Gallery
             </Button>
           </Stack>
         </Container>

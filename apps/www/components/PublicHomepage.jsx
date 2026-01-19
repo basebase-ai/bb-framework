@@ -7,8 +7,10 @@ import React, { useState, useEffect } from "react";
 
 // Load Google Fonts (Instrument Serif for headlines, Inter for body)
 const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap";
-import { Box, Text, Button, Group, Stack, Container, Burger, Drawer, Avatar } from "@mantine/core";
-import { IconArrowRight, IconCheck, IconLayoutGrid } from "@tabler/icons-react";
+import { Box, Text, Button, Group, Stack, Container, Burger, Drawer, Avatar, Menu } from "@mantine/core";
+import { IconArrowRight, IconCheck, IconLayoutGrid, IconLogout, IconUser } from "@tabler/icons-react";
+import { signOut } from "firebase/auth";
+import { auth } from "../../../framework/core/firebase-init.js";
 import {
   SiSlack,
   SiAirtable,
@@ -108,12 +110,12 @@ const PAIN_POINTS = [
 
 /** @type {FloatingIcon[]} */
 const FLOATING_ICONS = [
-  { x: 9, y: 20, icon: SiSlack, label: "Slack", color: "#E01E5A" },
-  { x: 9, y: 80, icon: SiAirtable, label: "Airtable", color: "#18BFFF" },
-  { x: -2, y: 50, icon: SiGooglesheets, label: "Sheets", color: "#34A853" },
-  { x: 91, y: 20, icon: SiNotion, label: "Notion", color: "#000000" },
-  { x: 91, y: 80, icon: SiSalesforce, label: "Salesforce", color: "#00A1E0" },
-  { x: 102, y: 50, icon: SiStripe, label: "Stripe", color: "#635BFF" },
+  { x: 9, y: 20, icon: SiHubspot, label: "HubSpot", color: "#FF7A59" },
+  { x: 9, y: 80, icon: SiSalesforce, label: "Salesforce", color: "#00A1E0" },
+  { x: -2, y: 50, icon: SiSlack, label: "Slack", color: "#E01E5A" },
+  { x: 91, y: 20, icon: SiGooglesheets, label: "Sheets", color: "#34A853" },
+  { x: 91, y: 80, icon: SiAirtable, label: "Airtable", color: "#18BFFF" },
+  { x: 102, y: 50, icon: SiNotion, label: "Notion", color: "#000000" },
 ];
 
 /** Basebase Logo SVG Component */
@@ -185,6 +187,14 @@ export default function PublicHomepage({
     window.open("https://builder.basebase.com", "_blank");
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
+
   // Load Google Fonts on mount
   useEffect(() => {
     const existingLink = document.querySelector(`link[href="${GOOGLE_FONTS_URL}"]`);
@@ -233,12 +243,12 @@ export default function PublicHomepage({
                 style={navLinkStyle}
                 onClick={() => onNavigateToGallery?.()}
               >
-                App Gallery
+                Solution Gallery
               </Text>
               <Text
                 size="sm"
                 style={navLinkStyle}
-                onClick={() => onNavigateToIntegrations?.()}
+                onClick={() => window.open("https://connections.basebase.com", "_self")}
               >
                 Integrations
               </Text>
@@ -253,21 +263,36 @@ export default function PublicHomepage({
                 Documentation
               </Text>
               {isAuthenticated ? (
-                <Group
-                  gap="xs"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => onOpenProfile?.()}
-                >
-                  <Avatar
-                    src={userPhotoURL}
-                    alt={userDisplayName || "User"}
-                    size="sm"
-                    radius="xl"
-                    color="orange"
-                  >
-                    {(userDisplayName || "U").charAt(0).toUpperCase()}
-                  </Avatar>
-                </Group>
+                <Menu position="bottom-end" withArrow>
+                  <Menu.Target>
+                    <Avatar
+                      src={userPhotoURL}
+                      alt={userDisplayName || "User"}
+                      size="sm"
+                      radius="xl"
+                      color="orange"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {(userDisplayName || "U").charAt(0).toUpperCase()}
+                    </Avatar>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={<IconUser size={14} />}
+                      onClick={() => onOpenProfile?.()}
+                    >
+                      Profile
+                    </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item
+                      leftSection={<IconLogout size={14} />}
+                      color="red"
+                      onClick={handleSignOut}
+                    >
+                      Sign out
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
               ) : (
                 <Button
                   variant="subtle"
@@ -312,14 +337,14 @@ export default function PublicHomepage({
               setMobileMenuOpen(false);
             }}
           >
-            App Gallery
+            Solution Gallery
           </Text>
           <Text
             size="md"
             fw={500}
             style={navLinkStyle}
             onClick={() => {
-              onNavigateToIntegrations?.();
+              window.open("https://connections.basebase.com", "_self");
               setMobileMenuOpen(false);
             }}
           >
@@ -337,27 +362,46 @@ export default function PublicHomepage({
             Documentation
           </Text>
           {isAuthenticated ? (
-            <Group
-              gap="xs"
-              style={{ cursor: "pointer" }}
-              onClick={() => {
-                onOpenProfile?.();
-                setMobileMenuOpen(false);
-              }}
-            >
-              <Avatar
-                src={userPhotoURL}
-                alt={userDisplayName || "User"}
-                size="sm"
-                radius="xl"
-                color="orange"
+            <Stack gap="xs">
+              <Group gap="xs">
+                <Avatar
+                  src={userPhotoURL}
+                  alt={userDisplayName || "User"}
+                  size="sm"
+                  radius="xl"
+                  color="orange"
+                >
+                  {(userDisplayName || "U").charAt(0).toUpperCase()}
+                </Avatar>
+                <Text size="sm" fw={500} style={{ color: COLORS.black }}>
+                  {userDisplayName || "User"}
+                </Text>
+              </Group>
+              <Button
+                variant="subtle"
+                color="gray"
+                fullWidth
+                leftSection={<IconUser size={16} />}
+                onClick={() => {
+                  onOpenProfile?.();
+                  setMobileMenuOpen(false);
+                }}
               >
-                {(userDisplayName || "U").charAt(0).toUpperCase()}
-              </Avatar>
-              <Text size="sm" fw={500} style={{ color: COLORS.black }}>
-                {userDisplayName || "Profile"}
-              </Text>
-            </Group>
+                Profile
+              </Button>
+              <Button
+                variant="subtle"
+                color="red"
+                fullWidth
+                leftSection={<IconLogout size={16} />}
+                onClick={() => {
+                  handleSignOut();
+                  setMobileMenuOpen(false);
+                }}
+              >
+                Sign out
+              </Button>
+            </Stack>
           ) : (
             <Button
               variant="filled"
@@ -524,27 +568,27 @@ export default function PublicHomepage({
               height: 320,
             }}
           >
-            {/* Left column - Slack & Airtable */}
+            {/* Left column - HubSpot & Salesforce */}
             <Box style={{ position: "absolute", left: 80, top: 64, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiSlack} color="#E01E5A" />
+              <IconCircle icon={SiHubspot} color="#FF7A59" />
             </Box>
             <Box style={{ position: "absolute", left: 80, top: 256, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiAirtable} color="#18BFFF" />
-            </Box>
-            {/* Far left - Sheets */}
-            <Box style={{ position: "absolute", left: 0, top: 160, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiGooglesheets} color="#34A853" />
-            </Box>
-            {/* Right column - Notion & Salesforce */}
-            <Box style={{ position: "absolute", left: 816, top: 64, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiNotion} color="#000000" />
-            </Box>
-            <Box style={{ position: "absolute", left: 816, top: 256, transform: "translate(-50%, -50%)" }}>
               <IconCircle icon={SiSalesforce} color="#00A1E0" />
             </Box>
-            {/* Far right - Stripe */}
+            {/* Far left - Slack */}
+            <Box style={{ position: "absolute", left: 0, top: 160, transform: "translate(-50%, -50%)" }}>
+              <IconCircle icon={SiSlack} color="#E01E5A" />
+            </Box>
+            {/* Right column - Sheets & Airtable */}
+            <Box style={{ position: "absolute", left: 816, top: 64, transform: "translate(-50%, -50%)" }}>
+              <IconCircle icon={SiGooglesheets} color="#34A853" />
+            </Box>
+            <Box style={{ position: "absolute", left: 816, top: 256, transform: "translate(-50%, -50%)" }}>
+              <IconCircle icon={SiAirtable} color="#18BFFF" />
+            </Box>
+            {/* Far right - Notion */}
             <Box style={{ position: "absolute", left: 896, top: 160, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiStripe} color="#635BFF" />
+              <IconCircle icon={SiNotion} color="#000000" />
             </Box>
           </Box>
         </Box>
@@ -566,7 +610,7 @@ export default function PublicHomepage({
                 fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
               }}
             >
-              Build business tools in
+              Revenue solutions in
               <br />
               <span
                 style={{
@@ -659,7 +703,7 @@ export default function PublicHomepage({
               </Group>
             </Box>
 
-            {/* Or Browse Apps */}
+            {/* Or View Gallery */}
             <Group gap="md" align="center">
               <Text size="sm" style={{ color: COLORS.gray }}>or</Text>
               <Button
@@ -675,7 +719,7 @@ export default function PublicHomepage({
                   height: 38,
                 }}
               >
-                Browse apps
+                View gallery
               </Button>
             </Group>
           </Stack>
@@ -700,7 +744,7 @@ export default function PublicHomepage({
                   fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
                 }}
               >
-                Internal apps <span style={{ color: COLORS.coral }}>are hard</span>
+                RevOps workflows <span style={{ color: COLORS.coral }}>are hard</span>
               </Text>
               <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 540 }}>
                 We get it. Your data is scattered across dozens of apps, and building the tools you need feels impossible without an engineering team.
@@ -820,7 +864,7 @@ export default function PublicHomepage({
                   fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
                 }}
               >
-                Built for business people
+                Built for RevOps
               </Text>
               <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 540 }}>
                 Stop waiting for IT. Stop fighting with spreadsheets.
@@ -888,7 +932,7 @@ export default function PublicHomepage({
                 size="md"
                 mt="md"
                 rightSection={<IconArrowRight size={18} />}
-                onClick={() => onNavigateToIntegrations?.()}
+                onClick={() => window.open("https://connections.basebase.com", "_self")}
                 style={{ background: COLORS.teal, border: "none" }}
               >
                 View all integrations
@@ -1058,9 +1102,7 @@ export default function PublicHomepage({
                 <Text
                   size="sm"
                   style={{ color: COLORS.white, cursor: "pointer" }}
-                  onClick={() => {
-                    if (onNavigateToIntegrations) onNavigateToIntegrations();
-                  }}
+                  onClick={() => window.open("https://connections.basebase.com", "_self")}
                 >
                   Integrations
                 </Text>
