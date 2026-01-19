@@ -682,7 +682,7 @@ export default function PublicHomepage({
                     color: COLORS.gray,
                   }}
                 >
-                  Describe your app...
+                  Let's cross something off your list...
                 </Text>
                 <Button
                   component="span"
@@ -698,7 +698,7 @@ export default function PublicHomepage({
                     pointerEvents: "none",
                   }}
                 >
-                  Create
+                  Start
                 </Button>
               </Group>
             </Box>

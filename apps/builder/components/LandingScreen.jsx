@@ -15,8 +15,13 @@ import {
   Container,
   Avatar,
   Menu,
+  Modal,
+  TextInput,
+  CopyButton,
+  ActionIcon,
+  Tooltip,
 } from "@mantine/core";
-import { IconArrowRight, IconEdit, IconGitFork, IconLogout } from "@tabler/icons-react";
+import { IconArrowRight, IconEdit, IconGitFork, IconLogout, IconCode, IconCopy, IconCheck } from "@tabler/icons-react";
 import {
   SiSlack,
   SiAirtable,
@@ -71,6 +76,9 @@ export function LandingScreen({ onSubmit }) {
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUser, setCurrentUser] = useState(/** @type {import('firebase/auth').User | null} */(null));
+  const [ideModalOpened, setIdeModalOpened] = useState(false);
+
+  const REPO_URL = "https://github.com/basebase-ai/bb-framework";
 
   // Load Google Fonts on mount
   useEffect(() => {
@@ -235,11 +243,11 @@ export function LandingScreen({ onSubmit }) {
           >
             <Stack gap="md">
               <Title order={3} c="dark" ta="center">
-                What do you want to build?
+                What do you need to get done?
               </Title>
 
               <Textarea
-                placeholder="Describe your app idea... (e.g., 'A customer success dashboard that pulls data from Salesforce and HubSpot, shows renewal dates, health scores, and lets reps log activities')"
+                placeholder="e.g., Review all HubSpot deals, look for deals that are past due, and send a reminder email to the rep who owns the deal."
                 size="md"
                 minRows={3}
                 maxRows={6}
@@ -301,6 +309,15 @@ export function LandingScreen({ onSubmit }) {
             >
               Fork existing...
             </Button>
+            <Button
+              variant="light"
+              color="gray"
+              size="md"
+              leftSection={<IconCode size={18} />}
+              onClick={() => setIdeModalOpened(true)}
+            >
+              Open in IDE
+            </Button>
           </Group>
 
           {/* Features */}
@@ -331,6 +348,76 @@ export function LandingScreen({ onSubmit }) {
           </Stack>
         </Stack>
       </Box>
+
+      {/* Open in IDE Modal */}
+      <Modal
+        opened={ideModalOpened}
+        onClose={() => setIdeModalOpened(false)}
+        title={<Text fw={600} size="lg">Open in IDE</Text>}
+        centered
+        size="md"
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            Clone the Basebase framework repo in your favorite AI-powered IDE to build and deploy apps locally:
+          </Text>
+
+          <Stack gap="xs">
+            <Text size="sm" fw={500}>Cursor</Text>
+            <Text size="xs" c="dimmed">
+              Open Cursor → File → Clone Repository → paste the URL below
+            </Text>
+          </Stack>
+
+          <Stack gap="xs">
+            <Text size="sm" fw={500}>Claude Code</Text>
+            <Text size="xs" c="dimmed">
+              Run <code style={{ background: "#f1f3f5", padding: "2px 6px", borderRadius: 4 }}>claude</code> in your terminal, then ask it to clone the repo
+            </Text>
+          </Stack>
+
+          <Stack gap="xs">
+            <Text size="sm" fw={500}>Antigravity</Text>
+            <Text size="xs" c="dimmed">
+              Open Antigravity → Import from GitHub → paste the URL below
+            </Text>
+          </Stack>
+
+          <Group gap="xs" mt="sm">
+            <TextInput
+              value={REPO_URL}
+              readOnly
+              style={{ flex: 1 }}
+              styles={{
+                input: {
+                  fontFamily: "monospace",
+                  fontSize: 13,
+                },
+              }}
+            />
+            <CopyButton value={REPO_URL} timeout={2000}>
+              {({ copied, copy }) => (
+                <Tooltip label={copied ? "Copied!" : "Copy"} withArrow position="right">
+                  <ActionIcon color={copied ? "teal" : "gray"} variant="subtle" onClick={copy} size="lg">
+                    {copied ? <IconCheck size={18} /> : <IconCopy size={18} />}
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </CopyButton>
+          </Group>
+
+          <Button
+            component="a"
+            href={REPO_URL}
+            target="_blank"
+            variant="light"
+            fullWidth
+            mt="xs"
+          >
+            View on GitHub
+          </Button>
+        </Stack>
+      </Modal>
     </Box>
   );
 }
