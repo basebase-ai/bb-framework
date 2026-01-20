@@ -43,6 +43,7 @@ import { useRoute } from "../../framework/hooks/useRoute.js";
 import { useAuth } from "../../framework/hooks/useAuth.js";
 import { useUserProfile } from "../../framework/hooks/useUserProfile.js";
 import { ProfileModal } from "./components/ProfileModal.jsx";
+import { GlobalTranslator } from "./components/GlobalTranslator.jsx";
 import { DeckList } from "./components/DeckList.jsx";
 import { CardList } from "./components/CardList.jsx";
 import { StudyMode } from "./components/StudyMode.jsx";
@@ -681,6 +682,7 @@ function AppLayout() {
   const [profileModalOpened, setProfileModalOpened] = useState(false);
   const [languageSetupOpen, setLanguageSetupOpen] = useState(false);
   const [selectedSetupLanguage, setSelectedSetupLanguage] = useState("spanish");
+  const [translatorOpen, setTranslatorOpen] = useState(false);
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const isDark = colorScheme === "dark";
   
@@ -746,7 +748,13 @@ function AppLayout() {
         if (data.primaryLanguage) {
           setPrimaryLanguage(data.primaryLanguage);
           setSourceLanguage(data.primaryLanguage);
+        } else {
+          // User exists but has no language set - show modal
+          setLanguageSetupOpen(true);
         }
+      } else {
+        // New user - no preferences doc yet - show modal
+        setLanguageSetupOpen(true);
       }
       setPrefsLoading(false);
     }).catch((err) => {
@@ -761,14 +769,6 @@ function AppLayout() {
       checkVoiceAndNotify(primaryLanguage);
     }
   }, [primaryLanguage, availableVoices.length, checkVoiceAndNotify]);
-  
-  // Show language setup modal for new users (after loading)
-  // Don't show if we already have a primaryLanguage set in the store (optimistic update)
-  useEffect(() => {
-    if (user && !prefsLoading && !primaryLanguage) {
-      setLanguageSetupOpen(true);
-    }
-  }, [user, prefsLoading, primaryLanguage]);
   
   /**
    * Handle language setup completion
@@ -824,15 +824,13 @@ function AppLayout() {
     navigate("/");
   };
 
-  // Hide header in study/practice mode for full-screen experience
-  const isFullScreenMode = path.startsWith("/study/") || path.startsWith("/practice/");
+  // Close translator when navigating to a different route
+  useEffect(() => {
+    setTranslatorOpen(false);
+  }, [path]);
 
   // If user is not logged in, just render the route content (landing page) without AppShell
   if (!user) {
-    return <RouteContent />;
-  }
-
-  if (isFullScreenMode) {
     return <RouteContent />;
   }
   
@@ -902,6 +900,23 @@ function AppLayout() {
                     </Menu.Dropdown>
                   </Menu>
                 )}
+
+                {/* Translate button */}
+                <Box style={{ position: "relative" }}>
+                  <Button
+                    variant={translatorOpen ? "filled" : "light"}
+                    color="pink"
+                    size="xs"
+                    leftSection={<IconLanguage size={16} />}
+                    onClick={() => setTranslatorOpen(!translatorOpen)}
+                  >
+                    Translate
+                  </Button>
+                  <GlobalTranslator
+                    opened={translatorOpen}
+                    onClose={() => setTranslatorOpen(false)}
+                  />
+                </Box>
                 
                 {/* User menu */}
                 <Menu position="bottom-end" withinPortal>

@@ -164,6 +164,10 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   const [loadingExample, setLoadingExample] = useState(false);
   const cardContentRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   
+  // History for viewing previous cards
+  const [reviewHistory, setReviewHistory] = useState(/** @type {Array<{card: Object, answer: 'easy' | 'hard'}>} */ ([]));
+  const [viewingHistoryIndex, setViewingHistoryIndex] = useState(/** @type {number | null} */ (null));
+  
   // LLM for generating example sentences
   const { call: callLLM } = useFunction("askLLM");
 
@@ -562,37 +566,15 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
     };
   }, [speak]);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (isAnimating) return;
-
-      switch (e.key) {
-        case " ":
-        case "Enter":
-          e.preventDefault();
-          setShowBack(!showBack);
-          break;
-        case "ArrowRight":
-        case "1":
-          if (showBack && currentCard) handleAnswer("easy");
-          break;
-        case "ArrowLeft":
-        case "2":
-          if (showBack && currentCard) handleAnswer("hard");
-          break;
-        case "Escape":
-          onBack();
-          break;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showBack, currentCard, isAnimating]);
-
   /** @param {'easy' | 'hard'} difficulty */
   const handleAnswer = useCallback(async (difficulty) => {
     if (!currentCard || isAnimating) return;
+    
+    // If viewing history, return to current card first
+    if (viewingHistoryIndex !== null) {
+      setViewingHistoryIndex(null);
+      return;
+    }
     
     // Prevent reviewing more cards than we started with
     if (sessionTotalCards !== null && sessionStats.reviewed >= sessionTotalCards) {
@@ -616,6 +598,9 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
     const nextReviewAt = getNextReviewDate(newBox);
 
     try {
+      // Add to history before moving to next card
+      setReviewHistory((prev) => [...prev, { card: { ...currentCard }, answer: difficulty }]);
+      
       // Set showBack to false FIRST to prevent flash of next card's back
       setShowBack(false);
       // Reset example state for next card
@@ -645,11 +630,106 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
     } finally {
       setTimeout(() => setIsAnimating(false), 100);
     }
-  }, [currentCard, currentIndex, dueCards.length, isAnimating, updateCard, sessionTotalCards, sessionStats.reviewed]);
+  }, [currentCard, currentIndex, dueCards.length, isAnimating, updateCard, sessionTotalCards, sessionStats.reviewed, viewingHistoryIndex]);
+
+  /**
+   * View previous card in history
+   */
+  const handleViewPrevious = useCallback(() => {
+    if (reviewHistory.length === 0) return;
+    
+    if (viewingHistoryIndex === null) {
+      // Start viewing history from the most recent
+      setViewingHistoryIndex(reviewHistory.length - 1);
+    } else if (viewingHistoryIndex > 0) {
+      // Go further back in history
+      setViewingHistoryIndex(viewingHistoryIndex - 1);
+    }
+  }, [reviewHistory.length, viewingHistoryIndex]);
+
+  /**
+   * View next card in history or return to current
+   */
+  const handleViewNext = useCallback(() => {
+    if (viewingHistoryIndex === null) return;
+    
+    if (viewingHistoryIndex < reviewHistory.length - 1) {
+      // Go forward in history
+      setViewingHistoryIndex(viewingHistoryIndex + 1);
+    } else {
+      // Return to current card
+      setViewingHistoryIndex(null);
+    }
+  }, [reviewHistory.length, viewingHistoryIndex]);
+
+  /**
+   * Return to current card from history view
+   */
+  const handleReturnToCurrent = useCallback(() => {
+    setViewingHistoryIndex(null);
+  }, []);
 
   const handleFlip = () => {
     if (!isAnimating) setShowBack(!showBack);
   };
+
+  // Keyboard shortcuts for study mode
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (isAnimating) return;
+
+      switch (e.key) {
+        case " ":
+        case "Enter":
+          e.preventDefault();
+          if (viewingHistoryIndex !== null) {
+            // Return to current card
+            handleReturnToCurrent();
+          } else {
+            setShowBack(!showBack);
+          }
+          break;
+        case "ArrowRight":
+        case "1":
+          if (viewingHistoryIndex !== null) {
+            handleViewNext();
+          } else if (showBack && currentCard) {
+            handleAnswer("easy");
+          }
+          break;
+        case "ArrowLeft":
+        case "2":
+          if (viewingHistoryIndex !== null) {
+            handleViewPrevious();
+          } else if (showBack && currentCard) {
+            handleAnswer("hard");
+          }
+          break;
+        case "ArrowUp":
+        case "p":
+        case "P":
+          e.preventDefault();
+          handleViewPrevious();
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          if (viewingHistoryIndex !== null) {
+            handleViewNext();
+          }
+          break;
+        case "Escape":
+          if (viewingHistoryIndex !== null) {
+            handleReturnToCurrent();
+          } else {
+            onBack();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showBack, currentCard, isAnimating, viewingHistoryIndex, handleViewPrevious, handleViewNext, handleReturnToCurrent, handleAnswer, onBack]);
 
   useEffect(() => {
     if (deck && allCards.length > 0) {
@@ -662,7 +742,7 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
 
   if (deckLoading || showLoading) {
     return (
-      <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Box style={{ minHeight: "calc(100vh - 64px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Text c="dimmed">Loading study session...</Text>
       </Box>
     );
@@ -671,7 +751,7 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
   // Study options screen (before starting)
   if (!studyStarted) {
     return (
-      <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <Box style={{ minHeight: "calc(100vh - 64px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <Paper p="xl" radius="lg" withBorder shadow="sm" style={{ maxWidth: 500, width: "100%" }}>
           <Group justify="space-between" mb="xl">
             <ActionIcon variant="subtle" color="gray" onClick={onBack}>
@@ -784,7 +864,7 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
     const accuracy = totalReviewed > 0 ? Math.round((sessionStats.correct / totalReviewed) * 100) : 0;
 
     return (
-      <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <Box style={{ minHeight: "calc(100vh - 64px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <Paper p="xl" radius="lg" withBorder shadow="sm" style={{ maxWidth: 500, width: "100%", textAlign: "center" }}>
           <Title order={2} mb="lg">🎉 Session Complete!</Title>
 
@@ -833,6 +913,8 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
                   setShowBack(false);
                   setSessionTotalCards(null); // Reset so new session captures fresh total
                   setStudyStarted(false); // Go back to study options
+                  setReviewHistory([]); // Clear history for new session
+                  setViewingHistoryIndex(null);
                 }}
               >
                 Study More
@@ -844,8 +926,13 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
     );
   }
 
+  // Determine which card to display
+  const isViewingHistory = viewingHistoryIndex !== null;
+  const historyItem = isViewingHistory ? reviewHistory[viewingHistoryIndex] : null;
+  const displayCard = isViewingHistory ? historyItem?.card : currentCard;
+
   return (
-    <Box style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <Box style={{ minHeight: "calc(100vh - 64px)", display: "flex", flexDirection: "column" }}>
       <Box px="md" py="sm" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
         <Group justify="space-between" maw={800} mx="auto">
           <Group gap="sm">
@@ -855,6 +942,19 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
             <Text fw={500}>{deck?.name}</Text>
           </Group>
           <Group gap="md">
+            {/* Previous card button */}
+            {reviewHistory.length > 0 && (
+              <Button
+                variant={isViewingHistory ? "filled" : "subtle"}
+                color={isViewingHistory ? "violet" : "gray"}
+                size="xs"
+                onClick={isViewingHistory ? handleReturnToCurrent : handleViewPrevious}
+              >
+                {isViewingHistory 
+                  ? `Reviewing ${viewingHistoryIndex + 1}/${reviewHistory.length} • Back to current` 
+                  : "Previous"}
+              </Button>
+            )}
             <Badge variant="light" color="green">✓ {sessionStats.correct}</Badge>
             <Badge variant="light" color="red">✗ {sessionStats.incorrect}</Badge>
             <Text size="sm" c="dimmed">{sessionStats.reviewed} / {totalDue}</Text>
@@ -865,112 +965,202 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
 
       <Box style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <Box style={{ width: "100%", maxWidth: 600 }}>
+          {/* History navigation bar */}
+          {isViewingHistory && (
+            <Group justify="center" mb="md" gap="sm">
+              <Button
+                variant="subtle"
+                color="gray"
+                size="xs"
+                onClick={handleViewPrevious}
+                disabled={viewingHistoryIndex === 0}
+                leftSection={<IconArrowLeft size={14} />}
+              >
+                Older
+              </Button>
+              <Badge variant="light" color="violet" size="lg">
+                Viewing Previous • {historyItem?.answer === "easy" ? "✓ Easy" : "✗ Hard"}
+              </Badge>
+              <Button
+                variant="subtle"
+                color="gray"
+                size="xs"
+                onClick={handleViewNext}
+                rightSection={<IconArrowLeft size={14} style={{ transform: "rotate(180deg)" }} />}
+              >
+                {viewingHistoryIndex === reviewHistory.length - 1 ? "Current" : "Newer"}
+              </Button>
+            </Group>
+          )}
+
           <Paper
             p="xl"
             radius="lg"
-            onClick={handleFlip}
+            onClick={isViewingHistory ? undefined : handleFlip}
             withBorder
             shadow="sm"
             style={{
-              borderColor: showBack ? "var(--mantine-color-pink-6)" : undefined,
+              borderColor: isViewingHistory 
+                ? "var(--mantine-color-violet-6)" 
+                : (showBack ? "var(--mantine-color-pink-6)" : undefined),
               minHeight: 300,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              cursor: "pointer",
+              cursor: isViewingHistory ? "default" : "pointer",
               transition: "all 0.3s ease",
               transform: isAnimating ? "scale(0.98)" : "scale(1)",
             }}
           >
-            <Badge variant="light" color={showBack ? "pink" : "gray"} size="sm" mb="md">
-              {showBack ? "Back" : "Front"} • Box {currentCard?.box || 1}
-            </Badge>
-
-            {(() => {
-              const content = showBack ? currentCard?.back || "" : currentCard?.front || "";
-              const { definition, rest } = showBack ? extractDefinition(content) : { definition: null, rest: content };
-              
-              return (
-                <>
-                  {/* Show extracted definition prominently at the top */}
-                  {definition && (
-                    <Text
-                      size="2rem"
-                      fw={700}
-                      c="pink"
-                      mb="md"
-                    >
-                      {definition}
-                    </Text>
-                  )}
-                  
-                  <TypographyStylesProvider
-                    style={{
-                      fontSize: definition ? "1rem" : "1.25rem",
-                      lineHeight: 1.6,
-                      maxHeight: definition ? "40vh" : "50vh",
-                      overflow: "auto",
-                      textAlign: "center",
-                    }}
-                  >
-                    <div
-                      ref={cardContentRef}
-                      dangerouslySetInnerHTML={{
-                        __html: marked(rest),
-                      }}
-                    />
-                  </TypographyStylesProvider>
-                </>
-              );
-            })()}
-
-            {/* Text-to-speech button */}
-            <Button
-              size="xs"
-              variant="subtle"
-              color="gray"
-              leftSection={<IconPlayerPlay size={14} />}
-              onClick={(e) => {
-                e.stopPropagation();
-                speak(showBack ? currentCard?.back : currentCard?.front);
-              }}
-              loading={isSpeaking}
-              mt="sm"
-            >
-              {isSpeaking ? "Speaking..." : "Speak"}
-            </Button>
-
-            {/* Audio play buttons */}
-            {(() => {
-              const audioUrls = showBack ? currentCard?.backAudio : currentCard?.frontAudio;
-              if (audioUrls && audioUrls.length > 0) {
-                return (
-                  <Group gap="xs" mt="md" justify="center">
-                    {audioUrls.map((url, idx) => (
-                      <Button
-                        key={idx}
-                        size="xs"
-                        variant="light"
-                        color="pink"
-                        leftSection={<IconVolume size={14} />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          playAudio(url);
+            {isViewingHistory ? (
+              /* History view - show both sides */
+              <>
+                <Badge variant="light" color="violet" size="sm" mb="md">
+                  Previous Card • Box {displayCard?.box || 1}
+                </Badge>
+                
+                {/* Front */}
+                <Text size="1.5rem" fw={700} ta="center" mb="sm">
+                  {displayCard?.front}
+                </Text>
+                
+                <Box w="100%" h={1} bg="gray.3" my="md" />
+                
+                {/* Back */}
+                {(() => {
+                  const { definition, rest } = extractDefinition(displayCard?.back || "");
+                  return (
+                    <>
+                      {definition && (
+                        <Text size="xl" fw={600} c="pink" mb="xs">
+                          {definition}
+                        </Text>
+                      )}
+                      <TypographyStylesProvider
+                        style={{
+                          fontSize: "1rem",
+                          lineHeight: 1.6,
+                          maxHeight: "30vh",
+                          overflow: "auto",
+                          textAlign: "center",
                         }}
-                        loading={audioPlaying}
                       >
-                        {audioUrls.length > 1 ? `Audio ${idx + 1}` : "Play Audio"}
-                      </Button>
-                    ))}
-                  </Group>
-                );
-              }
-              return null;
-            })()}
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: marked(rest),
+                          }}
+                        />
+                      </TypographyStylesProvider>
+                    </>
+                  );
+                })()}
+                
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="gray"
+                  leftSection={<IconPlayerPlay size={14} />}
+                  onClick={() => speak(displayCard?.front)}
+                  loading={isSpeaking}
+                  mt="md"
+                >
+                  Speak
+                </Button>
+              </>
+            ) : (
+              /* Normal study view */
+              <>
+                <Badge variant="light" color={showBack ? "pink" : "gray"} size="sm" mb="md">
+                  {showBack ? "Back" : "Front"} • Box {displayCard?.box || 1}
+                </Badge>
 
-            {/* Show Example button - only on front */}
-            {!showBack && (
+                {(() => {
+                  const content = showBack ? displayCard?.back || "" : displayCard?.front || "";
+                  const { definition, rest } = showBack ? extractDefinition(content) : { definition: null, rest: content };
+                  
+                  return (
+                    <>
+                      {/* Show extracted definition prominently at the top */}
+                      {definition && (
+                        <Text
+                          size="2rem"
+                          fw={700}
+                          c="pink"
+                          mb="md"
+                        >
+                          {definition}
+                        </Text>
+                      )}
+                      
+                      <TypographyStylesProvider
+                        style={{
+                          fontSize: definition ? "1rem" : "1.25rem",
+                          lineHeight: 1.6,
+                          maxHeight: definition ? "40vh" : "50vh",
+                          overflow: "auto",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div
+                          ref={cardContentRef}
+                          dangerouslySetInnerHTML={{
+                            __html: marked(rest),
+                          }}
+                        />
+                      </TypographyStylesProvider>
+                    </>
+                  );
+                })()}
+
+                {/* Text-to-speech button */}
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="gray"
+                  leftSection={<IconPlayerPlay size={14} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    speak(showBack ? displayCard?.back : displayCard?.front);
+                  }}
+                  loading={isSpeaking}
+                  mt="sm"
+                >
+                  {isSpeaking ? "Speaking..." : "Speak"}
+                </Button>
+
+                {/* Audio play buttons */}
+                {(() => {
+                  const audioUrls = showBack ? displayCard?.backAudio : displayCard?.frontAudio;
+                  if (audioUrls && audioUrls.length > 0) {
+                    return (
+                      <Group gap="xs" mt="md" justify="center">
+                        {audioUrls.map((url, idx) => (
+                          <Button
+                            key={idx}
+                            size="xs"
+                            variant="light"
+                            color="pink"
+                            leftSection={<IconVolume size={14} />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              playAudio(url);
+                            }}
+                            loading={audioPlaying}
+                          >
+                            {audioUrls.length > 1 ? `Audio ${idx + 1}` : "Play Audio"}
+                          </Button>
+                        ))}
+                      </Group>
+                    );
+                  }
+                  return null;
+                })()}
+              </>
+            )}
+
+            {/* Show Example button - only on front, not when viewing history */}
+            {!isViewingHistory && !showBack && (
               <Box mt="md">
                 {!showExample && (
                   <Button
@@ -995,27 +1185,46 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
               </Box>
             )}
 
-            <Group gap="xs" mt="xl">
-              <IconRotate size={16} color="var(--mantine-color-dimmed)" />
-              <Text size="xs" c="dimmed">Click or press Space to flip</Text>
-            </Group>
-          </Paper>
-
-          <Transition mounted={showBack} transition="slide-up" duration={200}>
-            {(styles) => (
-              <Group justify="center" gap="md" mt="xl" wrap="nowrap" style={styles}>
-                <Button size="lg" variant="light" color="red" leftSection={<IconX size={20} />} onClick={() => handleAnswer("hard")} disabled={isAnimating} style={{ minWidth: 120, flex: 1, maxWidth: 160 }}>
-                  Hard
-                </Button>
-                <Button size="lg" variant="filled" color="green" leftSection={<IconCheck size={20} />} onClick={() => handleAnswer("easy")} disabled={isAnimating} style={{ minWidth: 120, flex: 1, maxWidth: 160 }}>
-                  Easy
-                </Button>
+            {!isViewingHistory && (
+              <Group gap="xs" mt="xl">
+                <IconRotate size={16} color="var(--mantine-color-dimmed)" />
+                <Text size="xs" c="dimmed">Click or press Space to flip</Text>
               </Group>
             )}
-          </Transition>
+          </Paper>
+
+          {isViewingHistory ? (
+            /* History mode - show return button */
+            <Group justify="center" mt="xl">
+              <Button
+                size="lg"
+                variant="filled"
+                color="violet"
+                onClick={handleReturnToCurrent}
+              >
+                Return to Current Card
+              </Button>
+            </Group>
+          ) : (
+            /* Normal mode - show easy/hard buttons */
+            <Transition mounted={showBack} transition="slide-up" duration={200}>
+              {(styles) => (
+                <Group justify="center" gap="md" mt="xl" wrap="nowrap" style={styles}>
+                  <Button size="lg" variant="light" color="red" leftSection={<IconX size={20} />} onClick={() => handleAnswer("hard")} disabled={isAnimating} style={{ minWidth: 120, flex: 1, maxWidth: 160 }}>
+                    Hard
+                  </Button>
+                  <Button size="lg" variant="filled" color="green" leftSection={<IconCheck size={20} />} onClick={() => handleAnswer("easy")} disabled={isAnimating} style={{ minWidth: 120, flex: 1, maxWidth: 160 }}>
+                    Easy
+                  </Button>
+                </Group>
+              )}
+            </Transition>
+          )}
 
           <Text size="xs" c="dimmed" ta="center" mt="xl">
-            Keyboard: Space = Flip • ← = Hard • → = Easy • Esc = Exit
+            {isViewingHistory 
+              ? "Keyboard: ← = Older • → = Newer • Space/Esc = Return to current • P = Previous"
+              : "Keyboard: Space = Flip • ← = Hard • → = Easy • P = Previous • Esc = Exit"}
           </Text>
         </Box>
       </Box>

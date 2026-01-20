@@ -524,7 +524,7 @@ Generate the sentences now:`;
   // Configuration screen
   if (!started) {
     return (
-      <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <Box style={{ minHeight: "calc(100vh - 64px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <Paper p="xl" radius="lg" withBorder shadow="sm" style={{ maxWidth: 550, width: "100%" }}>
           <Group justify="space-between" mb="xl">
             <ActionIcon variant="subtle" color="gray" onClick={onBack}>
@@ -669,7 +669,7 @@ Generate the sentences now:`;
   if (finished) {
     const totalUpdated = updatedCardIds.current.size;
     return (
-      <Box style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <Box style={{ minHeight: "calc(100vh - 64px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <Paper p="xl" radius="lg" withBorder shadow="sm" style={{ maxWidth: 500, width: "100%", textAlign: "center" }}>
           <Title order={2} mb="lg">
             {mode === "story" ? "📖 The End!" : "🎉 Practice Complete!"}
@@ -732,7 +732,7 @@ Generate the sentences now:`;
   const vocabWords = currentSentence?.vocabWithIds || [];
 
   return (
-    <Box style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <Box style={{ minHeight: "calc(100vh - 64px)", display: "flex", flexDirection: "column" }}>
       {/* Header */}
       <Box px="md" py="sm" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
         <Group justify="space-between" maw={800} mx="auto">
