@@ -18,7 +18,6 @@ import {
   IconStar,
   IconSettings,
   IconHistory,
-  IconPencil,
   IconHammer,
   IconGitFork,
 } from "@tabler/icons-react";
@@ -34,7 +33,37 @@ import ReviewsTab from "./tabs/ReviewsTab.jsx";
 import VersionsTab from "./tabs/VersionsTab.jsx";
 import SettingsTab from "./tabs/SettingsTab.jsx";
 
-export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
+/** @type {Record<string, Record<string, string>>} */
+const THEMES = {
+  light: {
+    bg: "#FFFFFF",
+    bgCard: "#FFFFFF",
+    border: "#f5f3eb",
+    text: "#416165",
+    textMuted: "#5a7a7e",
+    accent: "#ff715b",
+  },
+  dark: {
+    bg: "#0a0a0a",
+    bgCard: "#111111",
+    border: "#2a2a2a",
+    text: "#e5e5e5",
+    textMuted: "#888888",
+    accent: "#22c55e",
+  },
+};
+
+/**
+ * @param {{
+ *   app: Record<string, any>;
+ *   onBack: () => void;
+ *   onUpdate: (appId: string, data: Record<string, unknown>, options?: { silent?: boolean }) => Promise<void>;
+ *   onDelete: (appId: string) => Promise<void>;
+ *   darkMode?: boolean;
+ * }} props
+ */
+export default function AppDetailsPage({ app, onBack, onUpdate, onDelete, darkMode = false }) {
+  const colors = darkMode ? THEMES.dark : THEMES.light;
   const { user, promptSignIn } = useAuth();
   const [activeTab, setActiveTab] = useState("info");
   
@@ -59,63 +88,63 @@ export default function AppDetailsPage({ app, onBack, onUpdate, onDelete }) {
       {/* Header */}
       <Group mb="lg" justify="space-between">
         <Button 
-          variant="subtle" 
-          color="slate"
+          variant={darkMode ? "outline" : "subtle"}
           leftSection={<IconArrowLeft size={14} />}
           onClick={onBack}
+          style={darkMode ? { borderColor: colors.border, color: colors.text } : undefined}
         >
           Back
         </Button>
         <Group gap="xs">
           {canEdit && (
             <Button
-              variant="light"
-              color="dark"
+              variant={darkMode ? "outline" : "light"}
               leftSection={<IconHammer size={14} />}
               onClick={() => window.open(`https://builder.basebase.com/?edit=${app.id}`, "_blank")}
+              style={darkMode ? { borderColor: colors.border, color: colors.text } : undefined}
             >
               Build
             </Button>
           )}
           <Button
-            variant="light"
-            color="coral"
+            variant={darkMode ? "outline" : "light"}
             leftSection={<IconGitFork size={14} />}
             onClick={handleFork}
+            style={darkMode ? { borderColor: colors.border, color: colors.text } : undefined}
           >
             Fork
-        </Button>
-        <Button
-          variant="filled"
-          color="coral"
-          leftSection={<IconExternalLink size={14} />}
-          onClick={() => window.open(`https://${app.id}.basebase.com`, '_blank')}
-        >
-          Open App
-        </Button>
+          </Button>
+          <Button
+            variant="filled"
+            leftSection={<IconExternalLink size={14} />}
+            onClick={() => window.open(`https://${app.id}.basebase.com`, "_blank")}
+            style={{ backgroundColor: colors.accent, color: darkMode ? "#0a0a0a" : "#FFFFFF" }}
+          >
+            Open App
+          </Button>
         </Group>
       </Group>
       
       {/* App Header */}
-      <Card withBorder mb="lg" style={{ borderColor: '#f5f3eb' }}>
+      <Card withBorder mb="lg" style={{ borderColor: colors.border, backgroundColor: colors.bgCard }}>
         <Group gap="md">
           <Avatar
             src={app.logoURL}
             alt={app.name}
             size={80}
             radius="md"
-            color="coral"
+            color={darkMode ? "green" : "orange"}
           >
             {app.name?.charAt(0)?.toUpperCase() || "A"}
           </Avatar>
           <div style={{ flex: 1 }}>
-            <Text size="xl" fw={600} style={{ color: '#416165' }}>{app.name || "Untitled App"}</Text>
+            <Text size="xl" fw={600} style={{ color: colors.text }}>{app.name || "Untitled App"}</Text>
             <Group gap="xs" mt={4}>
-              <Avatar src={ownerProfile?.photoURL} size="xs" radius="xl" color="teal">
+              <Avatar src={ownerProfile?.photoURL} size="xs" radius="xl" color={darkMode ? "pink" : "teal"}>
                 {(ownerProfile?.displayName || "?").charAt(0).toUpperCase()}
               </Avatar>
-              <Text size="sm" style={{ color: '#5a7a7e' }}>{ownerProfile?.displayName || "Unknown"}</Text>
-              {app.category && <Badge color="coral" variant="light" size="sm">{app.category}</Badge>}
+              <Text size="sm" style={{ color: colors.textMuted }}>{ownerProfile?.displayName || "Unknown"}</Text>
+              {app.category && <Badge color={darkMode ? "green" : "orange"} variant={darkMode ? "outline" : "light"} size="sm">{app.category}</Badge>}
             </Group>
           </div>
         </Group>

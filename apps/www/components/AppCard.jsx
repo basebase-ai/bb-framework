@@ -11,12 +11,42 @@ import {
 } from "@mantine/core";
 import { IconGitFork, IconInfoCircle } from "@tabler/icons-react";
 
-// Helper function to format relative time
+/** @type {Record<string, Record<string, string>>} */
+const THEMES = {
+  light: {
+    bg: "#FFFFFF",
+    bgHeader: "#faf9f7",
+    border: "#f5f3eb",
+    borderHover: "#ff715b",
+    text: "#1a1a1a",
+    textMuted: "#5a7a7e",
+    textDim: "#a49966",
+    accent: "#ff715b",
+    accentAlt: "#17bebb",
+  },
+  dark: {
+    bg: "#111111",
+    bgHeader: "#161616",
+    border: "#2a2a2a",
+    borderHover: "#22c55e",
+    text: "#e5e5e5",
+    textMuted: "#888888",
+    textDim: "#666666",
+    accent: "#22c55e",
+    accentAlt: "#ec4899",
+  },
+};
+
+/**
+ * Helper function to format relative time
+ * @param {any} timestamp
+ * @returns {string}
+ */
 function formatRelativeTime(timestamp) {
   if (!timestamp) return "";
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   const now = new Date();
-  const diffMs = now - date;
+  const diffMs = now.getTime() - date.getTime();
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
   const diffHour = Math.floor(diffMin / 60);
@@ -35,9 +65,12 @@ function formatRelativeTime(timestamp) {
  *   ownerDisplayName: string;
  *   onDetails: (app: Record<string, any>) => void;
  *   onFork: (app: Record<string, any>) => void;
+ *   darkMode?: boolean;
  * }} props
  */
-export default function AppCard({ app, ownerProfile, ownerDisplayName, onDetails, onFork }) {
+export default function AppCard({ app, ownerProfile, ownerDisplayName, onDetails, onFork, darkMode = false }) {
+  const colors = darkMode ? THEMES.dark : THEMES.light;
+
   return (
     <Card
       shadow="xs"
@@ -46,18 +79,11 @@ export default function AppCard({ app, ownerProfile, ownerDisplayName, onDetails
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        borderColor: "#f5f3eb",
+        borderColor: colors.border,
         transition: "all 0.2s ease",
-        background: "#FFFFFF",
+        background: colors.bg,
         cursor: "pointer",
       }}
-      sx={(theme) => ({
-        "&:hover": {
-          borderColor: "#ff715b",
-          transform: "translateY(-2px)",
-          boxShadow: `0 4px 16px rgba(255, 113, 91, 0.12)`,
-        },
-      })}
       onClick={() => onDetails(app)}
     >
       <Card.Section
@@ -65,33 +91,33 @@ export default function AppCard({ app, ownerProfile, ownerDisplayName, onDetails
         inheritPadding
         py="xs"
         style={{
-          background: "#faf9f7",
-          borderColor: "#f5f3eb",
+          background: colors.bgHeader,
+          borderColor: colors.border,
         }}
       >
-        <Group position="apart" align="flex-start" wrap="nowrap" gap="xs">
+        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
           <Group gap="xs" style={{ flex: 1, minWidth: 0 }}>
             <Avatar
               src={app.logoURL}
               alt={app.name}
               radius="sm"
               size="md"
-              color="coral"
+              color={darkMode ? "green" : "orange"}
               style={{ flexShrink: 0 }}
             >
               {app.name?.charAt(0)?.toUpperCase() || "A"}
             </Avatar>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <Text weight={600} size="sm" style={{ wordBreak: "break-word", lineHeight: 1.2 }}>
+              <Text fw={600} size="sm" style={{ wordBreak: "break-word", lineHeight: 1.2, color: colors.text }}>
                 {app.name || "Untitled App"}
               </Text>
-              <Text size="xs" color="dimmed" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <Text size="xs" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: colors.textMuted }}>
                 by {ownerProfile?.displayName || "Unknown"}
               </Text>
             </div>
           </Group>
           {app.category && (
-            <Badge color="gray" variant="light" style={{ flexShrink: 0 }}>
+            <Badge color={darkMode ? "dark" : "gray"} variant={darkMode ? "outline" : "light"} style={{ flexShrink: 0 }}>
               {app.category}
             </Badge>
           )}
@@ -99,14 +125,14 @@ export default function AppCard({ app, ownerProfile, ownerDisplayName, onDetails
       </Card.Section>
 
       <Stack gap={4} mt="xs" style={{ flex: 1 }}>
-        <Text size="xs" color="dimmed" lineClamp={2}>
+        <Text size="xs" lineClamp={2} style={{ color: colors.textMuted }}>
           {app.description || "No description provided"}
         </Text>
 
         {app.tags && app.tags.length > 0 && (
           <Group gap={3} mt={2}>
-            {app.tags.slice(0, 2).map((tag, idx) => (
-              <Badge key={idx} variant="dot" color="dark" style={{ textTransform: "none" }}>
+            {app.tags.slice(0, 2).map((/** @type {string} */ tag, /** @type {number} */ idx) => (
+              <Badge key={idx} variant="dot" color={darkMode ? "green" : "dark"} style={{ textTransform: "none" }}>
                 {tag}
               </Badge>
             ))}
@@ -121,7 +147,7 @@ export default function AppCard({ app, ownerProfile, ownerDisplayName, onDetails
         {(app.rating || app.ratingCount) && (
           <Group gap="xs" mt="auto" pt="xs">
             <Rating value={app.rating || 0} fractions={2} readOnly size="xs" />
-            <Text size="xs" color="dimmed">
+            <Text size="xs" style={{ color: colors.textMuted }}>
               ({app.ratingCount || 0})
             </Text>
           </Group>
@@ -129,22 +155,22 @@ export default function AppCard({ app, ownerProfile, ownerDisplayName, onDetails
       </Stack>
 
       {/* Owner */}
-      <Group gap={6} mt="xs" pt="xs" style={{ borderTop: "1px solid #f5f3eb" }}>
+      <Group gap={6} mt="xs" pt="xs" style={{ borderTop: `1px solid ${colors.border}` }}>
         <Avatar
           src={ownerProfile?.photoURL || null}
           alt={ownerProfile?.displayName || "Owner"}
           size="sm"
           radius="xl"
-          color="teal"
+          color={darkMode ? "pink" : "teal"}
         >
           {(ownerProfile?.displayName || "Unknown User").charAt(0).toUpperCase()}
         </Avatar>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <Text size="xs" style={{ color: "#5a7a7e" }}>
+          <Text size="xs" style={{ color: colors.textMuted }}>
             {ownerDisplayName}
           </Text>
           {app.updatedAt && (
-            <Text size="xs" style={{ color: "#a49966", opacity: 0.8 }}>
+            <Text size="xs" style={{ color: colors.textDim }}>
               {formatRelativeTime(app.updatedAt)}
             </Text>
           )}
@@ -153,23 +179,26 @@ export default function AppCard({ app, ownerProfile, ownerDisplayName, onDetails
 
       <Group gap="xs" mt="xs" grow>
         <Button
-          variant="light"
-          color="slate"
+          variant={darkMode ? "outline" : "light"}
           leftSection={<IconInfoCircle size={12} />}
           onClick={(event) => {
             event.stopPropagation();
             onDetails(app);
           }}
+          style={darkMode ? { borderColor: colors.border, color: colors.text } : undefined}
         >
           Details
         </Button>
         <Button
           variant="filled"
-          color="coral"
           leftSection={<IconGitFork size={12} />}
           onClick={(event) => {
             event.stopPropagation();
             onFork(app);
+          }}
+          style={{
+            backgroundColor: colors.accent,
+            color: darkMode ? "#0a0a0a" : "#FFFFFF",
           }}
         >
           Fork

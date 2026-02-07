@@ -26,19 +26,33 @@ import PrivacyPolicy from "./PrivacyPolicy.jsx";
 import AboutUs from "./AboutUs.jsx";
 import Pricing from "./Pricing.jsx";
 import IntegrationsPage from "./IntegrationsPage.jsx";
-import { APP_ID } from "../schema.js";
 
 // Load Google Fonts (matching landing page)
 const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap";
 
-/** Basebase Logo SVG Component */
+/** @type {Record<string, string>} */
+const COLORS = {
+  bg: "#0a0a0a",
+  bgLight: "#111111",
+  border: "#2a2a2a",
+  text: "#e5e5e5",
+  textMuted: "#888888",
+  accent: "#22c55e",
+  pink: "#ec4899",
+  purple: "#a855f7",
+};
+
+/**
+ * Basebase Logo SVG Component - green/pink theme
+ * @param {{ size?: number }} props
+ */
 function BasebaseLogo({ size = 28 }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56 / 45)}>
-      <path fill="#FF7300" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
-      <path fill="#FFBE00" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
-      <path fill="#FBBC05" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
-      <path fill="#FF7300" d="M7 0a7 7 0 0 1 7 7v16.052A1.948 1.948 0 0 1 12.052 25C5.396 25 0 19.604 0 12.948V7a7 7 0 0 1 7-7Z" />
+      <path fill="#22c55e" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
+      <path fill="#ec4899" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#a855f7" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#22c55e" d="M7 0a7 7 0 0 1 7 7v16.052A1.948 1.948 0 0 1 12.052 25C5.396 25 0 19.604 0 12.948V7a7 7 0 0 1 7-7Z" />
     </svg>
   );
 }
@@ -97,12 +111,6 @@ export default function AppGallery({ onSignIn }) {
 
   // Parse route from current path
   const route = useMemo(() => parseRoute(path), [path]);
-
-  // Get this app's logo from the apps collection
-  const appLogo = useMemo(() => {
-    const thisApp = allApps.find(a => a.id === APP_ID);
-    return thisApp?.logoURL;
-  }, [allApps]);
 
   const [profileModalOpened, setProfileModalOpened] = useState(false);
 
@@ -187,7 +195,7 @@ export default function AppGallery({ onSignIn }) {
   };
 
   /** @type {React.CSSProperties} */
-  const navLinkStyle = { color: "#1a1a1a", textDecoration: "none", cursor: "pointer", fontWeight: 400 };
+  const navLinkStyle = { color: COLORS.textMuted, textDecoration: "none", cursor: "pointer", fontWeight: 400 };
 
   // Route to appropriate view
   if (route.view === "terms") {
@@ -217,42 +225,40 @@ export default function AppGallery({ onSignIn }) {
   if (route.view === "home") {
     return (
       <PublicHomepage
-        onSignIn={onSignIn || promptSignIn}
-        onCreateApp={() => window.open("https://builder.basebase.com/?new=true", "_blank")}
-        isAuthenticated={!!user}
-        userPhotoURL={profile?.photoURL}
-        userDisplayName={profile?.displayName || user?.email}
-        onNavigateToTerms={navigateToTerms}
-        onNavigateToPrivacy={navigateToPrivacy}
-        onNavigateToAbout={navigateToAbout}
-        onNavigateToPricing={navigateToPricing}
-        onNavigateToIntegrations={navigateToIntegrations}
         onNavigateToGallery={navigateToGallery}
+        onSignIn={onSignIn || promptSignIn}
+        onSignOut={handleSignOut}
         onOpenProfile={() => setProfileModalOpened(true)}
+        user={user}
+        userDisplayName={profile?.displayName || user?.email}
+        userPhotoURL={profile?.photoURL}
       />
     );
   }
 
-  // Gallery content
+  // Gallery content - dark mode
   return (
     <Box
       style={{
         minHeight: "100vh",
-        background: "#FFFFFF",
+        background: COLORS.bg,
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      {/* Navigation - matching landing page */}
+      {/* Navigation - dark mode */}
       <Box
         component="nav"
         style={{
-          position: "relative",
-          background: "#FFFFFF",
+          position: "sticky",
+          top: 0,
+          background: "rgba(10, 10, 10, 0.9)",
+          backdropFilter: "blur(12px)",
+          borderBottom: `1px solid ${COLORS.border}`,
           zIndex: 100,
         }}
       >
         <Container size="xl">
-          <Group justify="space-between" h={72} px="md">
+          <Group justify="space-between" h={56} px="md">
             {/* Logo */}
             <Group
               gap={8}
@@ -260,26 +266,29 @@ export default function AppGallery({ onSignIn }) {
               style={{ cursor: "pointer" }}
               onClick={navigateToHome}
             >
-              <BasebaseLogo size={28} />
-              <Text fw={500} size="xl" style={{ color: "#1a1a1a", letterSpacing: "-0.02em" }}>
-                Basebase
+              <BasebaseLogo size={22} />
+              <Text fw={700} style={{ color: COLORS.text, letterSpacing: "-0.02em" }}>
+                basebase
               </Text>
             </Group>
 
             {/* Desktop Nav Links */}
-            <Group gap={32}>
+            <Group gap={24}>
               <Text
                 size="sm"
-                style={{ ...navLinkStyle, fontWeight: 500 }}
+                style={{ ...navLinkStyle, color: COLORS.text }}
               >
-                Solution Gallery
+                Gallery
               </Text>
               <Text
+                component="a"
+                href="https://github.com/basebase-ai/bb-framework"
+                target="_blank"
+                rel="noopener noreferrer"
                 size="sm"
                 style={navLinkStyle}
-                onClick={() => window.open("https://connections.basebase.com", "_self")}
               >
-                Integrations
+                GitHub
               </Text>
               <Text
                 component="a"
@@ -289,7 +298,7 @@ export default function AppGallery({ onSignIn }) {
                 size="sm"
                 style={navLinkStyle}
               >
-                Documentation
+                Docs
               </Text>
               {user ? (
                 <Menu position="bottom-end" withArrow>
@@ -299,7 +308,7 @@ export default function AppGallery({ onSignIn }) {
                       alt={profile?.displayName || user.email || "User"}
                       size="sm"
                       radius="xl"
-                      color="orange"
+                      color="green"
                       style={{ cursor: "pointer" }}
                     >
                       {(profile?.displayName || user.email || "U").charAt(0).toUpperCase()}
@@ -324,10 +333,10 @@ export default function AppGallery({ onSignIn }) {
                 </Menu>
               ) : (
                 <Button
-                  variant="subtle"
+                  variant="outline"
                   size="xs"
                   onClick={() => (onSignIn || promptSignIn)()}
-                  style={{ color: "#1a1a1a" }}
+                  style={{ borderColor: COLORS.border, color: COLORS.text }}
                 >
                   Sign in
                 </Button>
@@ -339,26 +348,24 @@ export default function AppGallery({ onSignIn }) {
 
       {/* Main Content */}
       <Container size="xl" py="xl">
-        <LoadingOverlay visible={loading} />
+        <LoadingOverlay visible={loading} overlayProps={{ color: COLORS.bg, backgroundOpacity: 0.8 }} />
 
         {/* Solution Gallery Headline */}
         {!selectedAppDetails && (
           <Text
             component="h1"
-            ta="center"
             mb="xl"
             style={{
-              fontSize: "clamp(32px, 5vw, 53px)",
+              fontSize: 28,
               fontWeight: 700,
-              color: "#1a1a1a",
+              color: COLORS.text,
               lineHeight: 1.2,
               letterSpacing: "-0.02em",
               margin: 0,
-              marginBottom: 32,
-              fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
+              marginBottom: 24,
             }}
           >
-            Solution Gallery
+            App gallery
           </Text>
         )}
 
@@ -368,6 +375,7 @@ export default function AppGallery({ onSignIn }) {
             onBack={handleBackFromDetails}
             onUpdate={handleUpdateApp}
             onDelete={handleDeleteApp}
+            darkMode
           />
         ) : (
           <AppGrid
@@ -375,6 +383,7 @@ export default function AppGallery({ onSignIn }) {
             loading={loading}
             onShowDetails={handleShowDetails}
             onCreateApp={() => window.open("https://builder.basebase.com/?new=true", "_blank")}
+            darkMode
           />
         )}
       </Container>

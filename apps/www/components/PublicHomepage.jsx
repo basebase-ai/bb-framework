@@ -1,219 +1,316 @@
 /**
- * PublicHomepage - Marketing landing page
- * Clean, modern design with floating integration icons
+ * PublicHomepage - Code-first landing page for developers and AI agents
+ * Dark mode, terminal-aesthetic design
  */
 
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { Box, Text, Button, Group, Stack, Container, Table, Anchor, CopyButton, Tooltip, ActionIcon, Avatar, Menu } from "@mantine/core";
+import { IconArrowRight, IconCheck, IconCopy, IconBrandGithub, IconBook, IconApps, IconBrandDiscord, IconUser, IconLogout } from "@tabler/icons-react";
 
-// Load Google Fonts (Instrument Serif for headlines, Inter for body)
-const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap";
-import { Box, Text, Button, Group, Stack, Container, Burger, Drawer, Avatar, Menu } from "@mantine/core";
-import { IconArrowRight, IconCheck, IconLayoutGrid, IconLogout, IconUser } from "@tabler/icons-react";
-import { signOut } from "firebase/auth";
-import { auth } from "../../../framework/core/firebase-init.js";
-import {
-  SiSlack,
-  SiAirtable,
-  SiGooglesheets,
-  SiNotion,
-  SiStripe,
-  SiSalesforce,
-  SiHubspot,
-  SiGooglecalendar,
-  SiGmail,
-  SiSupabase,
-  SiLinear,
-  SiGithub,
-  SiIntercom,
-  SiAsana,
-  SiJira,
-} from "react-icons/si";
-
-// Color palette - Clean, modern
+/** @type {Record<string, string>} */
 const COLORS = {
-  yellow: "#F5B800",      // Primary - Golden yellow for CTA
-  yellowLight: "#FFF8E1",
-  blue: "#3B82F6",        // Accent blue for underline
-  black: "#1a1a1a",       // Main text
-  darkGray: "#374151",    // Secondary text
-  gray: "#9CA3AF",        // Tertiary text
-  lightGray: "#E5E7EB",   // Borders
-  gridGray: "#F3F4F6",    // Grid background
-  white: "#FFFFFF",
-  // Keep legacy colors for sections below the fold
-  coral: "#ff715b",
-  coralLight: "#fff0ed",
-  coralDark: "#e5654f",
-  slate: "#416165",
-  slateLight: "#5a7a7e",
-  slateDark: "#334d4e",
-  teal: "#17bebb",
-  tealLight: "#45cfcc",
-  tealDark: "#14aaa8",
-  grey: "#e8eced",
-  greyLight: "#f4f6f6",
-  offWhite: "#faf9f7",
+  bg: "#0a0a0a",
+  bgLight: "#111111",
+  bgCode: "#161616",
+  border: "#2a2a2a",
+  borderLight: "#333333",
+  text: "#e5e5e5",
+  textMuted: "#888888",
+  textDim: "#666666",
+  accent: "#22c55e",
+  accentDim: "#16a34a",
+  purple: "#a855f7",
+  blue: "#3b82f6",
+  orange: "#f97316",
+  yellow: "#eab308",
+  pink: "#ec4899",
+  cyan: "#06b6d4",
 };
 
-/** @type {{ icon: React.ComponentType<{ size?: number }>; label: string }[]} */
-const INTEGRATIONS = [
-  { icon: SiSlack, label: "Slack" },
-  { icon: SiAirtable, label: "Airtable" },
-  { icon: SiGooglesheets, label: "Sheets" },
-  { icon: SiNotion, label: "Notion" },
-  { icon: SiStripe, label: "Stripe" },
-  { icon: SiSalesforce, label: "Salesforce" },
-  { icon: SiHubspot, label: "HubSpot" },
-  { icon: SiGooglecalendar, label: "Calendar" },
-  { icon: SiGmail, label: "Gmail" },
-  { icon: SiSupabase, label: "Supabase" },
-  { icon: SiLinear, label: "Linear" },
-  { icon: SiGithub, label: "GitHub" },
-  { icon: SiIntercom, label: "Intercom" },
-  { icon: SiAsana, label: "Asana" },
-  { icon: SiJira, label: "Jira" },
+/** @type {{ title: string; value: string }[]} */
+const FREE_FEATURES = [
+  { title: "Firestore database", value: "real-time, multi-user, no setup" },
+  { title: "Authentication", value: "Google + email/password, built in" },
+  { title: "Real-time sync", value: "all clients update instantly" },
+  { title: "Subdomain", value: "https://{app-id}.basebase.com" },
+  { title: "Versioning", value: "every commit is a snapshot, rollback anytime" },
+  { title: "Multi-tenant isolation", value: "your data is namespaced, no collisions" },
+  { title: "Mantine UI components", value: "Button, Modal, Table, DatePicker, 100+ more" },
+  { title: "Server functions", value: "call LLMs, send emails, enrich data" },
+  { title: "File storage", value: "upload/download with useStorage hook" },
+  { title: "Optimistic updates", value: "UI responds instantly, syncs in background" },
 ];
 
-/** @type {{ title: string; description: string }[]} */
-const FEATURES = [
-  {
-    title: "Connect your data",
-    description: "Pull data from 100+ enterprise apps. Slack, Airtable, Google Sheets, Stripe, etc. No more copy-pasting between tools."
-  },
-  {
-    title: "Build in minutes",
-    description: "Create custom dashboards, workflows, and tools using AI. No coding required. Just describe what you need."
-  },
-  {
-    title: "Share instantly",
-    description: "Deploy and share with your team in one click. Real apps, not prototypes. Production-ready from day one."
-  }
+/** @type {{ app: string; url: string; desc: string }[]} */
+const EXAMPLE_APPS = [
+  { app: "starter-app", url: "?app=starter-app", desc: "Sticky notes board" },
+  { app: "projectbase", url: "?app=projectbase", desc: "Task manager with projects" },
+  { app: "crm", url: "?app=crm", desc: "Customer relationship manager" },
+  { app: "basepedia", url: "?app=basepedia", desc: "Wiki with rich content" },
+  { app: "playground", url: "?app=playground", desc: "Browse and launch other apps" },
 ];
 
-/** @type {{ title: string; description: string }[]} */
-const PAIN_POINTS = [
-  {
-    title: "Your data is everywhere",
-    description: "Salesforce, HubSpot, Sheets, Notion, Slack... Your data lives in dozens of apps that don't talk to each other."
-  },
-  {
-    title: "Zapier isn't enough",
-    description: "Moving data between apps is one thing. Building the custom workflows and views your team actually needs? That's another."
-  },
-  {
-    title: "You can't wait for engineers",
-    description: "You know exactly what you need, but engineering has other priorities. So you wait... and wrestle with spreadsheets."
-  }
-];
-
-/** @typedef {{ x: number; y: number; icon: React.ComponentType<{ size?: number; color?: string }>; label: string; color?: string }} FloatingIcon */
-
-/** @type {FloatingIcon[]} */
-const FLOATING_ICONS = [
-  { x: 9, y: 20, icon: SiHubspot, label: "HubSpot", color: "#FF7A59" },
-  { x: 9, y: 80, icon: SiSalesforce, label: "Salesforce", color: "#00A1E0" },
-  { x: -2, y: 50, icon: SiSlack, label: "Slack", color: "#E01E5A" },
-  { x: 91, y: 20, icon: SiGooglesheets, label: "Sheets", color: "#34A853" },
-  { x: 91, y: 80, icon: SiAirtable, label: "Airtable", color: "#18BFFF" },
-  { x: 102, y: 50, icon: SiNotion, label: "Notion", color: "#000000" },
-];
-
-/** Basebase Logo SVG Component */
-function BasebaseLogo({ size = 28 }) {
+/**
+ * Basebase Logo SVG Component - green/pink theme
+ * @param {{ size?: number }} props
+ */
+function BasebaseLogo({ size = 24 }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56 / 45)}>
-      <path fill="#FF7300" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
-      <path fill="#FFBE00" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
-      <path fill="#FBBC05" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
-      <path fill="#FF7300" d="M7 0a7 7 0 0 1 7 7v16.052A1.948 1.948 0 0 1 12.052 25C5.396 25 0 19.604 0 12.948V7a7 7 0 0 1 7-7Z" />
+      <path fill="#22c55e" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
+      <path fill="#ec4899" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#a855f7" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#22c55e" d="M7 0a7 7 0 0 1 7 7v16.052A1.948 1.948 0 0 1 12.052 25C5.396 25 0 19.604 0 12.948V7a7 7 0 0 1 7-7Z" />
     </svg>
   );
 }
 
-/** Icon Circle Component for floating integration icons */
-function IconCircle({ icon: Icon, color }) {
+/** @type {string} */
+const PACKAGES_LIST = `react, react-dom
+firebase/app, firebase/auth, firebase/firestore, firebase/storage
+@mantine/core, @mantine/hooks, @mantine/notifications, @mantine/dates
+@tabler/icons-react
+zustand
+marked
+dayjs
+@tiptap/react, @tiptap/starter-kit, @tiptap/extension-placeholder`;
+
+/**
+ * Code block component with copy button
+ * @param {{ code: string; language?: string; showCopy?: boolean }} props
+ */
+function CodeBlock({ code, language = "bash", showCopy = true }) {
   return (
     <Box
       style={{
-        width: 56,
-        height: 56,
-        borderRadius: "50%",
-        background: COLORS.white,
-        border: `1px solid ${COLORS.lightGray}`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+        background: COLORS.bgCode,
+        borderRadius: 8,
+        border: `1px solid ${COLORS.border}`,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <Icon size={24} color={color} />
+      {showCopy && (
+        <CopyButton value={code} timeout={2000}>
+          {({ copied, copy }) => (
+            <Tooltip label={copied ? "Copied" : "Copy"} position="left">
+              <ActionIcon
+                onClick={copy}
+                variant="subtle"
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  color: copied ? COLORS.accent : COLORS.textMuted,
+                }}
+              >
+                {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+              </ActionIcon>
+            </Tooltip>
+          )}
+        </CopyButton>
+      )}
+      <Box
+        component="pre"
+        style={{
+          margin: 0,
+          padding: 16,
+          paddingRight: showCopy ? 48 : 16,
+          overflowX: "auto",
+          fontSize: 13,
+          lineHeight: 1.6,
+          fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace",
+        }}
+      >
+        <code style={{ color: COLORS.text }}>{code}</code>
+      </Box>
+    </Box>
+  );
+}
+
+
+/**
+ * Section heading component
+ * @param {{ children: React.ReactNode }} props
+ */
+function SectionHeading({ children }) {
+  return (
+    <Text
+      component="h2"
+      style={{
+        fontSize: 28,
+        fontWeight: 700,
+        color: COLORS.text,
+        letterSpacing: "-0.02em",
+        margin: 0,
+        marginBottom: 16,
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+/**
+ * Section wrapper component
+ * @param {{ children: React.ReactNode; id?: string; border?: boolean }} props
+ */
+function Section({ children, id, border = true }) {
+  return (
+    <Box
+      id={id}
+      py={64}
+      style={{
+        borderBottom: border ? `1px solid ${COLORS.border}` : "none",
+      }}
+    >
+      <Container size="md">{children}</Container>
     </Box>
   );
 }
 
 /**
  * @param {{
- *   onSignIn: () => void;
- *   onCreateApp?: () => void;
- *   isAuthenticated?: boolean;
- *   userPhotoURL?: string | null;
- *   userDisplayName?: string | null;
- *   onNavigateToTerms?: () => void;
- *   onNavigateToPrivacy?: () => void;
- *   onNavigateToAbout?: () => void;
- *   onNavigateToPricing?: () => void;
- *   onNavigateToIntegrations?: () => void;
  *   onNavigateToGallery?: () => void;
+ *   onSignIn?: () => void;
+ *   onSignOut?: () => void;
  *   onOpenProfile?: () => void;
+ *   user?: { uid: string; email?: string | null } | null;
+ *   userDisplayName?: string | null;
+ *   userPhotoURL?: string | null;
  * }} props
  */
-export default function PublicHomepage({
-  onSignIn,
-  onCreateApp,
-  isAuthenticated = false,
-  userPhotoURL,
-  userDisplayName,
-  onNavigateToTerms,
-  onNavigateToPrivacy,
-  onNavigateToAbout,
-  onNavigateToPricing,
-  onNavigateToIntegrations,
-  onNavigateToGallery,
+export default function PublicHomepage({ 
+  onNavigateToGallery, 
+  onSignIn, 
+  onSignOut,
   onOpenProfile,
+  user,
+  userDisplayName,
+  userPhotoURL,
 }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const heroClone = `git clone https://github.com/basebase-ai/bb-framework && cd bb-framework && npm install
+npm run app:init my-app`;
 
-  const openBuilder = () => {
-    window.open("https://builder.basebase.com", "_blank");
-  };
+  const heroAppCode = `// apps/my-app/app.jsx
+import { useAuth } from "../../framework/hooks/useAuth.js";
+import { useCollection } from "../../framework/hooks/useCollection.js";
+import { collections } from "./schema.js";
 
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      console.error("Sign out error:", err);
-    }
-  };
+export default function App() {
+  const { user } = useAuth();
+  const { data: notes, add, remove } = useCollection(collections.notes);
 
-  // Load Google Fonts on mount
-  useEffect(() => {
-    const existingLink = document.querySelector(`link[href="${GOOGLE_FONTS_URL}"]`);
-    if (!existingLink) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = GOOGLE_FONTS_URL;
-      document.head.appendChild(link);
-    }
-  }, []);
+  return (
+    <Stack p="xl">
+      <Title>My Notes</Title>
+      <Button onClick={() => add({ text: "New note", owner: user.uid })}>Add</Button>
+      {notes.map((n) => <Card key={n.id}>{n.text}</Card>)}
+    </Stack>
+  );
+}`;
 
-  /** @type {React.CSSProperties} */
-  const navLinkStyle = { color: COLORS.black, textDecoration: "none", cursor: "pointer", fontWeight: 400 };
+  const fullSequence = `# 1. Clone the framework (once)
+git clone https://github.com/basebase-ai/bb-framework
+cd bb-framework
+npm install
+
+# 2. Create your app (generates /apps/my-app/ with schema.js and app.jsx)
+npm run app:init my-app
+
+# 3. Develop locally
+npm run dev
+# → visit http://localhost:3000?app=my-app
+
+# 4. Write your app
+# Edit apps/my-app/app.jsx and apps/my-app/components/*.jsx
+
+# 5. Publish (first time: sign up with email, verify it, then run this)
+npm run app:commit my-app "describe your changes"
+
+# 6. Share
+# → https://my-app.basebase.com is live`;
+
+  const useCollectionExample = `import { useCollection } from "../../framework/hooks/useCollection.js";
+import { collections } from "./schema.js";
+
+const { data, loading, add, update, remove } = useCollection(collections.tasks, {
+  where: [["owner", "==", user.uid]],
+  orderBy: ["createdAt", "desc"],
+  limit: 50,
+});
+
+await add({ title: "Ship it" });
+await update(docId, { completed: true });
+await remove(docId);`;
+
+  const useAuthExample = `const { user, loading, authenticated } = useAuth();
+// user.uid, user.email, user.displayName`;
+
+  const useDocumentExample = `const { data, loading, exists, update, remove } = useDocument(collections.tasks, taskId);`;
+
+  const useFunctionExample = `const { call, loading, result, error } = useFunction("askLLM");
+
+await call({
+  provider: "openai",
+  model: "gpt-4",
+  systemPrompt: "You are helpful",
+  message: "Summarize this document",
+});`;
+
+  const useStorageExample = `const { upload, deleteFile, getURL, uploading, progress } = useStorage(APP_ID);
+const result = await upload(file, \`attachments/\${file.name}\`);
+// result.url → download URL`;
+
+  const useAppMembershipExample = `const { hasAccess, isOwner, isAdmin, tier, status } = useAppMembership(APP_ID);`;
+
+  const schemaExample = `export const APP_ID = "my-app";
+
+export const collections = {
+  apps: "apps",
+  users: "users",
+  tasks: \`\${APP_ID}_tasks\`,
+  notes: \`\${APP_ID}_notes\`,
+  comments: \`\${APP_ID}_comments\`,
+};`;
+
+  const collaborateExample = `# Checkout someone else's app
+npm run app:checkout their-app
+
+# Make changes locally
+npm run dev
+# → http://localhost:3000?app=their-app
+
+# Publish your changes
+npm run app:commit their-app "fixed the bug"`;
+
+  const commandsCheatsheet = `# Development
+npm run dev                              # Start local server (port 3000)
+
+# App lifecycle
+npm run app:init <app-id>                # Create new app (no auth)
+npm run app:checkout <app-id>            # Download existing app (requires login)
+npm run app:commit <app-id> "message"    # Publish to production (requires login)
+
+# First time publishing?
+# 1. Sign up at basebase.com with email + password
+# 2. Verify your email (check inbox)
+# 3. Run app:commit — enter your email/password when prompted
+
+# Server functions
+npm run function:list                    # List available functions
+npm run function:checkout <fn-id>        # Download function code
+npm run function:commit <fn-id>          # Upload function to production
+
+# Utilities
+npm run generate:rules [app-id]          # Generate Firestore security rules
+npm run generate:types [app-id]          # Generate TypeScript types from schema`;
 
   return (
     <Box
       style={{
         minHeight: "100vh",
-        background: COLORS.white,
+        background: COLORS.bg,
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
@@ -221,59 +318,48 @@ export default function PublicHomepage({
       <Box
         component="nav"
         style={{
-          position: "relative",
-          background: COLORS.white,
+          position: "sticky",
+          top: 0,
+          background: "rgba(10, 10, 10, 0.8)",
+          backdropFilter: "blur(12px)",
+          borderBottom: `1px solid ${COLORS.border}`,
           zIndex: 100,
         }}
       >
-        <Container size="xl">
-          <Group justify="space-between" h={72} px="md">
-            {/* Logo */}
+        <Container size="md">
+          <Group justify="space-between" h={56}>
             <Group gap={8} align="center">
-              <BasebaseLogo size={28} />
-              <Text fw={500} size="xl" style={{ color: COLORS.black, letterSpacing: "-0.02em" }}>
-                Basebase
+              <BasebaseLogo size={22} />
+              <Text fw={700} style={{ color: COLORS.text, letterSpacing: "-0.02em" }}>
+                basebase
               </Text>
             </Group>
-
-            {/* Desktop Nav Links - Right aligned */}
-            <Group gap={32} visibleFrom="sm">
+            <Group gap={24}>
+              <Anchor
+                href="https://github.com/basebase-ai/bb-framework"
+                target="_blank"
+                style={{ color: COLORS.textMuted, textDecoration: "none", fontSize: 14 }}
+              >
+                GitHub
+              </Anchor>
               <Text
-                size="sm"
-                style={navLinkStyle}
+                style={{ color: COLORS.textMuted, cursor: "pointer", fontSize: 14 }}
                 onClick={() => onNavigateToGallery?.()}
               >
-                Solution Gallery
+                Gallery
               </Text>
-              <Text
-                size="sm"
-                style={navLinkStyle}
-                onClick={() => window.open("https://connections.basebase.com", "_self")}
-              >
-                Integrations
-              </Text>
-              <Text
-                component="a"
-                href="https://docs.basebase.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                size="sm"
-                style={navLinkStyle}
-              >
-                Documentation
-              </Text>
-              {isAuthenticated ? (
+              {user ? (
                 <Menu position="bottom-end" withArrow>
                   <Menu.Target>
                     <Avatar
                       src={userPhotoURL}
-                      alt={userDisplayName || "User"}
+                      alt={userDisplayName || user.email || "User"}
                       size="sm"
                       radius="xl"
-                      color="orange"
+                      color="green"
                       style={{ cursor: "pointer" }}
                     >
-                      {(userDisplayName || "U").charAt(0).toUpperCase()}
+                      {(userDisplayName || user.email || "U").charAt(0).toUpperCase()}
                     </Avatar>
                   </Menu.Target>
                   <Menu.Dropdown>
@@ -287,7 +373,7 @@ export default function PublicHomepage({
                     <Menu.Item
                       leftSection={<IconLogout size={14} />}
                       color="red"
-                      onClick={handleSignOut}
+                      onClick={() => onSignOut?.()}
                     >
                       Sign out
                     </Menu.Item>
@@ -295,885 +381,475 @@ export default function PublicHomepage({
                 </Menu>
               ) : (
                 <Button
-                  variant="subtle"
+                  variant="outline"
                   size="xs"
-                  onClick={onSignIn}
-                  style={{ color: COLORS.black }}
+                  onClick={() => onSignIn?.()}
+                  style={{ borderColor: COLORS.border, color: COLORS.text }}
                 >
                   Sign in
                 </Button>
               )}
             </Group>
-
-            {/* Mobile Burger */}
-            <Burger
-              opened={mobileMenuOpen}
-              onClick={() => setMobileMenuOpen((o) => !o)}
-              hiddenFrom="sm"
-              size="sm"
-              color={COLORS.black}
-            />
           </Group>
         </Container>
       </Box>
 
-      {/* Mobile Drawer */}
-      <Drawer
-        opened={mobileMenuOpen}
-        onClose={() => setMobileMenuOpen(false)}
-        position="right"
-        size="xs"
-        padding="lg"
-        hiddenFrom="sm"
-        zIndex={200}
-      >
-        <Stack gap="lg">
-          <Text
-            size="md"
-            fw={500}
-            style={navLinkStyle}
-            onClick={() => {
-              onNavigateToGallery?.();
-              setMobileMenuOpen(false);
-            }}
-          >
-            Solution Gallery
-          </Text>
-          <Text
-            size="md"
-            fw={500}
-            style={navLinkStyle}
-            onClick={() => {
-              window.open("https://connections.basebase.com", "_self");
-              setMobileMenuOpen(false);
-            }}
-          >
-            Integrations
-          </Text>
-          <Text
-            component="a"
-            href="https://docs.basebase.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            size="md"
-            fw={500}
-            style={navLinkStyle}
-          >
-            Documentation
-          </Text>
-          {isAuthenticated ? (
-            <Stack gap="xs">
-              <Group gap="xs">
-                <Avatar
-                  src={userPhotoURL}
-                  alt={userDisplayName || "User"}
-                  size="sm"
-                  radius="xl"
-                  color="orange"
-                >
-                  {(userDisplayName || "U").charAt(0).toUpperCase()}
-                </Avatar>
-                <Text size="sm" fw={500} style={{ color: COLORS.black }}>
-                  {userDisplayName || "User"}
-                </Text>
-              </Group>
-              <Button
-                variant="subtle"
-                color="gray"
-                fullWidth
-                leftSection={<IconUser size={16} />}
-                onClick={() => {
-                  onOpenProfile?.();
-                  setMobileMenuOpen(false);
-                }}
-              >
-                Profile
-              </Button>
-              <Button
-                variant="subtle"
-                color="red"
-                fullWidth
-                leftSection={<IconLogout size={16} />}
-                onClick={() => {
-                  handleSignOut();
-                  setMobileMenuOpen(false);
-                }}
-              >
-                Sign out
-              </Button>
-            </Stack>
-          ) : (
-            <Button
-              variant="filled"
-              fullWidth
-              onClick={() => {
-                onSignIn();
-                setMobileMenuOpen(false);
-              }}
-              style={{ background: COLORS.yellow, color: COLORS.black, border: "none", marginTop: 8 }}
-            >
-              Sign in
-            </Button>
-          )}
-        </Stack>
-      </Drawer>
-
-      {/* Hero Section with Grid Background */}
-      <Box
-        style={{
-          position: "relative",
-          minHeight: "calc(100vh - 72px)",
-          background: COLORS.white,
-          overflow: "hidden",
-        }}
-      >
-        {/* Grid Background - Skewed like original */}
-        <svg
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "200%",
-            top: "-50%",
-            transform: "skewY(12deg)",
-            fill: "rgba(156, 163, 175, 0.3)",
-            stroke: "rgba(156, 163, 175, 0.3)",
-            pointerEvents: "none",
-            mask: "radial-gradient(600px circle at center, white, transparent)",
-            WebkitMask: "radial-gradient(600px circle at center, white, transparent)",
-          }}
-        >
-          <defs>
-            <pattern id="grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse" x="-1" y="-1">
-              <path d="M.5 40V.5H40" fill="none" strokeDasharray="0" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid-pattern)" />
-        </svg>
-
-        {/* Floating Integration Icons with Curved Connection Lines - Desktop only */}
-        <Box visibleFrom="md" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          {/* SVG Connection Lines - Curved with animated gradients like original */}
-          <svg
-            fill="none"
-            style={{
-              position: "absolute",
-              top: 0,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 896,
-              height: 320,
-              marginTop: 175,
-              pointerEvents: "none",
-            }}
-            viewBox="0 0 896 320"
-          >
-            <defs>
-              {/* Animated gradients for left-to-right flow */}
-              <linearGradient id="grad-l1" gradientUnits="userSpaceOnUse" x1="80" y1="64" x2="208" y2="160">
-                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="-0.5;1.5" dur="1.5s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
-                  <animate attributeName="offset" values="-0.25;1.75" dur="1.5s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="0;2" dur="1.5s" repeatCount="indefinite" />
-                </stop>
-              </linearGradient>
-              <linearGradient id="grad-l2" gradientUnits="userSpaceOnUse" x1="80" y1="256" x2="208" y2="160">
-                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="-0.5;1.5" dur="1.75s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
-                  <animate attributeName="offset" values="-0.25;1.75" dur="1.75s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="0;2" dur="1.75s" repeatCount="indefinite" />
-                </stop>
-              </linearGradient>
-              <linearGradient id="grad-l3" gradientUnits="userSpaceOnUse" x1="0" y1="160" x2="208" y2="160">
-                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="-0.5;1.5" dur="2s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
-                  <animate attributeName="offset" values="-0.25;1.75" dur="2s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="0;2" dur="2s" repeatCount="indefinite" />
-                </stop>
-              </linearGradient>
-              {/* Animated gradients for right-to-left flow */}
-              <linearGradient id="grad-r1" gradientUnits="userSpaceOnUse" x1="816" y1="64" x2="688" y2="160">
-                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="-0.5;1.5" dur="1.6s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
-                  <animate attributeName="offset" values="-0.25;1.75" dur="1.6s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="0;2" dur="1.6s" repeatCount="indefinite" />
-                </stop>
-              </linearGradient>
-              <linearGradient id="grad-r2" gradientUnits="userSpaceOnUse" x1="816" y1="256" x2="688" y2="160">
-                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="-0.5;1.5" dur="1.85s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
-                  <animate attributeName="offset" values="-0.25;1.75" dur="1.85s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="0;2" dur="1.85s" repeatCount="indefinite" />
-                </stop>
-              </linearGradient>
-              <linearGradient id="grad-r3" gradientUnits="userSpaceOnUse" x1="896" y1="160" x2="688" y2="160">
-                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="-0.5;1.5" dur="2.1s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="25%" stopColor="#8B5CF6" stopOpacity="1">
-                  <animate attributeName="offset" values="-0.25;1.75" dur="2.1s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0">
-                  <animate attributeName="offset" values="0;2" dur="2.1s" repeatCount="indefinite" />
-                </stop>
-              </linearGradient>
-            </defs>
-            {/* Left side curves - base gray lines */}
-            <path d="M 80,64 Q 144,144 208,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
-            <path d="M 80,256 Q 144,176 208,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
-            <path d="M 0,160 Q 104,160 208,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
-            {/* Left side curves - animated gradient overlay */}
-            <path d="M 80,64 Q 144,144 208,160" stroke="url(#grad-l1)" strokeWidth="2" strokeLinecap="round" />
-            <path d="M 80,256 Q 144,176 208,160" stroke="url(#grad-l2)" strokeWidth="2" strokeLinecap="round" />
-            <path d="M 0,160 Q 104,160 208,160" stroke="url(#grad-l3)" strokeWidth="2" strokeLinecap="round" />
-            {/* Right side curves - base gray lines */}
-            <path d="M 816,64 Q 752,144 688,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
-            <path d="M 816,256 Q 752,176 688,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
-            <path d="M 896,160 Q 792,160 688,160" stroke="gray" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
-            {/* Right side curves - animated gradient overlay */}
-            <path d="M 816,64 Q 752,144 688,160" stroke="url(#grad-r1)" strokeWidth="2" strokeLinecap="round" />
-            <path d="M 816,256 Q 752,176 688,160" stroke="url(#grad-r2)" strokeWidth="2" strokeLinecap="round" />
-            <path d="M 896,160 Q 792,160 688,160" stroke="url(#grad-r3)" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-
-          {/* Floating Icons - positioned to match the SVG viewBox */}
-          <Box
-            style={{
-              position: "absolute",
-              top: 175,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 896,
-              height: 320,
-            }}
-          >
-            {/* Left column - HubSpot & Salesforce */}
-            <Box style={{ position: "absolute", left: 80, top: 64, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiHubspot} color="#FF7A59" />
-            </Box>
-            <Box style={{ position: "absolute", left: 80, top: 256, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiSalesforce} color="#00A1E0" />
-            </Box>
-            {/* Far left - Slack */}
-            <Box style={{ position: "absolute", left: 0, top: 160, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiSlack} color="#E01E5A" />
-            </Box>
-            {/* Right column - Sheets & Airtable */}
-            <Box style={{ position: "absolute", left: 816, top: 64, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiGooglesheets} color="#34A853" />
-            </Box>
-            <Box style={{ position: "absolute", left: 816, top: 256, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiAirtable} color="#18BFFF" />
-            </Box>
-            {/* Far right - Notion */}
-            <Box style={{ position: "absolute", left: 896, top: 160, transform: "translate(-50%, -50%)" }}>
-              <IconCircle icon={SiNotion} color="#000000" />
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Hero Content */}
-        <Container size="md" style={{ position: "relative", zIndex: 10 }}>
-          <Stack align="center" gap={32} py={100}>
-            {/* Headline - Using Instrument Serif like original */}
+      {/* Hero Section */}
+      <Box py={80} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+        <Container size="md">
+          <Stack gap={32}>
             <Text
               component="h1"
-              ta="center"
               style={{
-                fontSize: "clamp(38px, 6vw, 67px)",
+                fontSize: "clamp(32px, 5vw, 48px)",
                 fontWeight: 700,
-                color: COLORS.black,
+                color: COLORS.text,
+                letterSpacing: "-0.03em",
                 lineHeight: 1.2,
-                letterSpacing: "-0.02em",
                 margin: 0,
-                fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
               }}
             >
-              Revenue solutions in
-              <br />
-              <span
-                style={{
-                  fontStyle: "italic",
-                  position: "relative",
-                  display: "inline-block",
-                  background: "transparent",
-                }}
-              >
-                minutes,
-                {/* Rough-notation style blue underline - hand-drawn look */}
-                <svg
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    width: "100%",
-                    height: 8,
-                    overflow: "visible",
-                    pointerEvents: "none",
-                  }}
-                  viewBox="0 0 200 8"
-                  preserveAspectRatio="none"
-                >
-                  <path
-                    d="M2 5 C 30 3, 50 6, 100 4 S 150 5, 198 4"
-                    fill="none"
-                    stroke="#164CE3"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M198 5 C 160 6, 120 3, 80 5 S 40 4, 2 5"
-                    fill="none"
-                    stroke="#164CE3"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </span>
-              {" "}not months.
+              Build a production app with{" "}
+              <span style={{ color: COLORS.accent }}>1 file</span> and{" "}
+              <span style={{ color: COLORS.accent }}>3 commands</span>.
             </Text>
 
-            {/* Search Input with Create Button - clicking anywhere opens builder */}
-            <Box
-              onClick={openBuilder}
+            <Text
+              size="lg"
               style={{
-                width: "100%",
-                maxWidth: 480,
-                marginTop: 24,
-                cursor: "pointer",
+                color: COLORS.textMuted,
+                maxWidth: 560,
+                lineHeight: 1.6,
               }}
             >
-              <Group
-                gap={0}
+              No GitHub. No Vercel. No Supabase. No credit card! <br /> Just build, publish, and share.
+            </Text>
+
+            <CodeBlock code={heroClone} />
+
+            <Text style={{ color: COLORS.textMuted }}>Write your app:</Text>
+
+            <CodeBlock code={heroAppCode} />
+
+            <Text style={{ color: COLORS.textMuted }}>Publish it:</Text>
+
+            <CodeBlock code={`npm run app:commit my-app "first commit"`} />
+
+            <Text size="sm" style={{ color: COLORS.textDim, marginTop: -16 }}>
+              First publish requires a free account — email + password, verify your email, done.
+            </Text>
+
+            <Text style={{ color: COLORS.textMuted }}>Open your browser:</Text>
+
+            <Box
+              style={{
+                background: COLORS.bgCode,
+                borderRadius: 8,
+                border: `1px solid ${COLORS.border}`,
+                padding: 16,
+              }}
+            >
+              <Text
                 style={{
-                  background: COLORS.white,
-                  borderRadius: 100,
-                  border: `1px solid ${COLORS.lightGray}`,
-                  padding: 6,
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 14,
+                  color: COLORS.cyan,
                 }}
               >
-                <Text
-                  style={{
-                    flex: 1,
-                    paddingLeft: 20,
-                    fontSize: 15,
-                    color: COLORS.gray,
-                  }}
-                >
-                  Let's cross something off your list...
-                </Text>
-                <Button
-                  component="span"
-                  rightSection={<IconArrowRight size={16} />}
-                  style={{
-                    background: COLORS.yellow,
-                    color: COLORS.black,
-                    border: "none",
-                    borderRadius: 100,
-                    padding: "10px 20px",
-                    height: 42,
-                    fontWeight: 500,
-                    pointerEvents: "none",
-                  }}
-                >
-                  Start
-                </Button>
-              </Group>
+                https://my-app.basebase.com
+              </Text>
             </Box>
 
-            {/* Or View Gallery */}
-            <Group gap="md" align="center">
-              <Text size="sm" style={{ color: COLORS.gray }}>or</Text>
-              <Button
-                variant="outline"
-                onClick={onSignIn}
-                rightSection={<IconLayoutGrid size={16} />}
-                style={{
-                  borderColor: COLORS.lightGray,
-                  color: COLORS.black,
-                  borderRadius: 100,
-                  fontWeight: 500,
-                  padding: "8px 16px",
-                  height: 38,
-                }}
-              >
-                View gallery
-              </Button>
-            </Group>
+            <Box
+              p="lg"
+              style={{
+                background: COLORS.bgLight,
+                borderRadius: 8,
+                border: `1px solid ${COLORS.accent}`,
+                borderLeftWidth: 4,
+              }}
+            >
+              <Text style={{ color: COLORS.text, lineHeight: 1.7 }}>
+                <strong>That's it.</strong> Your app is live. It has a database, user auth, real-time sync, and its own subdomain. You wrote one file.
+              </Text>
+            </Box>
           </Stack>
         </Container>
       </Box>
 
-      {/* Pain Points Section */}
-      <Box py={100}>
-        <Container size="lg">
-          <Stack align="center" gap={60}>
-            <Stack align="center" gap="sm">
-              <Text
-                component="h2"
-                ta="center"
-                style={{
-                  fontSize: 53,
-                  fontWeight: 700,
-                  color: COLORS.slate,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.1,
-                  margin: 0,
-                  fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
-                }}
-              >
-                RevOps workflows <span style={{ color: COLORS.coral }}>are hard</span>
-              </Text>
-              <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 540 }}>
-                We get it. Your data is scattered across dozens of apps, and building the tools you need feels impossible without an engineering team.
-              </Text>
-            </Stack>
+      {/* What you get for free */}
+      <Section id="features">
+        <SectionHeading>What you get for free</SectionHeading>
+        <Text style={{ color: COLORS.textMuted, marginBottom: 24 }}>
+          Every Basebase app ships with all of this. You didn't configure any of it.
+        </Text>
 
-            <Group gap={32} justify="center" wrap="wrap">
-              {PAIN_POINTS.map((point, i) => (
-                <Box
-                  key={i}
-                  p="xl"
+        <Box
+          style={{
+            background: COLORS.bgCode,
+            borderRadius: 8,
+            border: `1px solid ${COLORS.border}`,
+            padding: 20,
+          }}
+        >
+          <Stack gap={8}>
+            {FREE_FEATURES.map((feature, i) => (
+              <Group key={i} gap={12} wrap="nowrap">
+                <Text style={{ color: COLORS.accent, fontFamily: "monospace", flexShrink: 0 }}>✔</Text>
+                <Text
                   style={{
-                    background: COLORS.white,
-                    borderRadius: 16,
-                    width: 320,
-                    border: `2px solid ${COLORS.grey}`,
-                    transition: "all 0.2s ease",
+                    color: COLORS.text,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 13,
+                    flexShrink: 0,
+                    minWidth: 200,
                   }}
                 >
-                  <Text fw={600} size="lg" mb="sm" style={{ color: COLORS.slate }}>
-                    {point.title}
-                  </Text>
-                  <Text size="sm" style={{ color: COLORS.slateLight, lineHeight: 1.6 }}>
-                    {point.description}
-                  </Text>
-                </Box>
-              ))}
-            </Group>
+                  {feature.title}
+                </Text>
+                <Text style={{ color: COLORS.textDim, fontSize: 13 }}>— {feature.value}</Text>
+              </Group>
+            ))}
           </Stack>
-        </Container>
-      </Box>
+        </Box>
+      </Section>
 
-      {/* Features Section */}
-      <Box id="features" py={100} style={{ background: COLORS.slate }}>
-        <Container size="lg">
-          <Stack align="center" gap={60}>
-            <Stack align="center" gap="sm">
-              <Text
-                component="h2"
-                ta="center"
-                style={{
-                  fontSize: 53,
-                  fontWeight: 700,
-                  color: COLORS.white,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.1,
-                  margin: 0,
-                  fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
-                }}
-              >
-                How Basebase works
-              </Text>
-              <Text ta="center" size="lg" style={{ color: COLORS.grey, maxWidth: 500 }}>
-                From idea to live app in minutes. Built by business people, for business people.
-              </Text>
-            </Stack>
+      {/* How it works */}
+      <Section id="how-it-works">
+        <SectionHeading>How it works (for bots and humans)</SectionHeading>
+        <Text style={{ color: COLORS.textMuted, marginBottom: 24, lineHeight: 1.7 }}>
+          Basebase apps are React components stored as source code in a database. There is no build step. There is no CI/CD pipeline. You write a <code style={{ color: COLORS.accent }}>.jsx</code> file, run <code style={{ color: COLORS.accent }}>app:commit</code>, and the framework loads your code from Firestore at runtime.
+        </Text>
 
-            <Stack gap={24} w="100%">
-              {FEATURES.map((feature, i) => (
-                <Group
-                  key={i}
-                  gap={32}
-                  align="flex-start"
-                  p="xl"
-                  style={{
-                    background: COLORS.slateDark,
-                    borderRadius: 20,
-                    border: `1px solid ${COLORS.slateLight}`,
-                  }}
-                >
-                  <Box
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 12,
-                      background: COLORS.coral,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Text fw={700} size="lg" style={{ color: COLORS.white }}>
-                      {String(i + 1).padStart(2, "0")}
-                    </Text>
-                  </Box>
-                  <Stack gap="xs" style={{ flex: 1 }}>
-                    <Text fw={600} size="xl" style={{ color: COLORS.white }}>
-                      {feature.title}
-                    </Text>
-                    <Text size="md" style={{ color: COLORS.grey, lineHeight: 1.6 }}>
-                      {feature.description}
-                    </Text>
-                  </Stack>
-                </Group>
-              ))}
-            </Stack>
-          </Stack>
-        </Container>
-      </Box>
-
-      {/* Why Business Teams Love It */}
-      <Box py={100} style={{ background: COLORS.coralLight }}>
-        <Container size="lg">
-          <Stack align="center" gap={60}>
-            <Stack align="center" gap="sm">
-              <Text
-                component="h2"
-                ta="center"
-                style={{
-                  fontSize: 53,
-                  fontWeight: 700,
-                  color: COLORS.slate,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.1,
-                  margin: 0,
-                  fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
-                }}
-              >
-                Built for RevOps
-              </Text>
-              <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 540 }}>
-                Stop waiting for IT. Stop fighting with spreadsheets.
-                Build exactly what you need, when you need it.
-              </Text>
-            </Stack>
-
-            <Group gap={16} justify="center" wrap="wrap">
-              {[
-                "Real dynamic app workflows",
-                "Instant team sharing",
-                "100+ enterprise integrations",
-                "No coding required",
-                "Production-ready apps",
-                "Revenue ops ready",
-              ].map((benefit) => (
-                <Group
-                  key={benefit}
-                  gap="xs"
-                  px="lg"
-                  py="sm"
-                  style={{
-                    background: COLORS.white,
-                    borderRadius: 100,
-                    border: `2px solid ${COLORS.coral}`,
-                  }}
-                >
-                  <IconCheck size={16} style={{ color: COLORS.teal }} />
-                  <Text size="sm" fw={500} style={{ color: COLORS.slate }}>
-                    {benefit}
-                  </Text>
-                </Group>
-              ))}
-            </Group>
-          </Stack>
-        </Container>
-      </Box>
-
-      {/* Integrations Section */}
-      <Box id="integrations" py={100} style={{ background: COLORS.greyLight, overflow: "hidden" }}>
-        <Container size="lg">
-          <Stack align="center" gap={48}>
-            <Stack align="center" gap="sm">
-              <Text
-                component="h2"
-                ta="center"
-                style={{
-                  fontSize: 53,
-                  fontWeight: 700,
-                  color: COLORS.slate,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.1,
-                  margin: 0,
-                  fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
-                }}
-              >
-                Connect <span style={{ color: COLORS.teal }}>everything</span>
-              </Text>
-              <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 500 }}>
-                Pull data from 100+ enterprise apps. Break down silos.
-                Get the unified view you've always wanted.
-              </Text>
-              <Button
-                variant="filled"
-                size="md"
-                mt="md"
-                rightSection={<IconArrowRight size={18} />}
-                onClick={() => window.open("https://connections.basebase.com", "_self")}
-                style={{ background: COLORS.teal, border: "none" }}
-              >
-                View all integrations
-              </Button>
-            </Stack>
-          </Stack>
-        </Container>
-
-        {/* Scrolling integration icons */}
-        <Box mt={48} style={{ position: "relative" }}>
-          <Box
+        <Box
+          style={{
+            background: COLORS.bgCode,
+            borderRadius: 8,
+            border: `1px solid ${COLORS.border}`,
+            padding: 16,
+            marginBottom: 32,
+          }}
+        >
+          <Text
             style={{
-              display: "flex",
-              gap: 32,
-              animation: "scroll 40s linear infinite",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 13,
+              color: COLORS.text,
             }}
           >
-            {[...INTEGRATIONS, ...INTEGRATIONS].map((integration, i) => {
-              const Icon = integration.icon;
-              return (
-                <Stack
-                  key={i}
-                  align="center"
-                  gap={8}
-                  style={{
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon size={24} color="#86868b" />
-                  <Text size="xs" style={{ color: "#86868b" }}>
-                    {integration.label}
-                  </Text>
-                </Stack>
-              );
-            })}
-          </Box>
+            You write code → app:commit uploads it to Firestore → framework loads it at {"{app-id}"}.basebase.com
+          </Text>
         </Box>
 
-        <style>{`
-          @keyframes scroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-          }
-        `}</style>
-      </Box>
+        <Text fw={600} style={{ color: COLORS.text, marginBottom: 16 }}>The full sequence</Text>
+        <CodeBlock code={fullSequence} />
 
-      {/* Use Cases */}
-      <Box py={100}>
-        <Container size="lg">
-          <Stack align="center" gap={60}>
-            <Stack align="center" gap="sm">
-              <Text
-                component="h2"
-                ta="center"
-                style={{
-                  fontSize: 53,
-                  fontWeight: 700,
-                  color: COLORS.slate,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.1,
-                  margin: 0,
-                  fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
-                }}
-              >
-                Perfect for <span style={{ color: COLORS.coral }}>ops teams</span>
-              </Text>
-              <Text ta="center" size="lg" style={{ color: COLORS.slateLight, maxWidth: 500 }}>
-                Revenue ops, marketing ops, and business teams use Basebase
-                to build the tools they need—fast.
-              </Text>
-            </Stack>
+        <Box mt={40}>
+          <Text fw={600} style={{ color: COLORS.text, marginBottom: 16 }}>For AI agents specifically</Text>
+          <Text style={{ color: COLORS.textMuted, marginBottom: 16, lineHeight: 1.7 }}>
+            If you are an OpenClaw bot, Claude Code session, Codex agent, Cursor agent, or any LLM with shell access:
+          </Text>
 
-            <Group gap={24} justify="center" wrap="wrap">
+          <Stack gap={8} mb={24}>
+            {[
+              "Clone https://github.com/basebase-ai/bb-framework into your workspace",
+              "Run npm install",
+              "Run npm run app:init {app-name}",
+              "Write React components into apps/{app-name}/app.jsx and apps/{app-name}/components/",
+              "Use useCollection, useAuth, useDocument, useFunction, useStorage from the framework",
+              "Sign up at basebase.com (email + verify) — only needed once for publishing",
+              'Run npm run app:commit {app-name} "commit message" (enter email/password when prompted)',
+              "The app is now live at https://{app-name}.basebase.com",
+            ].map((step, i) => (
+              <Group key={i} gap={12} align="flex-start" wrap="nowrap">
+                <Text style={{ color: COLORS.accent, fontFamily: "monospace", flexShrink: 0 }}>{i + 1}.</Text>
+                <Text style={{ color: COLORS.text, fontSize: 14 }}>{step}</Text>
+              </Group>
+            ))}
+          </Stack>
+
+          <Text fw={600} style={{ color: COLORS.text, marginBottom: 12 }}>You do not need to:</Text>
+          <Box
+            style={{
+              background: COLORS.bgCode,
+              borderRadius: 8,
+              border: `1px solid ${COLORS.border}`,
+              padding: 16,
+            }}
+          >
+            <Stack gap={4}>
               {[
-                { title: "Custom CRM views", desc: "Pull Salesforce data into tailored dashboards" },
-                { title: "Campaign trackers", desc: "Connect marketing tools for unified reporting" },
-                { title: "Deal room tools", desc: "Build approval workflows for your sales team" },
-                { title: "Customer health scores", desc: "Aggregate data from multiple sources" },
-                { title: "Invoice automation", desc: "Connect Stripe, Sheets, and your CRM" },
-                { title: "Team directories", desc: "Build internal tools for your org" },
-              ].map((useCase, i) => (
-                <Box
-                  key={i}
-                  p="lg"
-                  style={{
-                    width: 300,
-                    background: COLORS.white,
-                    borderRadius: 16,
-                    border: `2px solid ${COLORS.grey}`,
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  <Text fw={600} mb={4} style={{ color: COLORS.slate }}>
-                    {useCase.title}
-                  </Text>
-                  <Text size="sm" style={{ color: COLORS.slateLight }}>
-                    {useCase.desc}
-                  </Text>
-                </Box>
+                "Initialize a git repo",
+                "Create a GitHub repo",
+                "Configure a hosting provider",
+                "Set up a database",
+                "Configure authentication",
+                "Write a Dockerfile",
+                "Set environment variables",
+                "Buy a domain",
+                "Configure DNS or SSL",
+              ].map((item, i) => (
+                <Text key={i} style={{ color: COLORS.textDim, fontFamily: "monospace", fontSize: 13 }}>
+                  • {item}
+                </Text>
               ))}
-            </Group>
-          </Stack>
-        </Container>
-      </Box>
+            </Stack>
+          </Box>
+          <Text style={{ color: COLORS.textMuted, marginTop: 16, fontSize: 13 }}>
+            You <em>do</em> need a free Basebase account to publish (email + verify). That's it.
+          </Text>
+          <Text style={{ color: COLORS.accent, marginTop: 8, fontWeight: 500 }}>
+            The framework handles everything else.
+          </Text>
+        </Box>
+      </Section>
 
-      {/* Final CTA */}
-      <Box py={120} style={{ background: COLORS.coral }}>
-        <Container size="md">
-          <Stack align="center" gap="xl">
-            <Text
-              component="h2"
-              ta="center"
-              style={{
-                fontSize: 58,
-                fontWeight: 700,
-                color: COLORS.white,
-                letterSpacing: "-0.02em",
-                lineHeight: 1.1,
-                margin: 0,
-                fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif",
-              }}
-            >
-              Ready to build?
+      {/* Framework API */}
+      <Section id="api">
+        <SectionHeading>Framework API (what you import)</SectionHeading>
+
+        <Stack gap={32}>
+          <Box>
+            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>
+              useCollection(collectionName, options)
             </Text>
-            <Text ta="center" size="lg" style={{ color: COLORS.coralLight, maxWidth: 480 }}>
-              Stop waiting on IT. Start building the tools your business
-              actually needs—in minutes, not months.
+            <Text size="sm" style={{ color: COLORS.textMuted, marginBottom: 12 }}>
+              Real-time Firestore collection with CRUD.
             </Text>
-            <Button
-              size="lg"
-              onClick={() => onCreateApp?.()}
-              style={{
-                borderRadius: 980,
-                padding: "14px 36px",
-                height: "auto",
-                background: COLORS.white,
-                color: COLORS.coral,
-                fontWeight: 600,
-                border: "none",
-              }}
-            >
-              Create App <IconArrowRight size={16} style={{ marginLeft: 8 }} />
-            </Button>
-            <Text size="xs" style={{ color: COLORS.coralLight }}>
-              No credit card required · Free forever for individuals
+            <CodeBlock code={useCollectionExample} />
+          </Box>
+
+          <Box>
+            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>useAuth()</Text>
+            <CodeBlock code={useAuthExample} />
+          </Box>
+
+          <Box>
+            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>
+              useDocument(collectionName, docId)
             </Text>
-          </Stack>
-        </Container>
-      </Box>
+            <CodeBlock code={useDocumentExample} />
+          </Box>
+
+          <Box>
+            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>useFunction(functionName)</Text>
+            <Text size="sm" style={{ color: COLORS.textMuted, marginBottom: 12 }}>
+              Call server-side functions (LLMs, email, data enrichment).
+            </Text>
+            <CodeBlock code={useFunctionExample} />
+          </Box>
+
+          <Box>
+            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>useStorage(appId)</Text>
+            <Text size="sm" style={{ color: COLORS.textMuted, marginBottom: 12 }}>
+              Upload and manage files.
+            </Text>
+            <CodeBlock code={useStorageExample} />
+          </Box>
+
+          <Box>
+            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>useAppMembership(appId)</Text>
+            <Text size="sm" style={{ color: COLORS.textMuted, marginBottom: 12 }}>
+              Access control and subscription tiers.
+            </Text>
+            <CodeBlock code={useAppMembershipExample} />
+          </Box>
+        </Stack>
+      </Section>
+
+      {/* schema.js */}
+      <Section id="schema">
+        <SectionHeading>schema.js — define your data</SectionHeading>
+        <Text style={{ color: COLORS.textMuted, marginBottom: 16, lineHeight: 1.7 }}>
+          Every app has a <code style={{ color: COLORS.accent }}>schema.js</code> that namespaces your collections. This is how multiple apps share one Firebase project without collisions.
+        </Text>
+        <CodeBlock code={schemaExample} />
+        <Text style={{ color: COLORS.textMuted, marginTop: 16, fontSize: 14 }}>
+          Always reference <code style={{ color: COLORS.accent }}>collections.tasks</code> — never hardcode <code style={{ color: COLORS.textDim }}>"my-app_tasks"</code>.
+        </Text>
+      </Section>
+
+      {/* Collaborate */}
+      <Section id="collaborate">
+        <SectionHeading>Collaborate</SectionHeading>
+        <CodeBlock code={collaborateExample} />
+        <Text style={{ color: COLORS.textMuted, marginTop: 16, lineHeight: 1.7 }}>
+          No branches. No pull requests. No merge conflicts. You edit, you commit, it's live. Every commit is versioned and rollback-able.
+        </Text>
+      </Section>
+
+      {/* Fork anything */}
+      <Section id="fork">
+        <SectionHeading>Fork anything</SectionHeading>
+        <Text style={{ color: COLORS.textMuted, marginBottom: 16, lineHeight: 1.7 }}>
+          See an app in the gallery? Fork it. Customize it. Ship your version.
+        </Text>
+        <CodeBlock code={`# Coming soon:
+npm run app:fork cool-app my-version`} />
+        <Text style={{ color: COLORS.textMuted, marginTop: 16, marginBottom: 24, lineHeight: 1.7 }}>
+          Every app in the gallery is a working template. Every template is a launchpad.
+        </Text>
+        <Button
+          variant="outline"
+          rightSection={<IconArrowRight size={16} />}
+          onClick={() => onNavigateToGallery?.()}
+          style={{
+            borderColor: COLORS.borderLight,
+            color: COLORS.text,
+          }}
+        >
+          Browse the Gallery
+        </Button>
+      </Section>
+
+      {/* Example apps */}
+      <Section id="examples">
+        <SectionHeading>Example apps (already in the repo)</SectionHeading>
+        <Text style={{ color: COLORS.textMuted, marginBottom: 24 }}>
+          Clone the framework and these are ready to run:
+        </Text>
+        <Box
+          style={{
+            background: COLORS.bgCode,
+            borderRadius: 8,
+            border: `1px solid ${COLORS.border}`,
+            overflow: "hidden",
+          }}
+        >
+          <Table
+            horizontalSpacing="md"
+            verticalSpacing="sm"
+            styles={{
+              table: { background: "transparent" },
+              th: { color: COLORS.textMuted, borderBottom: `1px solid ${COLORS.border}`, fontWeight: 500, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em" },
+              td: { color: COLORS.text, borderBottom: `1px solid ${COLORS.border}`, fontSize: 13, fontFamily: "'JetBrains Mono', monospace" },
+              tr: { "&:last-child td": { borderBottom: "none" } },
+            }}
+          >
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>App</Table.Th>
+                <Table.Th>URL (local)</Table.Th>
+                <Table.Th>What it does</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {EXAMPLE_APPS.map((app) => (
+                <Table.Tr key={app.app}>
+                  <Table.Td style={{ color: COLORS.accent }}>{app.app}</Table.Td>
+                  <Table.Td style={{ color: COLORS.textMuted }}>{app.url}</Table.Td>
+                  <Table.Td style={{ fontFamily: "inherit", color: COLORS.text }}>{app.desc}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Box>
+        <Text style={{ color: COLORS.textMuted, marginTop: 16, fontSize: 14 }}>
+          Read their source in <code style={{ color: COLORS.accent }}>/apps/{"{app-id}"}/ </code> to learn the patterns.
+        </Text>
+      </Section>
+
+      {/* Available packages */}
+      <Section id="packages">
+        <SectionHeading>Available packages (production-ready)</SectionHeading>
+        <Text style={{ color: COLORS.textMuted, marginBottom: 16, lineHeight: 1.7 }}>
+          These are pre-registered and work in both local dev and production:
+        </Text>
+        <CodeBlock code={PACKAGES_LIST} showCopy={false} />
+        <Text style={{ color: COLORS.textMuted, marginTop: 16, fontSize: 14, lineHeight: 1.7 }}>
+          Need another package? Install it with <code style={{ color: COLORS.accent }}>npm install</code>, register it in <code style={{ color: COLORS.accent }}>framework/production-entry.js</code>, and redeploy the framework.
+        </Text>
+      </Section>
+
+      {/* Commands cheat sheet */}
+      <Section id="commands">
+        <SectionHeading>Commands cheat sheet</SectionHeading>
+        <CodeBlock code={commandsCheatsheet} />
+      </Section>
+
+      {/* The pitch */}
+      <Section id="pitch" border={false}>
+        <SectionHeading>The pitch, in plain English</SectionHeading>
+        <Stack gap={16}>
+          <Text style={{ color: COLORS.text, lineHeight: 1.8, fontSize: 16 }}>
+            Basebase is the fastest path from "I have an idea" to "here's the link."
+          </Text>
+          <Text style={{ color: COLORS.textMuted, lineHeight: 1.8 }}>
+            You clone one repo. You write one React file. You run one command. Your app is live at its own URL with a database, auth, real-time sync, and version history. No accounts to create, no infrastructure to configure, no credit card to enter.
+          </Text>
+          <Text style={{ color: COLORS.textMuted, lineHeight: 1.8 }}>
+            It works for a developer at 2am with a side project. It works for an OpenClaw bot that just got told "build me a dashboard." It works for a kid learning React for the first time.
+          </Text>
+          <Box
+            p="lg"
+            mt={8}
+            style={{
+              background: COLORS.bgLight,
+              borderRadius: 8,
+              border: `1px solid ${COLORS.accent}`,
+              borderLeftWidth: 4,
+            }}
+          >
+            <Text style={{ color: COLORS.text, fontWeight: 500 }}>
+              The gap between building and shipping is one command:{" "}
+              <code style={{ color: COLORS.accent }}>npm run app:commit</code>
+            </Text>
+          </Box>
+        </Stack>
+      </Section>
 
       {/* Footer */}
-      <Box py={48} style={{ background: COLORS.slate }}>
-        <Container size="lg">
-          <Group justify="space-between" align="flex-start">
-            <Stack gap="xs">
-              <Text fw={700} style={{ color: COLORS.white }}>Basebase</Text>
-              <Text size="xs" style={{ color: COLORS.grey, maxWidth: 280 }}>
-                Build the tools your business needs.
-                No engineers required.
+      <Box py={48} style={{ borderTop: `1px solid ${COLORS.border}` }}>
+        <Container size="md">
+          <Stack align="center" gap={24}>
+            <Text fw={700} style={{ color: COLORS.text }}>
+              basebase.com{" "}
+              <span style={{ color: COLORS.textDim, fontWeight: 400 }}>— where code goes to live.</span>
+            </Text>
+            <Group gap={24}>
+              <Anchor
+                href="https://github.com/basebase-ai/bb-framework"
+                target="_blank"
+                style={{ color: COLORS.textMuted, textDecoration: "none" }}
+              >
+                <Group gap={6}>
+                  <IconBrandGithub size={18} />
+                  <Text size="sm">GitHub</Text>
+                </Group>
+              </Anchor>
+              <Text
+                style={{ color: COLORS.textMuted, cursor: "pointer" }}
+                onClick={() => onNavigateToGallery?.()}
+              >
+                <Group gap={6}>
+                  <IconApps size={18} />
+                  <Text size="sm">Gallery</Text>
+                </Group>
               </Text>
-            </Stack>
-            <Group gap={64} align="flex-start">
-              <Stack gap="xs">
-                <Text size="xs" fw={600} style={{ color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Product
-                </Text>
-                <Text
-                  size="sm"
-                  style={{ color: COLORS.white, cursor: "pointer" }}
-                  onClick={() => window.open("https://connections.basebase.com", "_self")}
-                >
-                  Integrations
-                </Text>
-                <Text
-                  size="sm"
-                  style={{ color: COLORS.white, cursor: "pointer" }}
-                  onClick={() => {
-                    if (onNavigateToPricing) onNavigateToPricing();
-                  }}
-                >
-                  Pricing
-                </Text>
-                <Text
-                  component="a"
-                  href="https://docs.basebase.com"
-                  size="sm"
-                  style={{ color: COLORS.white, cursor: "pointer", textDecoration: "none" }}
-                >
-                  Documentation
-                </Text>
-              </Stack>
-              <Stack gap="xs">
-                <Text size="xs" fw={600} style={{ color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Company
-                </Text>
-                <Text
-                  size="sm"
-                  style={{ color: COLORS.white, cursor: "pointer" }}
-                  onClick={() => {
-                    if (onNavigateToAbout) onNavigateToAbout();
-                  }}
-                >
-                  About
-                </Text>
-                <Text
-                  component="a"
-                  href="mailto:hello@basebase.com"
-                  size="sm"
-                  style={{ color: COLORS.white, cursor: "pointer", textDecoration: "none" }}
-                >
-                  Contact
-                </Text>
-              </Stack>
-              <Stack gap="xs">
-                <Text size="xs" fw={600} style={{ color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Legal
-                </Text>
-                <Text
-                  size="sm"
-                  style={{ color: COLORS.white, cursor: "pointer" }}
-                  onClick={() => {
-                    if (onNavigateToTerms) onNavigateToTerms();
-                  }}
-                >
-                  Terms of Service
-                </Text>
-                <Text
-                  size="sm"
-                  style={{ color: COLORS.white, cursor: "pointer" }}
-                  onClick={() => {
-                    if (onNavigateToPrivacy) onNavigateToPrivacy();
-                  }}
-                >
-                  Privacy Policy
-                </Text>
-              </Stack>
+              <Anchor
+                href="https://docs.basebase.com"
+                target="_blank"
+                style={{ color: COLORS.textMuted, textDecoration: "none" }}
+              >
+                <Group gap={6}>
+                  <IconBook size={18} />
+                  <Text size="sm">Docs</Text>
+                </Group>
+              </Anchor>
+              <Anchor
+                href="#"
+                style={{ color: COLORS.textMuted, textDecoration: "none" }}
+              >
+                <Group gap={6}>
+                  <IconBrandDiscord size={18} />
+                  <Text size="sm">Discord</Text>
+                </Group>
+              </Anchor>
             </Group>
-          </Group>
-          <Text size="xs" ta="center" mt={48} style={{ color: COLORS.grey }}>
-            � {new Date().getFullYear()} Basebase. All rights reserved.
-          </Text>
+            <Text size="xs" style={{ color: COLORS.textDim }}>
+              © {new Date().getFullYear()} Basebase
+            </Text>
+          </Stack>
         </Container>
       </Box>
     </Box>

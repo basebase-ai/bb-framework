@@ -8,7 +8,6 @@ import { MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { AuthProvider } from "../../framework/components/AuthProvider.jsx";
 import AppGallery from "./components/AppGallery.jsx";
-import PublicHomepage from "./components/PublicHomepage.jsx";
 import TermsOfService from "./components/TermsOfService.jsx";
 import PrivacyPolicy from "./components/PrivacyPolicy.jsx";
 import AboutUs from "./components/AboutUs.jsx";
@@ -83,47 +82,47 @@ function App() {
   
   return (
     <MantineProvider
-      defaultColorScheme="light"
+      defaultColorScheme="dark"
       theme={{
-        primaryColor: "coral",
+        primaryColor: "green",
         scale: 0.92,
         colors: {
-          // Custom vibrant palette
-          coral: [
-            "#fff0ed",
-            "#ffe0db",
-            "#ffc1b5",
-            "#ffa08f",
-            "#ff8872",
-            "#ff715b",  // Primary - Vibrant Coral
-            "#e5654f",
-            "#cc5a47",
-            "#b24f3e",
-            "#994435",
+          // Dark mode palette matching homepage
+          green: [
+            "#e6fff0",
+            "#c3f9d8",
+            "#8cf5b9",
+            "#4ade80",
+            "#34d970",
+            "#22c55e",  // Primary - Green accent
+            "#1ea750",
+            "#188a42",
+            "#126e35",
+            "#0c5227",
           ],
-          slate: [
-            "#e8eced",
-            "#d1d9da",
-            "#a3b3b5",
-            "#758d90",
-            "#57757a",
-            "#416165",  // Dark Slate Grey
-            "#3a5759",
-            "#334d4e",
-            "#2c4344",
-            "#25393a",
+          pink: [
+            "#fff0f6",
+            "#ffd6e8",
+            "#ffadd2",
+            "#ff85b8",
+            "#f472b6",
+            "#ec4899",  // Secondary - Pink accent
+            "#db2777",
+            "#be185d",
+            "#9d174d",
+            "#831843",
           ],
-          teal: [
-            "#e0f7f7",
-            "#c1efee",
-            "#83dfdd",
-            "#45cfcc",
-            "#2bc4c2",
-            "#17bebb",  // Tropical Teal
-            "#14aaa8",
-            "#119795",
-            "#0e8382",
-            "#0b706f",
+          purple: [
+            "#f5f3ff",
+            "#ede9fe",
+            "#ddd6fe",
+            "#c4b5fd",
+            "#a78bfa",
+            "#a855f7",  // Tertiary - Purple accent
+            "#9333ea",
+            "#7e22ce",
+            "#6b21a8",
+            "#581c87",
           ],
         },
         fontFamily: "-apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif",
