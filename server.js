@@ -136,9 +136,9 @@ async function getAppMetadata(appId) {
 // =============================================================================
 
 const DEFAULT_META = {
-  title: "Basebase – Build Business Tools in Minutes, Not Months",
+  title: "Basebase – Build a production app with 1 file and 2 commands",
   description:
-    "Connect your data from 100+ enterprise apps. Build custom internal tools without engineers. Share instantly with your team.",
+    "No GitHub. No Vercel. No Supabase. No credit card. Just clone, write React, and ship. Database, auth, and real-time sync included.",
   image:
     "https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695",
   url: "https://www.basebase.com",
