@@ -409,20 +409,20 @@ npm run generate:types [app-id]          # Generate TypeScript types from schema
                 margin: 0,
               }}
             >
-              Build a production app with{" "}
+              Deploy an app with{" "}
               <span style={{ color: COLORS.accent }}>1 file</span> and{" "}
               <span style={{ color: COLORS.accent }}>3 commands</span>.
             </Text>
 
             <Text
               size="lg"
-              style={{
+              style={{  
                 color: COLORS.textMuted,
                 maxWidth: 560,
                 lineHeight: 1.6,
               }}
             >
-              No GitHub. No Vercel. No Supabase. No credit card! <br /> Just build, publish, and share.
+              No GitHub/Vercel/Supabase/credit card! <br /> Build, publish, share. For humans <span style={{ color: COLORS.accent }}>and bots</span>.
             </Text>
 
             <CodeBlock code={heroClone} />
