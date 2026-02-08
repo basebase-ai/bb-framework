@@ -10,7 +10,13 @@ import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import chalk from "chalk";
 import { firebaseConfig } from "../config/firebase.config.js";
-import { authenticateUser } from "./lib/auth-utils.js";
+import {
+  authenticateUser,
+  hasNonInteractiveCredentials,
+  parseGlobalFlags,
+  log,
+  jsonOutput,
+} from "./lib/auth-utils.js";
 
 // Initialize Firebase with public config
 const app = initializeApp(firebaseConfig);
@@ -19,33 +25,21 @@ const auth = getAuth(app);
 
 // Check if running in an interactive terminal
 function checkInteractive() {
-  if (!process.stdin.isTTY) {
-    console.error(
-      chalk.red("\n❌ ERROR: This command requires an interactive terminal\n")
-    );
-    console.log(
-      chalk.yellow("This script needs to prompt for your email and password.")
-    );
-    console.log(
-      chalk.yellow(
-        "AI coding assistants cannot handle interactive password prompts.\n"
-      )
-    );
-    console.log(
-      chalk.cyan("Please run this command yourself in your terminal:")
-    );
-    console.log(
-      chalk.white(
-        `  node scripts/checkTask.js "${process.argv[2] || "<taskId>"}"\n`
-      )
-    );
-    console.log(
-      chalk.gray(
-        "Then you'll be prompted for your Firebase email and password."
-      )
-    );
-    process.exit(1);
-  }
+  if (hasNonInteractiveCredentials()) return;
+  if (process.stdin.isTTY) return;
+
+  console.error(
+    chalk.red("\n❌ ERROR: This command requires an interactive terminal or --email/--password flags.\n")
+  );
+  console.log(
+    chalk.yellow("Provide credentials via CLI flags or environment variables:\n")
+  );
+  console.log(
+    chalk.cyan(
+      `  node scripts/checkTask.js "${process.argv[2] || "<taskId>"}" --email=you@example.com --password=yourpass\n`
+    )
+  );
+  process.exit(1);
 }
 
 /**

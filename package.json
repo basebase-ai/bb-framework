@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev-server.js",
+    "signup": "node scripts/signup.js",
     "app:init": "node scripts/app-init.js",
     "app:checkout": "node scripts/app-checkout.js",
     "app:commit": "node scripts/app-commit.js",

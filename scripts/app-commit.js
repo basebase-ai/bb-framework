@@ -1,7 +1,19 @@
 #!/usr/bin/env node
 /**
  * Commit local app code to Firestore
- * Usage: npm run app:commit <appId> [message]
+ *
+ * Usage:
+ *   npm run app:commit <appId> [message] [options]
+ *
+ * Options:
+ *   --email=<email>        Firebase email  (or BASEBASE_EMAIL env var)
+ *   --password=<password>  Firebase password (or BASEBASE_PASSWORD env var)
+ *   --yes / -y             Auto-confirm version conflict prompts
+ *   --json                 Output machine-readable JSON
+ *
+ * Examples:
+ *   npm run app:commit my-app "Added feature"
+ *   npm run app:commit my-app "Deploy" --email=me@x.com --password=secret --yes --json
  */
 
 import { initializeApp } from "firebase/app";
@@ -28,7 +40,13 @@ import { transform } from "sucrase";
 import chalk from "chalk";
 import { createHash } from "crypto";
 import { firebaseConfig } from "../config/firebase.config.js";
-import { authenticateUser } from "./lib/auth-utils.js";
+import {
+  authenticateUser,
+  hasNonInteractiveCredentials,
+  parseGlobalFlags,
+  log,
+  jsonOutput,
+} from "./lib/auth-utils.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -39,35 +57,27 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Check if running in an interactive terminal
+/**
+ * Check if we can proceed (interactive OR non-interactive credentials provided).
+ * Exits with a helpful message if neither condition is met.
+ */
 function checkInteractive() {
-  if (!process.stdin.isTTY) {
-    console.error(
-      chalk.red("\n❌ ERROR: This command requires an interactive terminal\n")
-    );
-    console.log(
-      chalk.yellow("This script needs to prompt for your email and password.")
-    );
-    console.log(
-      chalk.yellow(
-        "AI coding assistants cannot handle interactive password prompts.\n"
-      )
-    );
-    console.log(
-      chalk.cyan("Please run this command yourself in your terminal:")
-    );
-    console.log(
-      chalk.white(
-        `  npm run app:commit "${process.argv[2] || "Your commit message"}"\n`
-      )
-    );
-    console.log(
-      chalk.gray(
-        "Then you'll be prompted for your Firebase email and password."
-      )
-    );
-    process.exit(1);
-  }
+  if (hasNonInteractiveCredentials()) return;
+  if (process.stdin.isTTY) return;
+
+  console.error(
+    chalk.red("\n❌ ERROR: This command requires an interactive terminal or --email/--password flags.\n")
+  );
+  console.log(
+    chalk.yellow("Provide credentials via CLI flags or environment variables:\n")
+  );
+  console.log(
+    chalk.cyan(`  npm run app:commit ${process.argv[2] || "<appId>"} "message" --email=you@example.com --password=yourpass`)
+  );
+  console.log(
+    chalk.cyan(`  BASEBASE_EMAIL=you@example.com BASEBASE_PASSWORD=yourpass npm run app:commit ${process.argv[2] || "<appId>"} "message"\n`)
+  );
+  process.exit(1);
 }
 
 // Read checkout metadata file
@@ -108,8 +118,15 @@ async function writeCheckoutMetadata(appId, versionHash, source) {
   await writeFile(metadataPath, JSON.stringify(metadata, null, 2), "utf-8");
 }
 
-// Prompt user for confirmation
+/**
+ * Prompt user for confirmation (skipped when --yes flag is set).
+ * @param {string} question
+ * @returns {Promise<boolean>}
+ */
 function promptConfirmation(question) {
+  const flags = parseGlobalFlags();
+  if (flags.yes) return Promise.resolve(true);
+
   return new Promise((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
@@ -122,15 +139,28 @@ function promptConfirmation(question) {
   });
 }
 
-// Check for version conflicts
+/**
+ * Check for version conflicts.
+ * @param {string} appId
+ * @param {string} serverCurrentVersion
+ * @param {Record<string, any>} serverAppData
+ * @returns {Promise<boolean>}
+ */
 async function checkVersionConflict(appId, serverCurrentVersion, serverAppData) {
+  const flags = parseGlobalFlags();
   const checkoutMetadata = await readCheckoutMetadata(appId);
   
   if (!checkoutMetadata) {
     // No checkout metadata - this might be a new app or manual file creation
-    console.log(chalk.yellow("\n⚠️  No checkout metadata found."));
-    console.log(chalk.gray("   Cannot verify if your local files are based on the latest version."));
-    console.log(chalk.gray("   This is normal for newly created apps or manually created files.\n"));
+    log(chalk.yellow("\n⚠️  No checkout metadata found."));
+    log(chalk.gray("   Cannot verify if your local files are based on the latest version."));
+    log(chalk.gray("   This is normal for newly created apps or manually created files.\n"));
+    
+    // Auto-confirm if --yes is set
+    if (flags.yes) {
+      log(chalk.gray("   --yes flag set, continuing...\n"));
+      return true;
+    }
     
     const shouldContinue = await promptConfirmation(
       chalk.white("   Continue with commit? (Y/n): ")
@@ -147,7 +177,7 @@ async function checkVersionConflict(appId, serverCurrentVersion, serverAppData) 
   
   if (checkedOutVersion === serverCurrentVersion) {
     // Versions match - safe to commit
-    console.log(chalk.green("✓ Your local files are based on the latest server version."));
+    log(chalk.green("✓ Your local files are based on the latest server version."));
     return true;
   }
   
@@ -155,17 +185,17 @@ async function checkVersionConflict(appId, serverCurrentVersion, serverAppData) 
   const checkoutDate = new Date(checkedOutAt);
   const formattedDate = checkoutDate.toLocaleString();
   
-  console.log(chalk.red("\n⚠️  WARNING: A newer version exists on the server!\n"));
-  console.log(chalk.white("   Your checkout:   ") + chalk.cyan(checkedOutVersion) + chalk.gray(` (${formattedDate})`));
-  console.log(chalk.white("   Server version:  ") + chalk.cyan(serverCurrentVersion));
+  log(chalk.red("\n⚠️  WARNING: A newer version exists on the server!\n"));
+  log(chalk.white("   Your checkout:   ") + chalk.cyan(checkedOutVersion) + chalk.gray(` (${formattedDate})`));
+  log(chalk.white("   Server version:  ") + chalk.cyan(serverCurrentVersion));
   
   if (serverAppData.updatedBy) {
     const updatedByEmail = serverAppData.updatedByEmail || serverAppData.updatedBy;
-    console.log(chalk.gray(`   Last updated by: ${updatedByEmail}`));
+    log(chalk.gray(`   Last updated by: ${updatedByEmail}`));
   }
   
-  console.log(chalk.yellow("\n   If you continue, you may overwrite changes made since your checkout."));
-  console.log(chalk.white("   Consider running: ") + chalk.cyan(`npm run app:checkout ${appId}\n`));
+  log(chalk.yellow("\n   If you continue, you may overwrite changes made since your checkout."));
+  log(chalk.white("   Consider running: ") + chalk.cyan(`npm run app:checkout ${appId}\n`));
   
   const shouldContinue = await promptConfirmation(
     chalk.white("   Continue anyway? (y/N): ")
@@ -263,7 +293,7 @@ async function buildModules(appId) {
         const compiledPath = modulePath.replace(/\.(jsx|tsx)$/, ".js");
         compiled[compiledPath] = transformCode(code, modulePath);
 
-        console.log(
+        log(
           chalk.gray(`  • ${modulePath} (${(code.length / 1024).toFixed(1)}kb)`)
         );
       }
@@ -339,7 +369,8 @@ async function cleanupOldVersions(appId, currentVersionHash, keepCount = 10) {
 
 // Main commit function
 async function commit(appId, message = "Updated via app:commit") {
-  console.log(chalk.cyan(`\n📤 Committing app: ${appId}\n`));
+  const flags = parseGlobalFlags();
+  log(chalk.cyan(`\n📤 Committing app: ${appId}\n`));
 
   try {
     // Check if interactive, then sign in user
@@ -348,26 +379,28 @@ async function commit(appId, message = "Updated via app:commit") {
     const user = userCredential.user;
 
     // Get app document to check permissions
-    console.log(chalk.cyan("🔍 Checking permissions..."));
+    log(chalk.cyan("🔍 Checking permissions..."));
     const appRef = doc(db, "apps", appId);
     const appSnap = await getDoc(appRef);
 
     if (!appSnap.exists()) {
-      console.error(chalk.red(`❌ App "${appId}" not found`));
-      console.log(
-        chalk.yellow(
-          `\n💡 Create the app first in the UI, then commit code to it.`
-        )
-      );
+      if (flags.json) {
+        jsonOutput({ success: false, error: "app_not_found", appId });
+      } else {
+        console.error(chalk.red(`❌ App "${appId}" not found`));
+        console.log(
+          chalk.yellow(`\n💡 Create the app first with: npm run app:init ${appId}`)
+        );
+      }
       process.exit(1);
     }
 
     const appData = appSnap.data();
 
     // Debug: Show user ID and collaborators
-    console.log(chalk.gray(`   Your UID: ${user.uid}`));
-    console.log(chalk.gray(`   Owner: ${appData.owner}`));
-    console.log(chalk.gray(`   Collaborators: ${JSON.stringify(appData.collaborators || [])}`));
+    log(chalk.gray(`   Your UID: ${user.uid}`));
+    log(chalk.gray(`   Owner: ${appData.owner}`));
+    log(chalk.gray(`   Collaborators: ${JSON.stringify(appData.collaborators || [])}`));
 
     // Check if user has write access
     const hasAccess =
@@ -375,51 +408,51 @@ async function commit(appId, message = "Updated via app:commit") {
       (appData.collaborators && appData.collaborators.includes(user.uid));
 
     if (!hasAccess) {
-      console.error(
-        chalk.red(
-          `❌ Access denied. You don't have permission to modify "${appId}"`
-        )
-      );
+      if (flags.json) {
+        jsonOutput({ success: false, error: "access_denied", appId });
+      } else {
+        console.error(
+          chalk.red(`❌ Access denied. You don't have permission to modify "${appId}"`)
+        );
+      }
       process.exit(1);
     }
 
     // Check for version conflicts before proceeding
-    console.log(chalk.cyan("\n🔄 Checking for version conflicts..."));
+    log(chalk.cyan("\n🔄 Checking for version conflicts..."));
     const serverCurrentVersion = appData.currentVersion;
     
     if (serverCurrentVersion) {
       const shouldContinue = await checkVersionConflict(appId, serverCurrentVersion, appData);
       if (!shouldContinue) {
-        console.log(chalk.yellow("\n⏹️  Commit cancelled."));
+        if (flags.json) {
+          jsonOutput({ success: false, error: "conflict_cancelled", appId });
+        } else {
+          console.log(chalk.yellow("\n⏹️  Commit cancelled."));
+        }
         process.exit(0);
       }
     } else {
-      console.log(chalk.gray("   No existing version on server (first commit)."));
+      log(chalk.gray("   No existing version on server (first commit)."));
     }
 
     // Build modules from /apps/{appId} directory
-    console.log(chalk.cyan(`\n📦 Building app modules from /apps/${appId}...\n`));
+    log(chalk.cyan(`\n📦 Building app modules from /apps/${appId}...\n`));
     const { source, compiled, totalSize } = await buildModules(appId);
 
     const versionHash = generateVersionHash(source);
 
-    console.log(
-      chalk.cyan(`\n📊 Total size: ${(totalSize / 1024).toFixed(1)}kb`)
-    );
-    console.log(chalk.cyan(`📝 Version hash: ${versionHash}\n`));
+    log(chalk.cyan(`\n📊 Total size: ${(totalSize / 1024).toFixed(1)}kb`));
+    log(chalk.cyan(`📝 Version hash: ${versionHash}\n`));
 
     // Check if version already exists
     const versionRef = doc(db, "apps", appId, "versions", versionHash);
     const versionSnap = await getDoc(versionRef);
 
     if (versionSnap.exists()) {
-      console.log(
-        chalk.yellow(
-          "⚠️  Version exists. Re-uploading with updated transformation..."
-        )
-      );
+      log(chalk.yellow("⚠️  Version exists. Re-uploading with updated transformation..."));
     } else {
-      console.log(chalk.cyan("📤 Uploading to Firestore..."));
+      log(chalk.cyan("📤 Uploading to Firestore..."));
     }
 
     // Always upload/update version with both source and compiled code
@@ -458,34 +491,67 @@ async function commit(appId, message = "Updated via app:commit") {
     // Update checkout metadata with new version
     await writeCheckoutMetadata(appId, versionHash, source);
 
-    console.log(chalk.green("\n✅ Commit successful!"));
-    console.log(chalk.gray(`   App: ${appId}`));
-    console.log(chalk.gray(`   Version: ${versionHash}`));
-    console.log(chalk.gray(`   Message: ${message}`));
-    console.log(chalk.white(`\n🌍 Your changes are now live!\n`));
+    if (flags.json) {
+      jsonOutput({
+        success: true,
+        appId,
+        version: versionHash,
+        message,
+        moduleCount: Object.keys(source).length,
+        totalSizeBytes: totalSize,
+      });
+    } else {
+      console.log(chalk.green("\n✅ Commit successful!"));
+      console.log(chalk.gray(`   App: ${appId}`));
+      console.log(chalk.gray(`   Version: ${versionHash}`));
+      console.log(chalk.gray(`   Message: ${message}`));
+      console.log(chalk.white(`\n🌍 Your changes are now live!\n`));
+    }
   } catch (error) {
-    console.error(chalk.red("\n❌ Commit failed:"), error.message);
-    console.error(error);
+    if (flags.json) {
+      jsonOutput({ success: false, error: error.code || "commit_failed", message: error.message });
+    } else {
+      console.error(chalk.red("\n❌ Commit failed:"), error.message);
+      console.error(error);
+    }
     process.exit(1);
   }
 
   process.exit(0);
 }
 
-// Parse arguments
-const appId = process.argv[2];
-const message = process.argv.slice(3).join(" ") || "Updated via app:commit";
+// Parse arguments — extract appId and message, ignoring --flags
+/** @type {string | undefined} */
+let appId;
+/** @type {string[]} */
+const messageWords = [];
+
+for (const arg of process.argv.slice(2)) {
+  if (arg.startsWith("--") || arg === "-y") continue;
+  if (!appId) {
+    appId = arg;
+  } else {
+    messageWords.push(arg);
+  }
+}
+
+const message = messageWords.join(" ") || "Updated via app:commit";
 
 if (!appId) {
-  console.error(chalk.red("\n❌ App ID required"));
-  console.log(
-    chalk.white("\nUsage:"),
-    chalk.cyan("npm run app:commit <appId> [message]")
-  );
-  console.log(
-    chalk.white("Example:"),
-    chalk.cyan('npm run app:commit news-base "Added new feature"\n')
-  );
+  const flags = parseGlobalFlags();
+  if (flags.json) {
+    jsonOutput({ success: false, error: "missing_app_id", message: "App ID required" });
+  } else {
+    console.error(chalk.red("\n❌ App ID required"));
+    console.log(
+      chalk.white("\nUsage:"),
+      chalk.cyan("npm run app:commit <appId> [message] [--email=X --password=X --yes --json]")
+    );
+    console.log(
+      chalk.white("Example:"),
+      chalk.cyan('npm run app:commit news-base "Added new feature"\n')
+    );
+  }
   process.exit(1);
 }
 

@@ -470,7 +470,7 @@ npm run generate:types [app-id]          # Generate TypeScript types from schema
               }}
             >
               <Text style={{ color: COLORS.text, lineHeight: 1.7 }}>
-                <strong>That's it.</strong> Your app is live. It has a database, user auth, real-time sync, and its own subdomain. You wrote one file.
+                <strong>That's it.</strong> Your app is live. It has a database, user auth, and its own a subdomain. You wrote one file.
               </Text>
             </Box>
           </Stack>

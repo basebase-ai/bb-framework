@@ -51,7 +51,7 @@ Basebase works with any IDE and AI coding assistant. Pick one of the following s
 
 ---
 
-### 1. Clone and Installdo we expose any secrets in this repo?
+### 1. Clone and Install
 
 Run
 
@@ -122,15 +122,28 @@ The Basebase Framework has two layers:
 
 ## Scenario A: Creating Your Own App
 
-### Step 1: Initialize Your App (Local only - no auth needed)
+### Step 1: Create a Firebase Account (if you don't have one)
+
+You need an account before running `app:init` or `app:commit`. Two ways to create one:
+
+**Option A: CLI (recommended for AI agents and automation)**
+```bash
+npm run signup --email=you@example.com --password=yourpassword
+```
+
+**Option B: Web UI**
+1. Run `npm run dev`
+2. Visit http://localhost:3000 and click **"Sign up"** (Google or email/password)
+
+### Step 2: Initialize Your App
 
 ```bash
 npm run app:init my-app-name
 ```
 
-This creates `/apps/my-app-name/` and sets `APP_ID` in its `schema.js`. No Firebase account needed yet!
+This creates `/apps/my-app-name/`, sets `APP_ID` in its `schema.js`, and registers the app in Firestore. You'll be prompted for your Firebase email and password (or pass them as flags -- see [Available Commands](#available-commands)).
 
-### Step 2: Start Development
+### Step 3: Start Development
 
 ```bash
 npm run dev
@@ -139,19 +152,6 @@ npm run dev
 Visit **http://localhost:3000?app=my-app-name** to see your app running locally.
 
 **Note:** The `?app=` parameter tells the framework which app to load from `/apps/{app-id}/`
-
-### Step 3: Create Firebase Account (Required before first commit)
-
-When you're ready to save your work to the cloud:
-
-1. At http://localhost:3000, click **"Sign up"** (Google or email/password)
-2. Click **"Add Sample App"**
-3. Enter: `my-app-name` (must match your app ID from Step 1)
-
-**This creates:**
-
-- Your Firebase user account
-- An app document in Firestore (required for `npm run app:commit`)
 
 ### Step 4: Define Your Data Schema
 
@@ -263,7 +263,7 @@ import { TodoList } from "./components/TodoList.jsx";
 </AppShell.Main>;
 ```
 
-### Step 7: Deploy Your Changes (Requires Firebase account from Step 3)
+### Step 7: Deploy Your Changes (Requires Firebase account from Step 1)
 
 When ready to publish:
 
@@ -271,7 +271,11 @@ When ready to publish:
 npm run app:commit my-app-name "Describe your changes"
 ```
 
-**You'll be prompted for:** Email and password (the account you created in Step 3)
+You'll be prompted for your email and password interactively, or you can pass them as flags:
+
+```bash
+npm run app:commit my-app-name "Describe your changes" --email=you@example.com --password=yourpass --yes
+```
 
 **What this does:** Uploads your `/apps/my-app-name/` code to Firestore, making it instantly live in production!
 
@@ -285,11 +289,15 @@ Joining a team to work on an existing app?
 npm run app:checkout news-base
 ```
 
-**You'll be prompted for:** Email and password
+You'll be prompted for your email and password interactively, or pass them as flags:
+
+```bash
+npm run app:checkout news-base --email=you@example.com --password=yourpass
+```
 
 **Requirements:**
 
-- You need a Firebase account (create one at http://localhost:3000 if you don't have one)
+- You need a Firebase account (create one with `npm run signup` or at http://localhost:3000)
 - The app owner must add you as a collaborator
 
 **What happens:**
@@ -377,7 +385,7 @@ const { data, loading, error, add, update, remove } = useCollection(
     where: [["owner", "==", user.uid]],
     orderBy: ["createdAt", "desc"],
     limit: 50,
-  }
+  },
 );
 
 // Add document
@@ -485,7 +493,7 @@ const { upload, deleteFile, getURL, uploading, progress } = useStorage(APP_ID);
 const handleUpload = async (file) => {
   const result = await upload(
     file,
-    `attachments/${Date.now()}_${file.name}` // Path within your app's storage
+    `attachments/${Date.now()}_${file.name}`, // Path within your app's storage
   );
 
   console.log("Download URL:", result.url);
@@ -796,17 +804,22 @@ The tradeoff is that npm packages must be pre-bundled into the framework. This k
   - Access apps via `http://localhost:3000?app={app-id}`
   - Switch apps by changing the `?app=` parameter
 
+**Account Management:**
+
+- `npm run signup` - Create a new Basebase account
+
 **App Management:**
 
-- `npm run app:init <appId>` - Initialize a new app in `/apps/{appId}/` (local only, no auth required)
-- `npm run app:checkout <appId>` - Download app code from Firestore to `/apps/{appId}/` (**requires Firebase auth**)
-- `npm run app:commit <appId> "message"` - Upload `/apps/{appId}/` to Firestore (**requires Firebase auth**)
+- `npm run app:init <appId>` - Initialize a new app in `/apps/{appId}/` and register it in Firestore (**requires auth**)
+  - Options: `--name="Display Name"`, `--description="..."`
+- `npm run app:checkout <appId>` - Download app code from Firestore to `/apps/{appId}/` (**requires auth**)
+- `npm run app:commit <appId> "message"` - Upload `/apps/{appId}/` to Firestore (**requires auth**)
 
 **Function Management:**
 
-- `npm run function:list` - List all available server functions (**requires Firebase auth**)
-- `npm run function:checkout <functionId>` - Download function code to `/functions/{functionId}.js` (**requires Firebase auth**)
-- `npm run function:commit <functionId>` - Upload function to Firestore (**requires Firebase auth**)
+- `npm run function:list` - List all available server functions (**requires auth**)
+- `npm run function:checkout <functionId>` - Download function code to `/functions/{functionId}.js` (**requires auth**)
+- `npm run function:commit <functionId>` - Upload function to Firestore (**requires auth**)
   - Options: `--app=<appId>` for app-specific functions
 
 **Utilities:**
@@ -814,9 +827,33 @@ The tradeoff is that npm packages must be pre-bundled into the framework. This k
 - `npm run generate:rules [appId]` - Generate Firestore security rules from schema (defaults to starter-app)
 - `npm run generate:types [appId]` - Generate TypeScript types from schema (defaults to starter-app)
 
-**Note:** To create a Firebase account, run `npm run dev` and sign up at http://localhost:3000
+### Authentication Flags (all commands that require auth)
 
-**For AI Coding Assistants:** Commands requiring authentication (`app:commit`, `app:checkout`) need interactive terminal access for password prompts. If your AI assistant can't run these, copy the command and run it yourself in your terminal.
+All authenticated commands support non-interactive usage via flags or environment variables:
+
+| Flag | Env Var | Description |
+|------|---------|-------------|
+| `--email=<email>` | `BASEBASE_EMAIL` | Firebase email |
+| `--password=<pw>` | `BASEBASE_PASSWORD` | Firebase password |
+| `--json` | — | Output machine-readable JSON to stdout |
+| `--yes` / `-y` | — | Auto-confirm all interactive prompts |
+
+**Examples:**
+
+```bash
+# Interactive (prompts for email/password)
+npm run app:commit my-app "update"
+
+# Non-interactive (flags)
+npm run app:commit my-app "update" --email=you@example.com --password=yourpass --yes --json
+
+# Non-interactive (env vars)
+export BASEBASE_EMAIL=you@example.com
+export BASEBASE_PASSWORD=yourpass
+npm run app:commit my-app "update" --yes --json
+```
+
+**For AI Agents & Automation:** All commands work in non-interactive environments (CI/CD, AI assistants, scripts) when credentials are provided via `--email`/`--password` flags or `BASEBASE_EMAIL`/`BASEBASE_PASSWORD` environment variables. Use `--json` for machine-readable output and `--yes` to auto-confirm prompts. See [skill.md](public/skill.md) for a complete agent-friendly reference (served at `https://www.basebase.com/skill.md` in production).
 
 ## Troubleshooting
 

@@ -1,7 +1,18 @@
 #!/usr/bin/env node
 /**
  * Checkout app code from Firestore to local /apps/{appId} directory
- * Usage: npm run app:checkout <appId> [version]
+ *
+ * Usage:
+ *   npm run app:checkout <appId> [version] [options]
+ *
+ * Options:
+ *   --email=<email>        Firebase email  (or BASEBASE_EMAIL env var)
+ *   --password=<password>  Firebase password (or BASEBASE_PASSWORD env var)
+ *   --json                 Output machine-readable JSON
+ *
+ * Examples:
+ *   npm run app:checkout my-app
+ *   npm run app:checkout my-app latest --email=me@x.com --password=secret --json
  */
 
 import { initializeApp } from "firebase/app";
@@ -13,7 +24,13 @@ import { fileURLToPath } from "url";
 import { createHash } from "crypto";
 import chalk from "chalk";
 import { firebaseConfig } from "../config/firebase.config.js";
-import { authenticateUser } from "./lib/auth-utils.js";
+import {
+  authenticateUser,
+  hasNonInteractiveCredentials,
+  parseGlobalFlags,
+  log,
+  jsonOutput,
+} from "./lib/auth-utils.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -24,37 +41,23 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Check if running in an interactive terminal
+/**
+ * Check if we can proceed (interactive OR non-interactive credentials provided).
+ */
 function checkInteractive() {
-  if (!process.stdin.isTTY) {
-    console.error(
-      chalk.red("\n❌ ERROR: This command requires an interactive terminal\n")
-    );
-    console.log(
-      chalk.yellow("This script needs to prompt for your email and password.")
-    );
-    console.log(
-      chalk.yellow(
-        "AI coding assistants cannot handle interactive password prompts.\n"
-      )
-    );
-    console.log(
-      chalk.cyan("Please run this command yourself in your terminal:")
-    );
-    console.log(
-      chalk.white(
-        `  npm run app:checkout ${process.argv[2] || "app-id"} ${
-          process.argv[3] || "latest"
-        }\n`
-      )
-    );
-    console.log(
-      chalk.gray(
-        "Then you'll be prompted for your Firebase email and password."
-      )
-    );
-    process.exit(1);
-  }
+  if (hasNonInteractiveCredentials()) return;
+  if (process.stdin.isTTY) return;
+
+  console.error(
+    chalk.red("\n❌ ERROR: This command requires an interactive terminal or --email/--password flags.\n")
+  );
+  console.log(
+    chalk.yellow("Provide credentials via CLI flags or environment variables:\n")
+  );
+  console.log(
+    chalk.cyan(`  npm run app:checkout ${process.argv[2] || "<appId>"} --email=you@example.com --password=yourpass\n`)
+  );
+  process.exit(1);
 }
 
 // Generate SHA-256 hash for a string
@@ -118,7 +121,8 @@ async function writeModulesToDisk(appId, modules) {
 
 // Main checkout function
 async function checkout(appId, versionId = "latest") {
-  console.log(chalk.cyan(`\n📥 Checking out app: ${appId}\n`));
+  const flags = parseGlobalFlags();
+  log(chalk.cyan(`\n📥 Checking out app: ${appId}\n`));
 
   try {
     // Check if interactive, then sign in user
@@ -127,12 +131,16 @@ async function checkout(appId, versionId = "latest") {
     const user = userCredential.user;
 
     // Get app document
-    console.log(chalk.cyan("📡 Fetching app from Firestore..."));
+    log(chalk.cyan("📡 Fetching app from Firestore..."));
     const appRef = doc(db, "apps", appId);
     const appSnap = await getDoc(appRef);
 
     if (!appSnap.exists()) {
-      console.error(chalk.red(`❌ App "${appId}" not found`));
+      if (flags.json) {
+        jsonOutput({ success: false, error: "app_not_found", appId });
+      } else {
+        console.error(chalk.red(`❌ App "${appId}" not found`));
+      }
       process.exit(1);
     }
 
@@ -145,11 +153,13 @@ async function checkout(appId, versionId = "latest") {
       appData.publicEdit === true;
 
     if (!hasAccess) {
-      console.error(
-        chalk.red(
-          `❌ Access denied. You don't have permission to access "${appId}"`
-        )
-      );
+      if (flags.json) {
+        jsonOutput({ success: false, error: "access_denied", appId });
+      } else {
+        console.error(
+          chalk.red(`❌ Access denied. You don't have permission to access "${appId}"`)
+        );
+      }
       process.exit(1);
     }
 
@@ -158,20 +168,26 @@ async function checkout(appId, versionId = "latest") {
       versionId === "latest" ? appData.currentVersion : versionId;
 
     if (!targetVersion) {
-      console.error(
-        chalk.red(`❌ No version found. App may not have been published yet.`)
-      );
+      if (flags.json) {
+        jsonOutput({ success: false, error: "no_version", appId });
+      } else {
+        console.error(chalk.red(`❌ No version found. App may not have been published yet.`));
+      }
       process.exit(1);
     }
 
-    console.log(chalk.gray(`   Version: ${targetVersion}`));
+    log(chalk.gray(`   Version: ${targetVersion}`));
 
     // Get version document
     const versionRef = doc(db, "apps", appId, "versions", targetVersion);
     const versionSnap = await getDoc(versionRef);
 
     if (!versionSnap.exists()) {
-      console.error(chalk.red(`❌ Version "${targetVersion}" not found`));
+      if (flags.json) {
+        jsonOutput({ success: false, error: "version_not_found", appId, version: targetVersion });
+      } else {
+        console.error(chalk.red(`❌ Version "${targetVersion}" not found`));
+      }
       process.exit(1);
     }
 
@@ -179,11 +195,9 @@ async function checkout(appId, versionId = "latest") {
     // Use source for development (original .jsx files)
     const modules = versionData.source || versionData.modules || {};
 
-    console.log(
+    log(
       chalk.cyan(
-        `\n📦 Writing ${
-          Object.keys(modules).length
-        } files to /apps/${appId}...\n`
+        `\n📦 Writing ${Object.keys(modules).length} files to /apps/${appId}...\n`
       )
     );
 
@@ -193,38 +207,68 @@ async function checkout(appId, versionId = "latest") {
     // Write checkout metadata for version tracking
     await writeCheckoutMetadata(appId, targetVersion, modules);
 
-    console.log(chalk.green(`\n✅ Checkout complete!`));
-    console.log(chalk.gray(`   App: ${appId}`));
-    console.log(chalk.gray(`   Version: ${targetVersion}`));
-    console.log(chalk.gray(`   Files: ${fileCount}`));
-    console.log(
-      chalk.white(`\n🚀 Run`),
-      chalk.cyan("npm run dev"),
-      chalk.white("to start development\n")
-    );
+    if (flags.json) {
+      jsonOutput({
+        success: true,
+        appId,
+        version: targetVersion,
+        fileCount,
+        files: Object.keys(modules),
+      });
+    } else {
+      console.log(chalk.green(`\n✅ Checkout complete!`));
+      console.log(chalk.gray(`   App: ${appId}`));
+      console.log(chalk.gray(`   Version: ${targetVersion}`));
+      console.log(chalk.gray(`   Files: ${fileCount}`));
+      console.log(
+        chalk.white(`\n🚀 Run`),
+        chalk.cyan("npm run dev"),
+        chalk.white("to start development\n")
+      );
+    }
   } catch (error) {
-    console.error(chalk.red("\n❌ Checkout failed:"), error.message);
-    console.error(error);
+    if (flags.json) {
+      jsonOutput({ success: false, error: error.code || "checkout_failed", message: error.message });
+    } else {
+      console.error(chalk.red("\n❌ Checkout failed:"), error.message);
+      console.error(error);
+    }
     process.exit(1);
   }
 
   process.exit(0);
 }
 
-// Parse arguments
-const appId = process.argv[2];
-const versionId = process.argv[3] || "latest";
+// Parse arguments — extract positional args, ignoring --flags
+/** @type {string | undefined} */
+let appId;
+/** @type {string} */
+let versionId = "latest";
+
+for (const arg of process.argv.slice(2)) {
+  if (arg.startsWith("--") || arg === "-y") continue;
+  if (!appId) {
+    appId = arg;
+  } else {
+    versionId = arg;
+  }
+}
 
 if (!appId) {
-  console.error(chalk.red("\n❌ App ID required"));
-  console.log(
-    chalk.white("\nUsage:"),
-    chalk.cyan("npm run app:checkout <appId> [version]")
-  );
-  console.log(
-    chalk.white("Example:"),
-    chalk.cyan("npm run app:checkout news-base latest\n")
-  );
+  const flags = parseGlobalFlags();
+  if (flags.json) {
+    jsonOutput({ success: false, error: "missing_app_id", message: "App ID required" });
+  } else {
+    console.error(chalk.red("\n❌ App ID required"));
+    console.log(
+      chalk.white("\nUsage:"),
+      chalk.cyan("npm run app:checkout <appId> [version] [--email=X --password=X --json]")
+    );
+    console.log(
+      chalk.white("Example:"),
+      chalk.cyan("npm run app:checkout news-base latest\n")
+    );
+  }
   process.exit(1);
 }
 
