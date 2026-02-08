@@ -762,9 +762,18 @@ Firestore offline persistence is enabled by default. The app works offline and s
 3. Check query filters match security rules
 4. Ensure document `owner` field matches `user.uid`
 
-### "Index Required" Errors
+### Composite Index Queries (where + orderBy)
 
-Firebase will provide a link to create the index. Click it, wait 1-2 minutes for index to build.
+When a query combines `where` on one field with `orderBy` on a different field (e.g.
+`where: [["owner", "==", uid]], orderBy: ["createdAt", "desc"]`), Firestore normally
+requires a composite index. The framework handles this automatically: it detects the
+pattern, skips the `orderBy`/`limit` on the Firestore query, and sorts the results
+client-side in JavaScript. Your app works without any manual index creation.
+
+You will see a one-time `console.warn` in the browser dev tools when this happens, so
+you know the sorting is handled client-side. For very large collections you can declare
+the index in your `schema.js` and ask the platform owner to deploy it for optimal
+server-side performance.
 
 ### Real-Time Updates Not Working
 

@@ -16,6 +16,7 @@
     "doc:fetch": "node scripts/fetch-doc.js",
     "generate:types": "node scripts/generate-types.js",
     "generate:rules": "node scripts/generate-rules.js",
+    "generate:indexes": "node scripts/generate-indexes.js",
     "build": "vite build -c vite.config.production.js",
     "preview": "vite preview -c vite.config.production.js",
     "start": "NODE_ENV=production node server.js",
