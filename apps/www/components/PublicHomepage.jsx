@@ -39,6 +39,25 @@ const FREE_FEATURES = [
   { title: "Server functions", value: "call LLMs, send emails, enrich data" },
   { title: "File storage", value: "upload/download with useStorage hook" },
   { title: "Optimistic updates", value: "UI responds instantly, syncs in background" },
+  { title: "20+ sample apps", value: "copy patterns from CRM, chat, wiki, blog, and more" },
+];
+
+/** @type {{ app: string; desc: string }[]} */
+const SAMPLE_APPS = [
+  { app: "starter-app", desc: "Minimal notes board — start here" },
+  { app: "projectbase", desc: "Task manager with projects & kanban" },
+  { app: "crm", desc: "Full CRM with leads, contacts, deals" },
+  { app: "basepedia", desc: "Wiki with rich text editing" },
+  { app: "blog", desc: "Blogging platform with posts & authors" },
+  { app: "writebase", desc: "Collaborative docs with real-time presence" },
+  { app: "snack", desc: "Team chat with channels" },
+  { app: "flashcards", desc: "Study flashcards with spaced repetition" },
+  { app: "signbase", desc: "Document signing workflow" },
+  { app: "updatebase", desc: "Team updates & newsletter" },
+  { app: "community-calendar", desc: "Event calendar with RSVPs" },
+  { app: "langbase", desc: "Language learning with lessons" },
+  { app: "sagestocks", desc: "Stock portfolio tracker" },
+  { app: "builder", desc: "AI-powered app builder (meta!)" },
 ];
 
 /** @type {{ app: string; url: string; desc: string }[]} */
@@ -801,6 +820,49 @@ npm install`} />
               </Group>
             ))}
           </Stack>
+        </Box>
+
+        {/* Sample apps grid */}
+        <Text fw={600} style={{ color: COLORS.text, marginTop: 32, marginBottom: 16 }}>
+          Sample apps to copy from
+        </Text>
+        <Text size="sm" style={{ color: COLORS.textMuted, marginBottom: 16 }}>
+          Every app below is in the <code style={{ color: COLORS.accent }}>apps/</code> folder. Browse the code, copy patterns, or use them as starting points.
+        </Text>
+        <Box
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {SAMPLE_APPS.map((app) => (
+            <Box
+              key={app.app}
+              p="md"
+              style={{
+                background: COLORS.bgCode,
+                borderRadius: 8,
+                border: `1px solid ${COLORS.border}`,
+              }}
+            >
+              <Group gap={8} mb={4}>
+                <Text
+                  fw={600}
+                  style={{
+                    color: COLORS.cyan,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 13,
+                  }}
+                >
+                  {app.app}
+                </Text>
+              </Group>
+              <Text size="sm" style={{ color: COLORS.textMuted }}>
+                {app.desc}
+              </Text>
+            </Box>
+          ))}
         </Box>
       </Section>
 
