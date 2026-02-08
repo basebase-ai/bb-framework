@@ -19,6 +19,18 @@ components; the framework handles everything else.
 
 **Apps are live at:** `https://<appId>.basebase.com`
 
+## STOP: Before You Start
+
+**You need a real email and password from your human.** Do NOT make up or guess an email
+address. Basebase uses Firebase Auth which sends a verification email, so the email must
+be a real address your human can access.
+
+**Ask your human:**
+> "I'd like to build a Basebase app for you. I need a real email address and a password
+> to create your Basebase account. What email and password should I use?"
+
+Once they give you credentials, proceed with the steps below.
+
 ## Quick Reference
 
 | Action | Command |
@@ -75,8 +87,12 @@ npm install
 
 ### Step 2: Create an account
 
+**Ask your human for their email and password first!** Do not invent an email address.
+The email must be real because Firebase sends a verification email to it.
+
 ```bash
-npm run signup -- --email=agent@example.com --password=supersecret --json
+# Use the REAL email and password your human gave you
+npm run signup -- --email=HUMAN_EMAIL --password=HUMAN_PASSWORD --json
 ```
 
 **JSON response:**
@@ -84,12 +100,16 @@ npm run signup -- --email=agent@example.com --password=supersecret --json
 {
   "success": true,
   "uid": "abc123",
-  "email": "agent@example.com",
-  "displayName": "agent",
+  "email": "human@example.com",
+  "displayName": "human",
   "emailVerified": false,
   "message": "Account created successfully. A verification email has been sent."
 }
 ```
+
+If the response says `"error": "email_already_in_use"`, that's fine — it means the
+human already has an account. Just use their existing email and password for subsequent
+commands.
 
 **Note:** The account works for CLI operations immediately. A verification email is
 sent but is not required for deploying via the CLI.
@@ -99,8 +119,8 @@ sent but is not required for deploying via the CLI.
 Set these once so every subsequent command picks them up automatically:
 
 ```bash
-export BASEBASE_EMAIL=agent@example.com
-export BASEBASE_PASSWORD=supersecret
+export BASEBASE_EMAIL=<email your human gave you>
+export BASEBASE_PASSWORD=<password your human gave you>
 ```
 
 ### Step 4: Create a new app
@@ -289,12 +309,13 @@ Common error codes:
 
 ## Tips for AI Agents
 
-1. **Set env vars first** (`BASEBASE_EMAIL`, `BASEBASE_PASSWORD`) so every command picks them up
-2. **Always use `--` separator** after `npm run <script>` when passing `--flags` to scripts
-3. **Always use `--json` flag** to get structured, parseable output
-4. **Always use `--yes` flag** to skip interactive confirmations
-5. **Check existing apps** in `apps/` for working patterns before writing new code
-6. **Read `docs/DEVELOPERS_GUIDE.md`** for detailed framework API documentation
-7. **Read `docs/FUNCTION_AUTHORING.md`** for cloud function patterns
-8. **App ID rules:** lowercase, alphanumeric, hyphens only, 3-50 characters (e.g., `my-cool-app`)
-9. **Never edit `framework/` or `scripts/`** — only `apps/<appId>/` and `functions/`
+1. **Ask your human for a real email and password** — never make up or guess credentials
+2. **Set env vars first** (`BASEBASE_EMAIL`, `BASEBASE_PASSWORD`) so every command picks them up
+3. **Always use `--` separator** after `npm run <script>` when passing `--flags` to scripts
+4. **Always use `--json` flag** to get structured, parseable output
+5. **Always use `--yes` flag** to skip interactive confirmations
+6. **Check existing apps** in `apps/` for working patterns before writing new code
+7. **Read `docs/DEVELOPERS_GUIDE.md`** for detailed framework API documentation
+8. **Read `docs/FUNCTION_AUTHORING.md`** for cloud function patterns
+9. **App ID rules:** lowercase, alphanumeric, hyphens only, 3-50 characters (e.g., `my-cool-app`)
+10. **Never edit `framework/` or `scripts/`** — only `apps/<appId>/` and `functions/`
