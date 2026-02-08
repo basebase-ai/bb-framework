@@ -4,8 +4,8 @@
  */
 
 import React, { useState } from "react";
-import { Box, Text, Button, Group, Stack, Container, Table, Anchor, CopyButton, Tooltip, ActionIcon, Avatar, Menu, SegmentedControl } from "@mantine/core";
-import { IconArrowRight, IconCheck, IconCopy, IconBrandGithub, IconBook, IconApps, IconBrandDiscord, IconUser, IconLogout } from "@tabler/icons-react";
+import { Box, Text, Button, Group, Stack, Container, Anchor, CopyButton, Tooltip, ActionIcon, Avatar, Menu } from "@mantine/core";
+import { IconArrowRight, IconCheck, IconCopy, IconBrandGithub, IconApps, IconUser, IconLogout } from "@tabler/icons-react";
 
 /** @type {Record<string, string>} */
 const COLORS = {
@@ -60,15 +60,6 @@ const SAMPLE_APPS = [
   { app: "builder", desc: "AI-powered app builder (meta!)" },
 ];
 
-/** @type {{ app: string; url: string; desc: string }[]} */
-const EXAMPLE_APPS = [
-  { app: "starter-app", url: "?app=starter-app", desc: "Sticky notes board" },
-  { app: "projectbase", url: "?app=projectbase", desc: "Task manager with projects" },
-  { app: "crm", url: "?app=crm", desc: "Customer relationship manager" },
-  { app: "basepedia", url: "?app=basepedia", desc: "Wiki with rich content" },
-  { app: "playground", url: "?app=playground", desc: "Browse and launch other apps" },
-];
-
 /**
  * Basebase Logo SVG Component - green/pink theme
  * @param {{ size?: number }} props
@@ -83,16 +74,6 @@ function BasebaseLogo({ size = 24 }) {
     </svg>
   );
 }
-
-/** @type {string} */
-const PACKAGES_LIST = `react, react-dom
-firebase/app, firebase/auth, firebase/firestore, firebase/storage
-@mantine/core, @mantine/hooks, @mantine/notifications, @mantine/dates
-@tabler/icons-react
-zustand
-marked
-dayjs
-@tiptap/react, @tiptap/starter-kit, @tiptap/extension-placeholder`;
 
 /**
  * Code block component with copy button
@@ -231,102 +212,6 @@ export default function App() {
     </Stack>
   );
 }`;
-
-  const fullSequence = `# 1. Clone the framework (once)
-git clone https://github.com/basebase-ai/bb-framework
-cd bb-framework
-npm install
-
-# 2. Create your app (generates /apps/my-app/ with schema.js and app.jsx)
-npm run app:init my-app
-
-# 3. Develop locally
-npm run dev
-# → visit http://localhost:3000?app=my-app
-
-# 4. Write your app
-# Edit apps/my-app/app.jsx and apps/my-app/components/*.jsx
-
-# 5. Publish (first time: sign up with email, verify it, then run this)
-npm run app:commit my-app "describe your changes"
-
-# 6. Share
-# → https://my-app.basebase.com is live`;
-
-  const useCollectionExample = `import { useCollection } from "../../framework/hooks/useCollection.js";
-import { collections } from "./schema.js";
-
-const { data, loading, add, update, remove } = useCollection(collections.tasks, {
-  where: [["owner", "==", user.uid]],
-  orderBy: ["createdAt", "desc"],
-  limit: 50,
-});
-
-await add({ title: "Ship it" });
-await update(docId, { completed: true });
-await remove(docId);`;
-
-  const useAuthExample = `const { user, loading, authenticated } = useAuth();
-// user.uid, user.email, user.displayName`;
-
-  const useDocumentExample = `const { data, loading, exists, update, remove } = useDocument(collections.tasks, taskId);`;
-
-  const useFunctionExample = `const { call, loading, result, error } = useFunction("askLLM");
-
-await call({
-  provider: "openai",
-  model: "gpt-4",
-  systemPrompt: "You are helpful",
-  message: "Summarize this document",
-});`;
-
-  const useStorageExample = `const { upload, deleteFile, getURL, uploading, progress } = useStorage(APP_ID);
-const result = await upload(file, \`attachments/\${file.name}\`);
-// result.url → download URL`;
-
-  const useAppMembershipExample = `const { hasAccess, isOwner, isAdmin, tier, status } = useAppMembership(APP_ID);`;
-
-  const schemaExample = `export const APP_ID = "my-app";
-
-export const collections = {
-  apps: "apps",
-  users: "users",
-  tasks: \`\${APP_ID}_tasks\`,
-  notes: \`\${APP_ID}_notes\`,
-  comments: \`\${APP_ID}_comments\`,
-};`;
-
-  const collaborateExample = `# Checkout someone else's app
-npm run app:checkout their-app
-
-# Make changes locally
-npm run dev
-# → http://localhost:3000?app=their-app
-
-# Publish your changes
-npm run app:commit their-app "fixed the bug"`;
-
-  const commandsCheatsheet = `# Development
-npm run dev                              # Start local server (port 3000)
-
-# App lifecycle
-npm run app:init <app-id>                # Create new app (no auth)
-npm run app:checkout <app-id>            # Download existing app (requires login)
-npm run app:commit <app-id> "message"    # Publish to production (requires login)
-
-# First time publishing?
-# 1. Sign up at basebase.com with email + password
-# 2. Verify your email (check inbox)
-# 3. Run app:commit — enter your email/password when prompted
-
-# Server functions
-npm run function:list                    # List available functions
-npm run function:checkout <fn-id>        # Download function code
-npm run function:commit <fn-id>          # Upload function to production
-
-# Utilities
-npm run generate:rules [app-id]          # Generate Firestore security rules
-npm run generate:types [app-id]          # Generate TypeScript types from schema`;
 
   return (
     <Box
@@ -712,7 +597,7 @@ npm run generate:types [app-id]          # Generate TypeScript types from schema
                     1. Clone repo, npm install<br />
                     2. npm run signup --email=... --password=... --json<br />
                     3. npm run app:init {"<app-id>"} --email=... --password=... --json<br />
-                    4. Write code in apps/{"<app-id>"}/app.jsx<br />
+                    4. Write code in apps/{"<app-id>"}/ (app.jsx + any other files)<br />
                     5. npm run app:commit {"<app-id>"} "msg" --email=... --password=... --yes --json<br />
                     6. App is live at https://{"<app-id>"}.basebase.com
                   </Text>
@@ -734,7 +619,7 @@ npm install`} />
 
                 <Text fw={600} style={{ color: COLORS.text }}>Step 4: Write your code</Text>
                 <Text size="sm" style={{ color: COLORS.textMuted, marginTop: -16 }}>
-                  Edit <code style={{ color: COLORS.accent }}>apps/my-awesome-app/app.jsx</code>. You have React, Mantine UI, Firebase hooks.
+                  Edit <code style={{ color: COLORS.accent }}>apps/my-awesome-app/app.jsx</code> and add as many <code style={{ color: COLORS.accent }}>.jsx</code>, <code style={{ color: COLORS.accent }}>.js</code>, or <code style={{ color: COLORS.accent }}>.css</code> files as you want. You have React, Mantine UI, Firebase hooks.
                 </Text>
                 <CodeBlock code={heroAppCode} />
 
@@ -866,20 +751,16 @@ npm install`} />
         </Box>
       </Section>
 
-      {/* How it works */}
+      {/* How it works - condensed */}
       <Section id="how-it-works">
-        <SectionHeading>How it works (for bots and humans)</SectionHeading>
-        <Text style={{ color: COLORS.textMuted, marginBottom: 24, lineHeight: 1.7 }}>
-          Basebase apps are React components stored as source code in a database. There is no build step. There is no CI/CD pipeline. You write a <code style={{ color: COLORS.accent }}>.jsx</code> file, run <code style={{ color: COLORS.accent }}>app:commit</code>, and the framework loads your code from Firestore at runtime.
-        </Text>
-
+        <SectionHeading>How it works</SectionHeading>
         <Box
           style={{
             background: COLORS.bgCode,
             borderRadius: 8,
             border: `1px solid ${COLORS.border}`,
             padding: 16,
-            marginBottom: 32,
+            marginBottom: 24,
           }}
         >
           <Text
@@ -889,234 +770,29 @@ npm install`} />
               color: COLORS.text,
             }}
           >
-            You write code → app:commit uploads it to Firestore → framework loads it at {"{app-id}"}.basebase.com
+            You write code → app:commit uploads it → framework loads it at {"{app-id}"}.basebase.com
           </Text>
         </Box>
-
-        <Text fw={600} style={{ color: COLORS.text, marginBottom: 16 }}>The full sequence</Text>
-        <CodeBlock code={fullSequence} />
-
-        <Box mt={40}>
-          <Text fw={600} style={{ color: COLORS.text, marginBottom: 16 }}>For AI agents specifically</Text>
-          <Text style={{ color: COLORS.textMuted, marginBottom: 16, lineHeight: 1.7 }}>
-            If you are an OpenClaw bot, Claude Code session, Codex agent, Cursor agent, or any LLM with shell access:
-          </Text>
-
-          <Stack gap={8} mb={24}>
-            {[
-              "Clone https://github.com/basebase-ai/bb-framework into your workspace",
-              "Run npm install",
-              "Run npm run app:init {app-name}",
-              "Write React components into apps/{app-name}/app.jsx and apps/{app-name}/components/",
-              "Use useCollection, useAuth, useDocument, useFunction, useStorage from the framework",
-              "Sign up at basebase.com (email + verify) — only needed once for publishing",
-              'Run npm run app:commit {app-name} "commit message" (enter email/password when prompted)',
-              "The app is now live at https://{app-name}.basebase.com",
-            ].map((step, i) => (
-              <Group key={i} gap={12} align="flex-start" wrap="nowrap">
-                <Text style={{ color: COLORS.accent, fontFamily: "monospace", flexShrink: 0 }}>{i + 1}.</Text>
-                <Text style={{ color: COLORS.text, fontSize: 14 }}>{step}</Text>
-              </Group>
-            ))}
-          </Stack>
-
-          <Text fw={600} style={{ color: COLORS.text, marginBottom: 12 }}>You do not need to:</Text>
-          <Box
-            style={{
-              background: COLORS.bgCode,
-              borderRadius: 8,
-              border: `1px solid ${COLORS.border}`,
-              padding: 16,
-            }}
+        <Text style={{ color: COLORS.textMuted, lineHeight: 1.7, marginBottom: 24 }}>
+          No build step. No CI/CD pipeline. Your React components are stored as source code and loaded at runtime. Every commit is versioned and rollback-able.
+        </Text>
+        <Group gap={16}>
+          <Button
+            variant="outline"
+            rightSection={<IconArrowRight size={16} />}
+            onClick={() => onNavigateToGallery?.()}
+            style={{ borderColor: COLORS.borderLight, color: COLORS.text }}
           >
-            <Stack gap={4}>
-              {[
-                "Initialize a git repo",
-                "Create a GitHub repo",
-                "Configure a hosting provider",
-                "Set up a database",
-                "Configure authentication",
-                "Write a Dockerfile",
-                "Set environment variables",
-                "Buy a domain",
-                "Configure DNS or SSL",
-              ].map((item, i) => (
-                <Text key={i} style={{ color: COLORS.textDim, fontFamily: "monospace", fontSize: 13 }}>
-                  • {item}
-                </Text>
-              ))}
-            </Stack>
-          </Box>
-          <Text style={{ color: COLORS.textMuted, marginTop: 16, fontSize: 13 }}>
-            You <em>do</em> need a free Basebase account to publish (email + verify). That's it.
-          </Text>
-          <Text style={{ color: COLORS.accent, marginTop: 8, fontWeight: 500 }}>
-            The framework handles everything else.
-          </Text>
-        </Box>
-      </Section>
-
-      {/* Framework API */}
-      <Section id="api">
-        <SectionHeading>Framework API (what you import)</SectionHeading>
-
-        <Stack gap={32}>
-          <Box>
-            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>
-              useCollection(collectionName, options)
-            </Text>
-            <Text size="sm" style={{ color: COLORS.textMuted, marginBottom: 12 }}>
-              Real-time Firestore collection with CRUD.
-            </Text>
-            <CodeBlock code={useCollectionExample} />
-          </Box>
-
-          <Box>
-            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>useAuth()</Text>
-            <CodeBlock code={useAuthExample} />
-          </Box>
-
-          <Box>
-            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>
-              useDocument(collectionName, docId)
-            </Text>
-            <CodeBlock code={useDocumentExample} />
-          </Box>
-
-          <Box>
-            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>useFunction(functionName)</Text>
-            <Text size="sm" style={{ color: COLORS.textMuted, marginBottom: 12 }}>
-              Call server-side functions (LLMs, email, data enrichment).
-            </Text>
-            <CodeBlock code={useFunctionExample} />
-          </Box>
-
-          <Box>
-            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>useStorage(appId)</Text>
-            <Text size="sm" style={{ color: COLORS.textMuted, marginBottom: 12 }}>
-              Upload and manage files.
-            </Text>
-            <CodeBlock code={useStorageExample} />
-          </Box>
-
-          <Box>
-            <Text fw={600} style={{ color: COLORS.text, marginBottom: 8 }}>useAppMembership(appId)</Text>
-            <Text size="sm" style={{ color: COLORS.textMuted, marginBottom: 12 }}>
-              Access control and subscription tiers.
-            </Text>
-            <CodeBlock code={useAppMembershipExample} />
-          </Box>
-        </Stack>
-      </Section>
-
-      {/* schema.js */}
-      <Section id="schema">
-        <SectionHeading>schema.js — define your data</SectionHeading>
-        <Text style={{ color: COLORS.textMuted, marginBottom: 16, lineHeight: 1.7 }}>
-          Every app has a <code style={{ color: COLORS.accent }}>schema.js</code> that namespaces your collections. This is how multiple apps share one Firebase project without collisions.
-        </Text>
-        <CodeBlock code={schemaExample} />
-        <Text style={{ color: COLORS.textMuted, marginTop: 16, fontSize: 14 }}>
-          Always reference <code style={{ color: COLORS.accent }}>collections.tasks</code> — never hardcode <code style={{ color: COLORS.textDim }}>"my-app_tasks"</code>.
-        </Text>
-      </Section>
-
-      {/* Collaborate */}
-      <Section id="collaborate">
-        <SectionHeading>Collaborate</SectionHeading>
-        <CodeBlock code={collaborateExample} />
-        <Text style={{ color: COLORS.textMuted, marginTop: 16, lineHeight: 1.7 }}>
-          No branches. No pull requests. No merge conflicts. You edit, you commit, it's live. Every commit is versioned and rollback-able.
-        </Text>
-      </Section>
-
-      {/* Fork anything */}
-      <Section id="fork">
-        <SectionHeading>Fork anything</SectionHeading>
-        <Text style={{ color: COLORS.textMuted, marginBottom: 16, lineHeight: 1.7 }}>
-          See an app in the gallery? Fork it. Customize it. Ship your version.
-        </Text>
-        <CodeBlock code={`# Coming soon:
-npm run app:fork cool-app my-version`} />
-        <Text style={{ color: COLORS.textMuted, marginTop: 16, marginBottom: 24, lineHeight: 1.7 }}>
-          Every app in the gallery is a working template. Every template is a launchpad.
-        </Text>
-        <Button
-          variant="outline"
-          rightSection={<IconArrowRight size={16} />}
-          onClick={() => onNavigateToGallery?.()}
-          style={{
-            borderColor: COLORS.borderLight,
-            color: COLORS.text,
-          }}
-        >
-          Browse the Gallery
-        </Button>
-      </Section>
-
-      {/* Example apps */}
-      <Section id="examples">
-        <SectionHeading>Example apps (already in the repo)</SectionHeading>
-        <Text style={{ color: COLORS.textMuted, marginBottom: 24 }}>
-          Clone the framework and these are ready to run:
-        </Text>
-        <Box
-          style={{
-            background: COLORS.bgCode,
-            borderRadius: 8,
-            border: `1px solid ${COLORS.border}`,
-            overflow: "hidden",
-          }}
-        >
-          <Table
-            horizontalSpacing="md"
-            verticalSpacing="sm"
-            styles={{
-              table: { background: "transparent" },
-              th: { color: COLORS.textMuted, borderBottom: `1px solid ${COLORS.border}`, fontWeight: 500, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em" },
-              td: { color: COLORS.text, borderBottom: `1px solid ${COLORS.border}`, fontSize: 13, fontFamily: "'JetBrains Mono', monospace" },
-              tr: { "&:last-child td": { borderBottom: "none" } },
-            }}
+            Browse the Gallery
+          </Button>
+          <Anchor
+            href="https://www.basebase.com/skill.md"
+            target="_blank"
+            style={{ color: COLORS.cyan, textDecoration: "none", fontSize: 14 }}
           >
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>App</Table.Th>
-                <Table.Th>URL (local)</Table.Th>
-                <Table.Th>What it does</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {EXAMPLE_APPS.map((app) => (
-                <Table.Tr key={app.app}>
-                  <Table.Td style={{ color: COLORS.accent }}>{app.app}</Table.Td>
-                  <Table.Td style={{ color: COLORS.textMuted }}>{app.url}</Table.Td>
-                  <Table.Td style={{ fontFamily: "inherit", color: COLORS.text }}>{app.desc}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Box>
-        <Text style={{ color: COLORS.textMuted, marginTop: 16, fontSize: 14 }}>
-          Read their source in <code style={{ color: COLORS.accent }}>/apps/{"{app-id}"}/ </code> to learn the patterns.
-        </Text>
-      </Section>
-
-      {/* Available packages */}
-      <Section id="packages">
-        <SectionHeading>Available packages (production-ready)</SectionHeading>
-        <Text style={{ color: COLORS.textMuted, marginBottom: 16, lineHeight: 1.7 }}>
-          These are pre-registered and work in both local dev and production:
-        </Text>
-        <CodeBlock code={PACKAGES_LIST} showCopy={false} />
-        <Text style={{ color: COLORS.textMuted, marginTop: 16, fontSize: 14, lineHeight: 1.7 }}>
-          Need another package? Install it with <code style={{ color: COLORS.accent }}>npm install</code>, register it in <code style={{ color: COLORS.accent }}>framework/production-entry.js</code>, and redeploy the framework.
-        </Text>
-      </Section>
-
-      {/* Commands cheat sheet */}
-      <Section id="commands">
-        <SectionHeading>Commands cheat sheet</SectionHeading>
-        <CodeBlock code={commandsCheatsheet} />
+            Full documentation →
+          </Anchor>
+        </Group>
       </Section>
 
       {/* The pitch */}
@@ -1178,25 +854,6 @@ npm run app:fork cool-app my-version`} />
                   <Text size="sm">Gallery</Text>
                 </Group>
               </Text>
-              <Anchor
-                href="https://docs.basebase.com"
-                target="_blank"
-                style={{ color: COLORS.textMuted, textDecoration: "none" }}
-              >
-                <Group gap={6}>
-                  <IconBook size={18} />
-                  <Text size="sm">Docs</Text>
-                </Group>
-              </Anchor>
-              <Anchor
-                href="#"
-                style={{ color: COLORS.textMuted, textDecoration: "none" }}
-              >
-                <Group gap={6}>
-                  <IconBrandDiscord size={18} />
-                  <Text size="sm">Discord</Text>
-                </Group>
-              </Anchor>
             </Group>
             <Text size="xs" style={{ color: COLORS.textDim }}>
               © {new Date().getFullYear()} Basebase
