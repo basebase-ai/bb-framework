@@ -47,7 +47,7 @@ function checkInteractive() {
   );
   console.log(
     chalk.cyan(
-      `  npm run doc:fetch "${process.argv[2] || "/path/to/doc"}" --email=you@example.com --password=yourpass\n`
+      `  npm run doc:fetch -- "${process.argv[2] || "/path/to/doc"}" --email=you@example.com --password=yourpass\n`
     )
   );
   process.exit(1);

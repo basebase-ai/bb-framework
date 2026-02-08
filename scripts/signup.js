@@ -3,7 +3,7 @@
  * Create a new Basebase account (sign up) via the CLI.
  *
  * Usage:
- *   npm run signup --email=<email> --password=<password> [options]
+ *   npm run signup -- --email=<email> --password=<password> [options]
  *
  * Options:
  *   --email=<email>        Account email (required)
@@ -15,9 +15,11 @@
  *   BASEBASE_EMAIL         Account email
  *   BASEBASE_PASSWORD      Account password
  *
+ * NOTE: The -- separator is required to prevent npm from consuming --flags.
+ *
  * Examples:
- *   npm run signup --email=agent@example.com --password=supersecret
- *   npm run signup --email=agent@example.com --password=supersecret --name="My Agent" --json
+ *   npm run signup -- --email=agent@example.com --password=supersecret
+ *   npm run signup -- --email=agent@example.com --password=supersecret --name="My Agent" --json
  *   BASEBASE_EMAIL=agent@x.com BASEBASE_PASSWORD=secret npm run signup
  *
  * Notes:

@@ -179,7 +179,7 @@ async function init() {
       showError(
         "App Not Found",
         "No app ID specified in the URL.",
-        "Please access this site using a valid app URL (e.g., your-app.basebase.io or basebase.io/your-app)"
+        "Please access this site using a valid app URL (e.g., your-app.basebase.com or basebase.com/?app=your-app)",
       );
       return;
     }
@@ -249,7 +249,7 @@ async function init() {
       "react-icons/si": ReactIconsSi,
 
       // APKG parsing libraries (Anki decks)
-      "jszip": { default: JSZip, __esModule: true },
+      jszip: { default: JSZip, __esModule: true },
       "sql.js": { default: initSqlJs, __esModule: true },
 
       // Framework hooks (with path variants - normalized, relative old styles)
@@ -388,7 +388,7 @@ async function init() {
     const { appModule, appData, versionHash } = await loader.loadAndExecute(
       appId,
       frameworkExports,
-      importMeta
+      importMeta,
     );
 
     console.log(`✅ App loaded successfully`);
@@ -408,7 +408,7 @@ async function init() {
     showError(
       "Failed to Load App",
       "An error occurred while loading the application.",
-      error.stack || error.message
+      error.stack || error.message,
     );
   }
 }

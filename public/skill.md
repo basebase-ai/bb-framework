@@ -2,11 +2,11 @@
 name: basebase
 version: 0.1.0
 description: Build and deploy real-time, multi-user web applications with Firebase. No backend needed.
-homepage: https://basebase.io
+homepage: https://basebase.com
 repository: https://github.com/basebase-ai/bb-framework
 metadata:
   category: "web-app-framework"
-  api_base: "https://basebase.io"
+  api_base: "https://basebase.com"
   auth_method: "email_password"
   cli_prefix: "npm run"
 ---
@@ -17,31 +17,40 @@ Build and deploy real-time, multi-user web applications instantly. Basebase prov
 Firebase auth, Firestore database, and real-time sync out of the box. You write React
 components; the framework handles everything else.
 
-**Apps are live at:** `https://<appId>.basebase.io`
+**Apps are live at:** `https://<appId>.basebase.com`
 
 ## Quick Reference
 
 | Action | Command |
 |--------|---------|
-| **Sign up** | `npm run signup --email=<email> --password=<pw> --json` |
-| **Create app** | `npm run app:init <appId> --name="Name" --email=<email> --password=<pw> --json` |
+| **Sign up** | `npm run signup -- --email=<email> --password=<pw> --json` |
+| **Create app** | `npm run app:init -- <appId> --name="Name" --email=<email> --password=<pw> --json` |
 | **Dev server** | `npm run dev` (visit `http://<appId>.localhost:3000`) |
-| **Deploy** | `npm run app:commit <appId> "message" --email=<email> --password=<pw> --yes --json` |
-| **Checkout** | `npm run app:checkout <appId> --email=<email> --password=<pw> --json` |
-| **Deploy function** | `npm run function:commit <file.js> --email=<email> --password=<pw> --json` |
-| **List functions** | `npm run function:list --email=<email> --password=<pw> --json` |
+| **Deploy** | `npm run app:commit -- <appId> "message" --email=<email> --password=<pw> --yes --json` |
+| **Checkout** | `npm run app:checkout -- <appId> --email=<email> --password=<pw> --json` |
+| **Deploy function** | `npm run function:commit -- <file.js> --email=<email> --password=<pw> --json` |
+| **List functions** | `npm run function:list -- --email=<email> --password=<pw> --json` |
 
 ## Authentication
 
-All CLI commands accept credentials via flags or environment variables:
+All CLI commands accept credentials via flags or environment variables.
+
+**IMPORTANT: `npm run` and the `--` separator.**
+Positional args (like app IDs and messages) work fine without any separator:
+`npm run app:commit my-app "message"`. But `--flag=value` style arguments get consumed
+by npm itself unless you add a `--` separator between the script name and the flags.
+Environment variables avoid this problem entirely and are the recommended approach.
 
 ```bash
-# Option 1: CLI flags
-npm run app:commit my-app "update" --email=me@example.com --password=mypass
-
-# Option 2: Environment variables
+# RECOMMENDED: Environment variables (set once, works for all commands)
 export BASEBASE_EMAIL=me@example.com
 export BASEBASE_PASSWORD=mypass
+npm run app:commit -- my-app "update" --yes --json
+
+# Alternative: all via CLI flags (note the -- before any --flags)
+npm run app:commit -- my-app "update" --email=me@example.com --password=mypass --yes --json
+
+# No -- needed when there are no --flags (interactive mode)
 npm run app:commit my-app "update"
 ```
 
@@ -67,7 +76,7 @@ npm install
 ### Step 2: Create an account
 
 ```bash
-npm run signup --email=agent@example.com --password=supersecret --json
+npm run signup -- --email=agent@example.com --password=supersecret --json
 ```
 
 **JSON response:**
@@ -85,14 +94,21 @@ npm run signup --email=agent@example.com --password=supersecret --json
 **Note:** The account works for CLI operations immediately. A verification email is
 sent but is not required for deploying via the CLI.
 
-### Step 3: Create a new app
+### Step 3: Set credentials (recommended)
+
+Set these once so every subsequent command picks them up automatically:
 
 ```bash
-npm run app:init my-cool-app \
+export BASEBASE_EMAIL=agent@example.com
+export BASEBASE_PASSWORD=supersecret
+```
+
+### Step 4: Create a new app
+
+```bash
+npm run app:init -- my-cool-app \
   --name="My Cool App" \
   --description="A real-time collaboration tool" \
-  --email=agent@example.com \
-  --password=supersecret \
   --json
 ```
 
@@ -117,7 +133,7 @@ apps/my-cool-app/
     └── ProfileModal.jsx
 ```
 
-### Step 4: Edit the app code
+### Step 5: Edit the app code
 
 Edit files in `apps/my-cool-app/`. The minimum required files are:
 
@@ -131,14 +147,10 @@ You can add any number of additional `.jsx`, `.js`, `.css`, or `.json` files.
 - Import framework utilities with relative paths: `../../framework/hooks/useCollection.js`
 - Look at existing apps in `apps/` for patterns to copy
 
-### Step 5: Deploy
+### Step 6: Deploy
 
 ```bash
-npm run app:commit my-cool-app "Initial version" \
-  --email=agent@example.com \
-  --password=supersecret \
-  --yes \
-  --json
+npm run app:commit -- my-cool-app "Initial version" --yes --json
 ```
 
 **JSON response:**
@@ -153,27 +165,20 @@ npm run app:commit my-cool-app "Initial version" \
 }
 ```
 
-Your app is now live at `https://my-cool-app.basebase.io`
+Your app is now live at `https://my-cool-app.basebase.com`
 
-### Step 6: Update and redeploy
+### Step 7: Update and redeploy
 
 Make changes to files in `apps/my-cool-app/`, then:
 
 ```bash
-npm run app:commit my-cool-app "Added new feature" \
-  --email=agent@example.com \
-  --password=supersecret \
-  --yes \
-  --json
+npm run app:commit -- my-cool-app "Added new feature" --yes --json
 ```
 
 ## Checkout an Existing App
 
 ```bash
-npm run app:checkout my-cool-app \
-  --email=agent@example.com \
-  --password=supersecret \
-  --json
+npm run app:checkout -- my-cool-app --json
 ```
 
 **JSON response:**
@@ -206,11 +211,7 @@ export default async function myFunction({ query, limit = 10 }) {
 EOF
 
 # Deploy it
-npm run function:commit myFunction.js \
-  --app=my-cool-app \
-  --email=agent@example.com \
-  --password=supersecret \
-  --json
+npm run function:commit -- myFunction.js --app=my-cool-app --json
 ```
 
 ## App Architecture
@@ -288,11 +289,12 @@ Common error codes:
 
 ## Tips for AI Agents
 
-1. **Always use `--json` flag** to get structured, parseable output
-2. **Always use `--yes` flag** to skip interactive confirmations
-3. **Store credentials in env vars** so every command picks them up automatically
-4. **Check existing apps** in `apps/` for working patterns before writing new code
-5. **Read `docs/DEVELOPERS_GUIDE.md`** for detailed framework API documentation
-6. **Read `docs/FUNCTION_AUTHORING.md`** for cloud function patterns
-7. **App ID rules:** lowercase, alphanumeric, hyphens only, 3-50 characters (e.g., `my-cool-app`)
-8. **Never edit `framework/` or `scripts/`** — only `apps/<appId>/` and `functions/`
+1. **Set env vars first** (`BASEBASE_EMAIL`, `BASEBASE_PASSWORD`) so every command picks them up
+2. **Always use `--` separator** after `npm run <script>` when passing `--flags` to scripts
+3. **Always use `--json` flag** to get structured, parseable output
+4. **Always use `--yes` flag** to skip interactive confirmations
+5. **Check existing apps** in `apps/` for working patterns before writing new code
+6. **Read `docs/DEVELOPERS_GUIDE.md`** for detailed framework API documentation
+7. **Read `docs/FUNCTION_AUTHORING.md`** for cloud function patterns
+8. **App ID rules:** lowercase, alphanumeric, hyphens only, 3-50 characters (e.g., `my-cool-app`)
+9. **Never edit `framework/` or `scripts/`** — only `apps/<appId>/` and `functions/`

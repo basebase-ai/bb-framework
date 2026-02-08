@@ -3,12 +3,14 @@
  * Checkout function code from Firestore to local /functions directory
  *
  * Usage:
- *   npm run function:checkout <filename.js> [options]
+ *   npm run function:checkout -- <filename.js> [options]
  *
  * Options:
  *   --email=<email>        Firebase email  (or BASEBASE_EMAIL env var)
  *   --password=<password>  Firebase password (or BASEBASE_PASSWORD env var)
  *   --json                 Output machine-readable JSON
+ *
+ * NOTE: The -- separator is required to prevent npm from consuming --flags.
  */
 
 import { initializeApp } from "firebase/app";

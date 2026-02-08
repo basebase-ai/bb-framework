@@ -3,7 +3,7 @@
  * Commit local app code to Firestore
  *
  * Usage:
- *   npm run app:commit <appId> [message] [options]
+ *   npm run app:commit -- <appId> [message] [options]
  *
  * Options:
  *   --email=<email>        Firebase email  (or BASEBASE_EMAIL env var)
@@ -11,9 +11,11 @@
  *   --yes / -y             Auto-confirm version conflict prompts
  *   --json                 Output machine-readable JSON
  *
+ * NOTE: The -- separator is required to prevent npm from consuming --flags.
+ *
  * Examples:
  *   npm run app:commit my-app "Added feature"
- *   npm run app:commit my-app "Deploy" --email=me@x.com --password=secret --yes --json
+ *   npm run app:commit -- my-app "Deploy" --email=me@x.com --password=secret --yes --json
  */
 
 import { initializeApp } from "firebase/app";
@@ -72,7 +74,7 @@ function checkInteractive() {
     chalk.yellow("Provide credentials via CLI flags or environment variables:\n")
   );
   console.log(
-    chalk.cyan(`  npm run app:commit ${process.argv[2] || "<appId>"} "message" --email=you@example.com --password=yourpass`)
+    chalk.cyan(`  npm run app:commit -- ${process.argv[2] || "<appId>"} "message" --email=you@example.com --password=yourpass`)
   );
   console.log(
     chalk.cyan(`  BASEBASE_EMAIL=you@example.com BASEBASE_PASSWORD=yourpass npm run app:commit ${process.argv[2] || "<appId>"} "message"\n`)

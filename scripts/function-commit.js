@@ -3,7 +3,7 @@
  * Commit local function code to Firestore
  *
  * Usage:
- *   npm run function:commit <filename.js> [options]
+ *   npm run function:commit -- <filename.js> [options]
  *
  * Options:
  *   --app=<appId>          Mark as app-specific function
@@ -12,9 +12,11 @@
  *   --password=<password>  Firebase password (or BASEBASE_PASSWORD env var)
  *   --json                 Output machine-readable JSON
  *
+ * NOTE: The -- separator is required to prevent npm from consuming --flags.
+ *
  * Examples:
  *   npm run function:commit myFunc.js --app=crm
- *   npm run function:commit myFunc.js --email=me@x.com --password=secret --json
+ *   npm run function:commit -- myFunc.js --email=me@x.com --password=secret --json
  */
 
 import { initializeApp } from "firebase/app";

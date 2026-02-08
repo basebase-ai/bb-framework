@@ -28,7 +28,7 @@ The Basebase Framework is a **multi-tenant app deployment platform** that allows
 **Single framework deployment serves unlimited customer apps dynamically:**
 
 ```
-User visits: test-app.basebase.io
+User visits: test-app.basebase.com
            ↓
 Framework identifies: app-id = "test-app"
            ↓
@@ -275,7 +275,7 @@ const moduleFunction = eval(wrappedCode);
 const result = moduleFunction(
   moduleContext, // { exports: {}, require: customRequire }
   moduleContext.exports,
-  moduleContext.require
+  moduleContext.require,
 );
 ```
 
@@ -370,17 +370,14 @@ const frameworkExports = {
 **Priority order:**
 
 1. **Query param** (highest): `?app=test-app`
-
    - Best for testing/development
    - Explicit and unambiguous
 
-2. **Subdomain**: `test-app.basebase.io`
-
+2. **Subdomain**: `test-app.basebase.com`
    - Production standard
    - Professional, isolated URLs
 
-3. **Path**: `basebase.io/test-app`
-
+3. **Path**: `basebase.com/test-app`
    - Alternative for simple hosting
    - Single domain, easier DNS
 
@@ -516,19 +513,16 @@ npm run build
 **Key features:**
 
 1. **Static file serving:**
-
    - Serves `/dist` directory
    - Aggressive caching for hashed assets (1 year)
    - gzip compression
 
 2. **SPA fallback:**
-
    - ALL routes → `index.html`
    - Enables customer apps to use path-based routing
    - e.g., `/profile`, `/dashboard/settings` work client-side
 
 3. **Reserved admin namespace:**
-
    - `/__basebase/health` → Health check for Railway
    - `/__basebase/api/*` → Reserved for future admin APIs
    - Customer apps can use ANY other path
@@ -721,13 +715,11 @@ console.error("Error:", err);
 **Future (if needed):**
 
 1. **Horizontal scaling:**
-
    - Railway supports multiple instances
    - Load balancer (included)
    - Stateless server (already is)
 
 2. **CDN for static assets:**
-
    - Move `/dist/assets/*` to CDN (Cloudflare, etc.)
    - Faster global delivery
    - Reduce Railway bandwidth costs
@@ -777,7 +769,6 @@ console.error("Error:", err);
    ```
 
 2. **No code changes needed:**
-
    - URL parser already checks subdomain first
    - Server already has SPA fallback
    - Just update DNS and test

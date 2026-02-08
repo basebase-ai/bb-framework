@@ -3,7 +3,7 @@
  * Initialize a new app by creating it in Firestore
  *
  * Usage:
- *   npm run app:init <appId> [options]
+ *   npm run app:init -- <appId> [options]
  *
  * Options:
  *   --name=<name>          App display name (defaults to titlecased appId)
@@ -13,10 +13,12 @@
  *   --yes / -y             Auto-confirm all prompts
  *   --json                 Output machine-readable JSON
  *
+ * NOTE: The -- separator is required to prevent npm from consuming --flags.
+ *
  * Examples:
  *   npm run app:init my-app
- *   npm run app:init my-app --name="My App" --email=me@x.com --password=secret --json
- *   BASEBASE_EMAIL=me@x.com BASEBASE_PASSWORD=secret npm run app:init my-app --yes
+ *   npm run app:init -- my-app --name="My App" --email=me@x.com --password=secret --json
+ *   BASEBASE_EMAIL=me@x.com BASEBASE_PASSWORD=secret npm run app:init -- my-app --yes
  */
 
 import { readFile, writeFile, mkdir, cp, access, constants } from "fs/promises";
@@ -142,7 +144,7 @@ async function main() {
       chalk.yellow("Provide credentials via CLI flags or environment variables:\n")
     );
     console.log(
-      chalk.cyan(`  npm run app:init ${process.argv[2] || "<appId>"} --email=you@example.com --password=yourpass`)
+      chalk.cyan(`  npm run app:init -- ${process.argv[2] || "<appId>"} --email=you@example.com --password=yourpass`)
     );
     console.log(
       chalk.cyan(`  BASEBASE_EMAIL=you@example.com BASEBASE_PASSWORD=yourpass npm run app:init ${process.argv[2] || "<appId>"}\n`)
@@ -290,7 +292,7 @@ async function main() {
         );
       } else if (error.code === "auth/user-not-found") {
         console.log(
-          chalk.yellow("\n💡 Tip: Sign up first with: npm run signup --email=you@example.com --password=yourpass")
+          chalk.yellow("\n💡 Tip: Sign up first with: npm run signup -- --email=you@example.com --password=yourpass")
         );
       }
     }

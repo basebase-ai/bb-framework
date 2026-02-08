@@ -3,16 +3,18 @@
  * Checkout app code from Firestore to local /apps/{appId} directory
  *
  * Usage:
- *   npm run app:checkout <appId> [version] [options]
+ *   npm run app:checkout -- <appId> [version] [options]
  *
  * Options:
  *   --email=<email>        Firebase email  (or BASEBASE_EMAIL env var)
  *   --password=<password>  Firebase password (or BASEBASE_PASSWORD env var)
  *   --json                 Output machine-readable JSON
  *
+ * NOTE: The -- separator is required to prevent npm from consuming --flags.
+ *
  * Examples:
  *   npm run app:checkout my-app
- *   npm run app:checkout my-app latest --email=me@x.com --password=secret --json
+ *   npm run app:checkout -- my-app latest --email=me@x.com --password=secret --json
  */
 
 import { initializeApp } from "firebase/app";
@@ -55,7 +57,7 @@ function checkInteractive() {
     chalk.yellow("Provide credentials via CLI flags or environment variables:\n")
   );
   console.log(
-    chalk.cyan(`  npm run app:checkout ${process.argv[2] || "<appId>"} --email=you@example.com --password=yourpass\n`)
+    chalk.cyan(`  npm run app:checkout -- ${process.argv[2] || "<appId>"} --email=you@example.com --password=yourpass\n`)
   );
   process.exit(1);
 }

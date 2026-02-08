@@ -12,16 +12,18 @@ export function getAppIdFromURL() {
     return appParam;
   }
 
-  // Option 2: Subdomain (e.g., teg-app.basebase.io or teg-app.localhost)
+  // Option 2: Subdomain (e.g., teg-app.basebase.com or teg-app.localhost)
   const hostname = url.hostname;
   const parts = hostname.split(".");
 
   // Sub-brands with singular domain names  will go here. Starting with sole revtops.com
   const isRevTopsDomain = hostname.includes("revtops.com");
-  
+
   // Check if this is a basebase domain (where www is a valid app ID)
   const isBasebaseDomain =
-    hostname.includes("basebase.com") || hostname.includes("basebase.io") || isRevTopsDomain;
+    hostname.includes("basebase.com") ||
+    hostname.includes("basebase.com") ||
+    isRevTopsDomain;
 
   // Check for localhost subdomains (e.g., teg-app.localhost or www.localhost)
   // www.localhost loads the "www" app for local testing
@@ -29,7 +31,7 @@ export function getAppIdFromURL() {
     return parts[0];
   }
 
-  // Check for production subdomains (e.g., teg-app.basebase.io or www.basebase.com)
+  // Check for production subdomains (e.g., teg-app.basebase.com or www.basebase.com)
   // On basebase domains, "www" is treated as a valid app ID (the landing page app)
   if (parts.length > 2 && parts[0] !== "localhost") {
     // For sub-brands (revtops.com loads revtops app regardless of subdomain)
@@ -43,7 +45,7 @@ export function getAppIdFromURL() {
     }
   }
 
-  // Option 3: Path-based (e.g., basebase.io/teg-app or localhost:3000/teg-app)
+  // Option 3: Path-based (e.g., basebase.com/teg-app or localhost:3000/teg-app)
   const pathParts = url.pathname.split("/").filter(Boolean);
   // Ignore paths with file extensions (like .html)
   if (

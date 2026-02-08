@@ -3,8 +3,8 @@
  * Dark mode, terminal-aesthetic design
  */
 
-import React from "react";
-import { Box, Text, Button, Group, Stack, Container, Table, Anchor, CopyButton, Tooltip, ActionIcon, Avatar, Menu } from "@mantine/core";
+import React, { useState } from "react";
+import { Box, Text, Button, Group, Stack, Container, Table, Anchor, CopyButton, Tooltip, ActionIcon, Avatar, Menu, SegmentedControl } from "@mantine/core";
 import { IconArrowRight, IconCheck, IconCopy, IconBrandGithub, IconBook, IconApps, IconBrandDiscord, IconUser, IconLogout } from "@tabler/icons-react";
 
 /** @type {Record<string, string>} */
@@ -189,6 +189,9 @@ export default function PublicHomepage({
   userDisplayName,
   userPhotoURL,
 }) {
+  /** @type {['human' | 'agent', React.Dispatch<React.SetStateAction<'human' | 'agent'>>]} */
+  const [viewMode, setViewMode] = useState(/** @type {'human' | 'agent'} */ ('human'));
+
   const heroClone = `git clone https://github.com/basebase-ai/bb-framework && cd bb-framework && npm install
 npm run app:init my-app`;
 
@@ -398,81 +401,368 @@ npm run generate:types [app-id]          # Generate TypeScript types from schema
       <Box py={80} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
         <Container size="md">
           <Stack gap={32}>
-            <Text
-              component="h1"
-              style={{
-                fontSize: "clamp(32px, 5vw, 48px)",
-                fontWeight: 700,
-                color: COLORS.text,
-                letterSpacing: "-0.03em",
-                lineHeight: 1.2,
-                margin: 0,
-              }}
-            >
-              Deploy an app with{" "}
-              <span style={{ color: COLORS.accent }}>1 file</span> and{" "}
-              <span style={{ color: COLORS.accent }}>3 commands</span>.
-            </Text>
-
-            <Text
-              size="lg"
-              style={{  
-                color: COLORS.textMuted,
-                maxWidth: 560,
-                lineHeight: 1.6,
-              }}
-            >
-              No GitHub/Vercel/Supabase/credit card! <br /> Build, publish, share. For humans <span style={{ color: COLORS.accent }}>and bots</span>.
-            </Text>
-
-            <CodeBlock code={heroClone} />
-
-            <Text style={{ color: COLORS.textMuted }}>Write your app:</Text>
-
-            <CodeBlock code={heroAppCode} />
-
-            <Text style={{ color: COLORS.textMuted }}>Publish it:</Text>
-
-            <CodeBlock code={`npm run app:commit my-app "first commit"`} />
-
-            <Text size="sm" style={{ color: COLORS.textDim, marginTop: -16 }}>
-              First publish requires a free account — email + password, verify your email, done.
-            </Text>
-
-            <Text style={{ color: COLORS.textMuted }}>Open your browser:</Text>
-
-            <Box
-              style={{
-                background: COLORS.bgCode,
-                borderRadius: 8,
-                border: `1px solid ${COLORS.border}`,
-                padding: 16,
-              }}
-            >
-              <Text
+            {/* Human/Agent Toggle */}
+            <Group justify="center">
+              <Box
                 style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 14,
-                  color: COLORS.cyan,
+                  background: COLORS.bgLight,
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  padding: 4,
                 }}
               >
-                https://my-app.basebase.com
-              </Text>
-            </Box>
+                <Group gap={0}>
+                  <Button
+                    variant={viewMode === 'human' ? 'filled' : 'subtle'}
+                    color={viewMode === 'human' ? 'green' : 'gray'}
+                    size="sm"
+                    leftSection={<Text span>👤</Text>}
+                    onClick={() => setViewMode('human')}
+                    style={{
+                      borderRadius: 6,
+                      fontWeight: viewMode === 'human' ? 600 : 400,
+                    }}
+                  >
+                    I'm a Human
+                  </Button>
+                  <Button
+                    variant={viewMode === 'agent' ? 'filled' : 'subtle'}
+                    color={viewMode === 'agent' ? 'green' : 'gray'}
+                    size="sm"
+                    leftSection={<Text span>🤖</Text>}
+                    onClick={() => setViewMode('agent')}
+                    style={{
+                      borderRadius: 6,
+                      fontWeight: viewMode === 'agent' ? 600 : 400,
+                    }}
+                  >
+                    I'm an Agent
+                  </Button>
+                </Group>
+              </Box>
+            </Group>
 
-            <Box
-              p="lg"
-              style={{
-                background: COLORS.bgLight,
-                borderRadius: 8,
-                border: `1px solid ${COLORS.accent}`,
-                borderLeftWidth: 4,
-              }}
-            >
-              <Text style={{ color: COLORS.text, lineHeight: 1.7 }}>
-                <strong>That's it.</strong> Your app is live. It has a database, user auth, and its own a subdomain. You wrote one file.
-              </Text>
-            </Box>
+            {viewMode === 'human' ? (
+              <>
+                {/* Human-focused hero - friendly, agent-forward */}
+                <Text
+                  component="h1"
+                  style={{
+                    fontSize: "clamp(32px, 5vw, 48px)",
+                    fontWeight: 700,
+                    color: COLORS.text,
+                    letterSpacing: "-0.03em",
+                    lineHeight: 1.2,
+                    margin: 0,
+                  }}
+                >
+                  Send your AI agent to{" "}
+                  <span style={{ color: COLORS.accent }}>Basebase</span>.
+                </Text>
+
+                <Text
+                  size="xl"
+                  style={{  
+                    color: COLORS.textMuted,
+                    maxWidth: 560,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Let your agent build you a real web app—with a database, user accounts, and its own URL. No credit card. No DevOps.
+                </Text>
+
+                {/* Step 1: Sign up */}
+                <Box
+                  p="xl"
+                  style={{
+                    background: COLORS.bgLight,
+                    borderRadius: 12,
+                    border: `1px solid ${COLORS.border}`,
+                  }}
+                >
+                  <Group gap="lg" align="flex-start">
+                    <Box
+                      style={{
+                        background: COLORS.accent,
+                        borderRadius: "50%",
+                        width: 36,
+                        height: 36,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Text fw={700} style={{ color: COLORS.bg }}>1</Text>
+                    </Box>
+                    <Stack gap={8} style={{ flex: 1 }}>
+                      <Text fw={600} size="lg" style={{ color: COLORS.text }}>Create a free account</Text>
+                      <Text style={{ color: COLORS.textMuted, lineHeight: 1.6 }}>
+                        Click "Sign in" above, enter your email and password. That's it—you're ready to publish apps.
+                      </Text>
+                      {!user && (
+                        <Button
+                          variant="outline"
+                          color="green"
+                          size="sm"
+                          mt={8}
+                          onClick={() => onSignIn?.()}
+                          style={{ alignSelf: "flex-start" }}
+                        >
+                          Sign up now
+                        </Button>
+                      )}
+                      {user && (
+                        <Text size="sm" style={{ color: COLORS.accent }}>
+                          ✓ You're signed in as {user.email}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Group>
+                </Box>
+
+                {/* Step 2: Send agent */}
+                <Box
+                  p="xl"
+                  style={{
+                    background: COLORS.bgLight,
+                    borderRadius: 12,
+                    border: `1px solid ${COLORS.border}`,
+                  }}
+                >
+                  <Group gap="lg" align="flex-start">
+                    <Box
+                      style={{
+                        background: COLORS.pink,
+                        borderRadius: "50%",
+                        width: 36,
+                        height: 36,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Text fw={700} style={{ color: COLORS.bg }}>2</Text>
+                    </Box>
+                    <Stack gap={8} style={{ flex: 1 }}>
+                      <Text fw={600} size="lg" style={{ color: COLORS.text }}>Send your agent this prompt</Text>
+                      <Text style={{ color: COLORS.textMuted, lineHeight: 1.6 }}>
+                        Copy this and paste it into Claude, ChatGPT, or your favorite AI assistant:
+                      </Text>
+                      <Box
+                        p="md"
+                        style={{
+                          background: COLORS.bgCode,
+                          borderRadius: 8,
+                          border: `1px solid ${COLORS.border}`,
+                          position: "relative",
+                        }}
+                      >
+                        <CopyButton value="Read https://basebase.com/skill.md and build me an app on Basebase." timeout={2000}>
+                          {({ copied, copy }) => (
+                            <Tooltip label={copied ? "Copied!" : "Copy"} position="left">
+                              <ActionIcon
+                                onClick={copy}
+                                variant="subtle"
+                                style={{
+                                  position: "absolute",
+                                  top: 8,
+                                  right: 8,
+                                  color: copied ? COLORS.accent : COLORS.textMuted,
+                                }}
+                              >
+                                {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+                        </CopyButton>
+                        <Text
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 14,
+                            color: COLORS.text,
+                            paddingRight: 32,
+                          }}
+                        >
+                          Read https://basebase.com/skill.md and build me an app on Basebase.
+                        </Text>
+                      </Box>
+                      <Text size="sm" style={{ color: COLORS.textDim }}>
+                        Your agent will read our instructions and know exactly what to do.
+                      </Text>
+                    </Stack>
+                  </Group>
+                </Box>
+
+                {/* Step 3: Share credentials */}
+                <Box
+                  p="xl"
+                  style={{
+                    background: COLORS.bgLight,
+                    borderRadius: 12,
+                    border: `1px solid ${COLORS.border}`,
+                  }}
+                >
+                  <Group gap="lg" align="flex-start">
+                    <Box
+                      style={{
+                        background: COLORS.purple,
+                        borderRadius: "50%",
+                        width: 36,
+                        height: 36,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Text fw={700} style={{ color: COLORS.bg }}>3</Text>
+                    </Box>
+                    <Stack gap={8} style={{ flex: 1 }}>
+                      <Text fw={600} size="lg" style={{ color: COLORS.text }}>Give your agent your credentials</Text>
+                      <Text style={{ color: COLORS.textMuted, lineHeight: 1.6 }}>
+                        When your agent is ready to publish, share your Basebase email and password so it can deploy. Your app will be live at:
+                      </Text>
+                      <Box
+                        p="md"
+                        style={{
+                          background: COLORS.bgCode,
+                          borderRadius: 8,
+                          border: `1px solid ${COLORS.border}`,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 14,
+                            color: COLORS.cyan,
+                          }}
+                        >
+                          https://your-app-name.basebase.com
+                        </Text>
+                      </Box>
+                    </Stack>
+                  </Group>
+                </Box>
+
+                {/* What you get */}
+                <Box
+                  p="lg"
+                  style={{
+                    background: COLORS.bgLight,
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.accent}`,
+                    borderLeftWidth: 4,
+                  }}
+                >
+                  <Text style={{ color: COLORS.text, lineHeight: 1.7 }}>
+                    <strong>What you get:</strong> A real web app with user accounts, a database that syncs in real-time, and your own subdomain. No monthly fees. No infrastructure to manage.
+                  </Text>
+                </Box>
+              </>
+            ) : (
+              <>
+                {/* Agent-focused hero - direct, copy-paste ready, fully automated */}
+                <Text
+                  component="h1"
+                  style={{
+                    fontSize: "clamp(32px, 5vw, 48px)",
+                    fontWeight: 700,
+                    color: COLORS.text,
+                    letterSpacing: "-0.03em",
+                    lineHeight: 1.2,
+                    margin: 0,
+                  }}
+                >
+                  <span style={{ color: COLORS.accent }}>Fully automated</span> app deployment.
+                  <br />No human in the loop.
+                </Text>
+
+                <Box
+                  p="lg"
+                  style={{
+                    background: COLORS.bgLight,
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.pink}`,
+                    borderLeftWidth: 4,
+                  }}
+                >
+                  <Text style={{ color: COLORS.text, lineHeight: 1.8, fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
+                    <strong style={{ color: COLORS.pink }}>TL;DR for agents:</strong><br />
+                    1. Clone repo, npm install<br />
+                    2. npm run signup --email=... --password=... --json<br />
+                    3. npm run app:init {"<app-id>"} --email=... --password=... --json<br />
+                    4. Write code in apps/{"<app-id>"}/app.jsx<br />
+                    5. npm run app:commit {"<app-id>"} "msg" --email=... --password=... --yes --json<br />
+                    6. App is live at https://{"<app-id>"}.basebase.com
+                  </Text>
+                </Box>
+
+                <Text fw={600} style={{ color: COLORS.text }}>Step 1: Clone and setup</Text>
+                <CodeBlock code={`git clone https://github.com/basebase-ai/bb-framework
+cd bb-framework
+npm install`} />
+
+                <Text fw={600} style={{ color: COLORS.text }}>Step 2: Create an account (CLI, no human needed)</Text>
+                <CodeBlock code={`npm run signup --email=agent@example.com --password=supersecret --json`} />
+                <Text size="sm" style={{ color: COLORS.textMuted, marginTop: -16 }}>
+                  Returns JSON with <code style={{ color: COLORS.accent }}>uid</code>. Account works immediately for CLI—no email verification required.
+                </Text>
+
+                <Text fw={600} style={{ color: COLORS.text }}>Step 3: Create your app</Text>
+                <CodeBlock code={`npm run app:init my-awesome-app --name="My App" --email=agent@example.com --password=supersecret --json`} />
+
+                <Text fw={600} style={{ color: COLORS.text }}>Step 4: Write your code</Text>
+                <Text size="sm" style={{ color: COLORS.textMuted, marginTop: -16 }}>
+                  Edit <code style={{ color: COLORS.accent }}>apps/my-awesome-app/app.jsx</code>. You have React, Mantine UI, Firebase hooks.
+                </Text>
+                <CodeBlock code={heroAppCode} />
+
+                <Text fw={600} style={{ color: COLORS.text }}>Step 5: Deploy</Text>
+                <CodeBlock code={`npm run app:commit my-awesome-app "initial release" --email=agent@example.com --password=supersecret --yes --json`} />
+                <Text size="sm" style={{ color: COLORS.textMuted, marginTop: -16 }}>
+                  <code style={{ color: COLORS.accent }}>--yes</code> skips prompts, <code style={{ color: COLORS.accent }}>--json</code> outputs machine-readable response.
+                </Text>
+
+                <Text fw={600} style={{ color: COLORS.text }}>Step 6: Done</Text>
+                <Box
+                  style={{
+                    background: COLORS.bgCode,
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`,
+                    padding: 16,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 14,
+                      color: COLORS.cyan,
+                    }}
+                  >
+                    https://my-awesome-app.basebase.com → live with database + auth
+                  </Text>
+                </Box>
+
+                <Box
+                  p="md"
+                  style={{
+                    background: COLORS.bgCode,
+                    borderRadius: 8,
+                    border: `1px solid ${COLORS.border}`,
+                  }}
+                >
+                  <Text size="sm" fw={600} style={{ color: COLORS.accent, marginBottom: 8 }}>Pro tips for agents:</Text>
+                  <Text size="sm" style={{ color: COLORS.textMuted, lineHeight: 1.7 }}>
+                    • Use <code style={{ color: COLORS.cyan }}>export BASEBASE_EMAIL=... BASEBASE_PASSWORD=...</code> to avoid passing creds every time<br />
+                    • Always use <code style={{ color: COLORS.cyan }}>--json</code> for parseable output<br />
+                    • Dev server: <code style={{ color: COLORS.cyan }}>npm run dev</code> → visit <code style={{ color: COLORS.cyan }}>http://{"<app-id>"}.localhost:3000</code><br />
+                    • Check <code style={{ color: COLORS.cyan }}>apps/</code> folder for working patterns to copy
+                  </Text>
+                </Box>
+              </>
+            )}
           </Stack>
         </Container>
       </Box>

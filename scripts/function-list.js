@@ -3,12 +3,14 @@
  * List all available functions in Firestore
  *
  * Usage:
- *   npm run function:list [options]
+ *   npm run function:list -- [options]
  *
  * Options:
  *   --email=<email>        Firebase email  (or BASEBASE_EMAIL env var)
  *   --password=<password>  Firebase password (or BASEBASE_PASSWORD env var)
  *   --json                 Output machine-readable JSON
+ *
+ * NOTE: The -- separator is required to prevent npm from consuming --flags.
  */
 
 import { initializeApp } from "firebase/app";

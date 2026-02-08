@@ -128,7 +128,7 @@ You need an account before running `app:init` or `app:commit`. Two ways to creat
 
 **Option A: CLI (recommended for AI agents and automation)**
 ```bash
-npm run signup --email=you@example.com --password=yourpassword
+npm run signup -- --email=you@example.com --password=yourpassword
 ```
 
 **Option B: Web UI**
@@ -274,7 +274,7 @@ npm run app:commit my-app-name "Describe your changes"
 You'll be prompted for your email and password interactively, or you can pass them as flags:
 
 ```bash
-npm run app:commit my-app-name "Describe your changes" --email=you@example.com --password=yourpass --yes
+npm run app:commit -- my-app-name "Describe your changes" --email=you@example.com --password=yourpass --yes
 ```
 
 **What this does:** Uploads your `/apps/my-app-name/` code to Firestore, making it instantly live in production!
@@ -292,7 +292,7 @@ npm run app:checkout news-base
 You'll be prompted for your email and password interactively, or pass them as flags:
 
 ```bash
-npm run app:checkout news-base --email=you@example.com --password=yourpass
+npm run app:checkout -- news-base --email=you@example.com --password=yourpass
 ```
 
 **Requirements:**
@@ -838,19 +838,23 @@ All authenticated commands support non-interactive usage via flags or environmen
 | `--json` | — | Output machine-readable JSON to stdout |
 | `--yes` / `-y` | — | Auto-confirm all interactive prompts |
 
+**Note on `--` separator:** Positional args (app IDs, messages) work as normal, but `--flag=value`
+style arguments get consumed by npm unless you add `--` before them. Environment variables
+avoid this issue entirely.
+
 **Examples:**
 
 ```bash
-# Interactive (prompts for email/password)
+# Interactive (no --flags, no -- needed)
 npm run app:commit my-app "update"
 
-# Non-interactive (flags)
-npm run app:commit my-app "update" --email=you@example.com --password=yourpass --yes --json
+# Non-interactive with flags (-- required before any --flags)
+npm run app:commit -- my-app "update" --email=you@example.com --password=yourpass --yes --json
 
-# Non-interactive (env vars)
+# Non-interactive with env vars (recommended for agents — set once, use everywhere)
 export BASEBASE_EMAIL=you@example.com
 export BASEBASE_PASSWORD=yourpass
-npm run app:commit my-app "update" --yes --json
+npm run app:commit -- my-app "update" --yes --json
 ```
 
 **For AI Agents & Automation:** All commands work in non-interactive environments (CI/CD, AI assistants, scripts) when credentials are provided via `--email`/`--password` flags or `BASEBASE_EMAIL`/`BASEBASE_PASSWORD` environment variables. Use `--json` for machine-readable output and `--yes` to auto-confirm prompts. See [skill.md](public/skill.md) for a complete agent-friendly reference (served at `https://www.basebase.com/skill.md` in production).
