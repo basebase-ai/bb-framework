@@ -243,6 +243,12 @@ export default function App() {
             </Group>
             <Group gap={24}>
               <Anchor
+                href="https://blog.basebase.com"
+                style={{ color: COLORS.textMuted, textDecoration: "none", fontSize: 14 }}
+              >
+                Blog
+              </Anchor>
+              <Anchor
                 href="https://github.com/basebase-ai/bb-framework"
                 target="_blank"
                 style={{ color: COLORS.textMuted, textDecoration: "none", fontSize: 14 }}
@@ -835,6 +841,12 @@ npm install`} />
               <span style={{ color: COLORS.textDim, fontWeight: 400 }}>— where code goes to live.</span>
             </Text>
             <Group gap={24}>
+              <Anchor
+                href="https://blog.basebase.com"
+                style={{ color: COLORS.textMuted, textDecoration: "none" }}
+              >
+                <Text size="sm">Blog</Text>
+              </Anchor>
               <Anchor
                 href="https://github.com/basebase-ai/bb-framework"
                 target="_blank"

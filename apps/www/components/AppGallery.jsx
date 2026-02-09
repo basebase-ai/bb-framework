@@ -275,10 +275,12 @@ export default function AppGallery({ onSignIn }) {
             {/* Desktop Nav Links */}
             <Group gap={24}>
               <Text
+                component="a"
+                href="https://blog.basebase.com"
                 size="sm"
-                style={{ ...navLinkStyle, color: COLORS.text }}
+                style={navLinkStyle}
               >
-                Gallery
+                Blog
               </Text>
               <Text
                 component="a"
@@ -291,14 +293,10 @@ export default function AppGallery({ onSignIn }) {
                 GitHub
               </Text>
               <Text
-                component="a"
-                href="https://docs.basebase.com"
-                target="_blank"
-                rel="noopener noreferrer"
                 size="sm"
-                style={navLinkStyle}
+                style={{ ...navLinkStyle, color: COLORS.text }}
               >
-                Docs
+                Gallery
               </Text>
               {user ? (
                 <Menu position="bottom-end" withArrow>

@@ -106,8 +106,35 @@ export default function AppDetailsPageWrapper() {
               Basebase
             </Text>
           </Group>
+          <Group gap={20}>
+            <Text
+              component="a"
+              href="https://blog.basebase.com"
+              size="sm"
+              style={{ color: "#5a7a7e", textDecoration: "none", cursor: "pointer" }}
+            >
+              Blog
+            </Text>
+            <Text
+              component="a"
+              href="https://github.com/basebase-ai/bb-framework"
+              target="_blank"
+              rel="noopener noreferrer"
+              size="sm"
+              style={{ color: "#5a7a7e", textDecoration: "none", cursor: "pointer" }}
+            >
+              GitHub
+            </Text>
+            <Text
+              size="sm"
+              style={{ color: "#5a7a7e", textDecoration: "none", cursor: "pointer" }}
+              onClick={() => navigate("/")}
+            >
+              Gallery
+            </Text>
+          </Group>
           {user ? (
-            <Group 
+            <Group
               gap="xs"
               style={{ cursor: 'pointer' }}
               onClick={() => setProfileModalOpened(true)}
