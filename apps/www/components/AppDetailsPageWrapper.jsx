@@ -126,6 +126,16 @@ export default function AppDetailsPageWrapper() {
               GitHub
             </Text>
             <Text
+              component="a"
+              href="https://docs.basebase.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              size="sm"
+              style={navLinkStyle}
+             >
+              Docs
+             </Text>
+             <Text
               size="sm"
               style={{ color: "#5a7a7e", textDecoration: "none", cursor: "pointer" }}
               onClick={() => navigate("/")}

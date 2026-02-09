@@ -293,6 +293,16 @@ export default function AppGallery({ onSignIn }) {
                 GitHub
               </Text>
               <Text
+                component="a"
+                href="https://docs.basebase.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                size="sm"
+                style={navLinkStyle}
+               >
+                Docs
+               </Text>
+              <Text
                 size="sm"
                 style={{ ...navLinkStyle, color: COLORS.text }}
               >

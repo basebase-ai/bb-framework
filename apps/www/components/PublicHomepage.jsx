@@ -255,6 +255,12 @@ export default function App() {
               >
                 GitHub
               </Anchor>
+              <Anchor
+                href="https://docs.basebase.com"
+                style={{ color: COLORS.textMuted, textDecoration: "none", fontSize: 14 }}
+              >
+                Docs
+              </Anchor>
               <Text
                 style={{ color: COLORS.textMuted, cursor: "pointer", fontSize: 14 }}
                 onClick={() => onNavigateToGallery?.()}
