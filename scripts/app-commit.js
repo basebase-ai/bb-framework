@@ -406,6 +406,7 @@ async function commit(appId, message = "Updated via app:commit") {
 
     // Check if user has write access
     const hasAccess =
+      appData.publicEdit === true ||
       appData.owner === user.uid ||
       (appData.collaborators && appData.collaborators.includes(user.uid));
 
