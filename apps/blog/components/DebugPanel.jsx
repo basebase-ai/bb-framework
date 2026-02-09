@@ -264,7 +264,7 @@ export function DebugPanel({ onClose }) {
           </Button>
 
           {error && (
-            <Paper p="md" withBorder style={{ background: "#ffe0e0" }}>
+            <Paper p="md" withBorder style={{ background: "rgba(255, 0, 0, 0.1)" }}>
               <Title order={4} c="red" mb="sm">
                 Error
               </Title>
@@ -283,7 +283,7 @@ export function DebugPanel({ onClose }) {
           )}
 
           {results && (
-            <Paper p="md" withBorder style={{ background: "#e0ffe0" }}>
+            <Paper p="md" withBorder style={{ background: "rgba(0, 255, 0, 0.1)" }}>
               <Title order={4} mb="sm">
                 Results ({results.length} documents)
               </Title>

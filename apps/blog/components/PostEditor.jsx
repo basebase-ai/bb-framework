@@ -12,6 +12,7 @@ import {
   Title,
   Text,
   Tabs,
+  Select,
 } from "@mantine/core";
 import {
   IconDeviceFloppy,
@@ -39,6 +40,7 @@ export function PostEditor({ post = null, onClose, onSave }) {
   const [slug, setSlug] = useState(post?.slug || "");
   const [excerpt, setExcerpt] = useState(post?.excerpt || "");
   const [content, setContent] = useState(post?.content || "");
+  const [type, setType] = useState(post?.type || "other");
   const [featured, setFeatured] = useState(post?.featured || false);
   const [status, setStatus] = useState(post?.status || "draft");
   const [isSaving, setIsSaving] = useState(false);
@@ -76,6 +78,7 @@ export function PostEditor({ post = null, onClose, onSave }) {
         slug: slug.trim() || generateSlug(title),
         excerpt: excerpt.trim(),
         content: content.trim(),
+        type,
         featured,
         status: "draft",
         authorId: user.uid,
@@ -83,8 +86,13 @@ export function PostEditor({ post = null, onClose, onSave }) {
       };
 
       if (post?.id) {
-        // Update existing draft
-        await update(post.id, postData);
+        // Save draft - use setDoc to create/update in private collection
+        const privateDocRef = doc(db, collections.posts, post.id);
+        await setDoc(privateDocRef, {
+          ...postData,
+          createdAt: post.createdAt || Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        }, { merge: true });
 
         // If it was previously published, remove from public collection
         if (post.status === "published") {
@@ -147,6 +155,7 @@ export function PostEditor({ post = null, onClose, onSave }) {
         slug: slug.trim() || generateSlug(title),
         excerpt: excerpt.trim(),
         content: content.trim(),
+        type,
         featured,
         status: "published",
         authorId: user.uid,
@@ -159,8 +168,12 @@ export function PostEditor({ post = null, onClose, onSave }) {
       let createdAt = post?.createdAt || now;
 
       if (post?.id) {
-        // Update existing post in private collection
-        await update(post.id, postData);
+        // Update/create post in private collection using setDoc
+        const privateDocRef = doc(db, collections.posts, post.id);
+        await setDoc(privateDocRef, {
+          ...postData,
+          createdAt: createdAt,
+        }, { merge: true });
       } else {
         // Create new post in private collection and get its ID
         const result = await add(postData);
@@ -291,7 +304,6 @@ export function PostEditor({ post = null, onClose, onSave }) {
                     style={{
                       fontSize: "16px",
                       lineHeight: "1.7",
-                      color: "#333",
                     }}
                   />
                 </Paper>
@@ -300,9 +312,21 @@ export function PostEditor({ post = null, onClose, onSave }) {
           </Box>
 
           {/* Settings */}
-          <Paper p="md" withBorder bg="gray.0">
+          <Paper p="md" withBorder>
             <Stack gap="sm">
               <Title order={5}>Settings</Title>
+              <Select
+                label="Post type"
+                description="Categorize your post with a colored indicator"
+                data={[
+                  { value: "news", label: "News" },
+                  { value: "how-to", label: "How-to" },
+                  { value: "commentary", label: "Commentary" },
+                  { value: "other", label: "Other" },
+                ]}
+                value={type}
+                onChange={(value) => setType(value)}
+              />
               <Switch
                 label="Feature this post"
                 description="Featured posts appear at the top of the homepage"
@@ -320,7 +344,7 @@ export function PostEditor({ post = null, onClose, onSave }) {
               loading={isSaving}
               leftSection={<IconDeviceFloppy size={16} />}
             >
-              Save Draft
+              {post?.status === "published" ? "Save Draft & Unpublish" : "Save Draft"}
             </Button>
             <Button
               onClick={handlePublish}
@@ -357,13 +381,13 @@ export function PostEditor({ post = null, onClose, onSave }) {
           padding-left: 2em;
         }
         .markdown-content code {
-          background: #f5f5f5;
+          background: rgba(255, 255, 255, 0.05);
           padding: 0.2em 0.4em;
           border-radius: 3px;
           font-family: monospace;
         }
         .markdown-content pre {
-          background: #f5f5f5;
+          background: rgba(255, 255, 255, 0.05);
           padding: 1em;
           border-radius: 5px;
           overflow-x: auto;
@@ -374,17 +398,17 @@ export function PostEditor({ post = null, onClose, onSave }) {
           padding: 0;
         }
         .markdown-content blockquote {
-          border-left: 4px solid #ddd;
+          border-left: 4px solid #4ade80;
           padding-left: 1em;
           margin-left: 0;
-          color: #666;
+          opacity: 0.8;
         }
         .markdown-content img {
           max-width: 100%;
           height: auto;
         }
         .markdown-content a {
-          color: #228be6;
+          color: #4ade80;
           text-decoration: none;
         }
         .markdown-content a:hover {

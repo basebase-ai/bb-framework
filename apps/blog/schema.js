@@ -58,6 +58,11 @@ export const schema = {
         values: ["draft", "published"],
         default: "draft",
       },
+      type: {
+        type: "enum",
+        values: ["news", "how-to", "commentary", "other"],
+        default: "other",
+      },
       featured: { type: "boolean", default: false }, // Highlight on homepage
       tags: { type: "array", items: { type: "string" }, default: [] }, // Tag IDs
       authorId: { type: "string", required: true }, // Post author
@@ -95,6 +100,7 @@ export const schema = {
       excerpt: { type: "string", default: "" },
       featuredImage: { type: "string" },
       status: { type: "enum", values: ["published"], default: "published" },
+      type: { type: "enum", values: ["news", "how-to", "commentary", "other"], default: "other" },
       featured: { type: "boolean", default: false },
       tags: { type: "array", items: { type: "string" }, default: [] },
       authorId: { type: "string", required: true },

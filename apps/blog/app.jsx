@@ -40,6 +40,25 @@ import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
 // ============================================================================
+// Logo Component
+// ============================================================================
+
+/**
+ * Basebase Logo SVG Component - green/pink/purple theme
+ * @param {{ size?: number }} props
+ */
+function BasebaseLogo({ size = 28 }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 45 56" width={size} height={size * (56 / 45)}>
+      <path fill="#22c55e" d="M0 43.052C0 36.396 5.396 31 12.052 31c1.076 0 1.948.872 1.948 1.948V49a7 7 0 1 1-14 0v-5.948Z" />
+      <path fill="#ec4899" d="M32.5 31C39.404 31 45 36.596 45 43.5S39.404 56 32.5 56 20 50.404 20 43.5v-9.022A3.479 3.479 0 0 1 23.479 31H32.5Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#a855f7" d="M32.5 0C39.404 0 45 5.596 45 12.5S39.404 25 32.5 25h-9.021A3.479 3.479 0 0 1 20 21.521V12.5C20 5.596 25.596 0 32.5 0Zm0 8a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+      <path fill="#22c55e" d="M7 0a7 7 0 0 1 7 7v16.052A1.948 1.948 0 0 1 12.052 25C5.396 25 0 19.604 0 12.948V7a7 7 0 0 1 7-7Z" />
+    </svg>
+  );
+}
+
+// ============================================================================
 // Route Components
 // ============================================================================
 
@@ -131,18 +150,38 @@ function PostEditorPage() {
         const { collection, query, where, getDocs } = await import("firebase/firestore");
         const { db } = await import("../../framework/core/firebase-init.js");
         const { collections } = await import("./schema.js");
-        
-        // Query posts by slug for current user
-        const q = query(
+
+        console.log("Fetching post with slug:", params.slug, "for user:", user.uid);
+
+        // Try private collection first (drafts and user's posts)
+        let q = query(
           collection(db, collections.posts),
           where("slug", "==", params.slug),
           where("authorId", "==", user.uid)
         );
-        const snapshot = await getDocs(q);
-        
+        let snapshot = await getDocs(q);
+
+        console.log("Private collection query returned", snapshot.size, "documents");
+
+        // If not found in private collection, try public collection
+        if (snapshot.empty) {
+          console.log("Trying public collection...");
+          q = query(
+            collection(db, collections.postsPublic),
+            where("slug", "==", params.slug),
+            where("authorId", "==", user.uid)
+          );
+          snapshot = await getDocs(q);
+          console.log("Public collection query returned", snapshot.size, "documents");
+        }
+
         if (!snapshot.empty) {
           const doc = snapshot.docs[0];
-          setPost({ id: doc.id, ...doc.data() });
+          const postData = { id: doc.id, ...doc.data() };
+          console.log("Post loaded:", postData);
+          setPost(postData);
+        } else {
+          console.warn("No post found with slug:", params.slug);
         }
       } catch (err) {
         console.error("Error fetching post:", err);
@@ -221,13 +260,10 @@ function BlogLayout() {
       <AppShell
         header={{ height: 64 }}
         padding="xs"
-        style={{ background: "#faf9f7" }}
       >
         <AppShell.Header
           style={{
-            background: "rgba(255, 255, 255, 0.9)",
             backdropFilter: "blur(20px)",
-            borderBottom: "1px solid #e8eced",
           }}
         >
           <Group h="100%" px="md" justify="space-between" maw={1400} mx="auto">
@@ -235,18 +271,18 @@ function BlogLayout() {
             <Group gap="md">
               <Group
                 gap="xs"
-                style={{ cursor: "pointer" }}
-                onClick={handleNavigateHome}
+                component="a"
+                href="https://www.basebase.com"
+                style={{
+                  cursor: "pointer",
+                  textDecoration: "none",
+                }}
               >
-                <img
-                  src="https://firebasestorage.googleapis.com/v0/b/vibe-together-d2159.firebasestorage.app/o/apps%2Fwww%2Fapp-assets%2Fwww%2F1765914399563_basebase_white_64.png?alt=media&token=b00983f8-b6b5-41f4-9c9a-83fd3f71f695"
-                  alt="Basebase"
-                  style={{ height: 32, width: 32 }}
-                />
-                <Text fw={700} size="lg" style={{ color: "#416165", letterSpacing: "-0.02em" }}>
+                <BasebaseLogo size={24} />
+                <Text fw={700} size="lg" style={{ letterSpacing: "-0.02em" }}>
                   Basebase
                 </Text>
-                <Text size="sm" style={{ color: "#5a7a7e" }}>
+                <Text size="sm" c="dimmed">
                   Blog
                 </Text>
               </Group>
@@ -277,7 +313,7 @@ function BlogLayout() {
                         .charAt(0)
                         .toUpperCase()}
                     </Avatar>
-                    <Text size="sm" style={{ color: "#5a7a7e" }}>
+                    <Text size="sm" c="dimmed">
                       {profile?.displayName || user.email}
                     </Text>
                   </Group>
@@ -358,7 +394,102 @@ function BlogLayout() {
 
 function App() {
   return (
-    <MantineProvider defaultColorScheme="light">
+    <MantineProvider
+      defaultColorScheme="dark"
+      theme={{
+        primaryColor: "green",
+        scale: 0.92,
+        colors: {
+          dark: [
+            "#C1C2C5",
+            "#A6A7AB",
+            "#909296",
+            "#5c5f66",
+            "#373A40",
+            "#2C2E33",
+            "#1a1a1a",
+            "#0a0a0a",
+            "#050505",
+            "#000000",
+          ],
+          // Dark mode palette matching homepage
+          green: [
+            "#e6fff0",
+            "#c3f9d8",
+            "#8cf5b9",
+            "#4ade80",
+            "#34d970",
+            "#22c55e",  // Primary - Green accent
+            "#1ea750",
+            "#188a42",
+            "#126e35",
+            "#0c5227",
+          ],
+          pink: [
+            "#fff0f6",
+            "#ffd6e8",
+            "#ffadd2",
+            "#ff85b8",
+            "#f472b6",
+            "#ec4899",  // Secondary - Pink accent
+            "#db2777",
+            "#be185d",
+            "#9d174d",
+            "#831843",
+          ],
+          purple: [
+            "#f5f3ff",
+            "#ede9fe",
+            "#ddd6fe",
+            "#c4b5fd",
+            "#a78bfa",
+            "#a855f7",  // Tertiary - Purple accent
+            "#9333ea",
+            "#7e22ce",
+            "#6b21a8",
+            "#581c87",
+          ],
+        },
+        fontFamily: "-apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif",
+        fontSizes: {
+          xs: "0.75rem",
+          sm: "0.85rem",
+          md: "0.95rem",
+          lg: "1.05rem",
+          xl: "1.15rem",
+        },
+        spacing: {
+          xs: "0.5rem",
+          sm: "0.7rem",
+          md: "0.9rem",
+          lg: "1.1rem",
+          xl: "1.4rem",
+        },
+        headings: {
+          fontFamily: "-apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif",
+          fontWeight: 600,
+          sizes: {
+            h1: { fontSize: "1.85rem" },
+            h2: { fontSize: "1.6rem" },
+            h3: { fontSize: "1.35rem" },
+          },
+        },
+        defaultRadius: "md",
+        components: {
+          Button: { defaultProps: { size: "xs" } },
+          TextInput: { defaultProps: { size: "sm" } },
+          Textarea: { defaultProps: { size: "sm" } },
+          Select: { defaultProps: { size: "sm" } },
+          Autocomplete: { defaultProps: { size: "sm" } },
+          Card: { defaultProps: { padding: "sm", radius: "md" } },
+          Badge: { defaultProps: { size: "xs" } },
+          Avatar: { defaultProps: { size: "md" } },
+          ActionIcon: { defaultProps: { size: "sm" } },
+        },
+      }}
+      withGlobalStyles
+      withNormalizeCSS
+    >
       <Notifications position="top-right" />
       <AppRouter appId={APP_ID} routes={routes}>
         <BlogLayout />

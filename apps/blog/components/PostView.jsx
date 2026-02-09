@@ -216,7 +216,7 @@ export function PostView({ slug, onNavigateHome, onEdit }) {
           <Divider />
 
           {/* Author bio */}
-          <Paper p="lg" withBorder bg="gray.0">
+          <Paper p="lg" withBorder>
             <Group gap="md" align="flex-start">
               <Avatar
                 src={authorProfile?.photoURL}
@@ -256,7 +256,6 @@ export function PostView({ slug, onNavigateHome, onEdit }) {
         .post-content {
           font-size: 1.125rem;
           line-height: 1.8;
-          color: #1a1a1a;
         }
         .post-content h1,
         .post-content h2,
@@ -268,7 +267,6 @@ export function PostView({ slug, onNavigateHome, onEdit }) {
           margin-bottom: 0.75em;
           font-weight: 700;
           line-height: 1.3;
-          color: #000;
         }
         .post-content h1 { font-size: 2.5em; }
         .post-content h2 { font-size: 2em; }
@@ -286,15 +284,14 @@ export function PostView({ slug, onNavigateHome, onEdit }) {
           margin-bottom: 0.5em;
         }
         .post-content code {
-          background: #f5f5f5;
+          background: rgba(255, 255, 255, 0.05);
           padding: 0.2em 0.4em;
           border-radius: 3px;
           font-family: 'Courier New', monospace;
           font-size: 0.9em;
         }
         .post-content pre {
-          background: #2d2d2d;
-          color: #f8f8f2;
+          background: #1a1b1e;
           padding: 1.5em;
           border-radius: 8px;
           overflow-x: auto;
@@ -303,16 +300,15 @@ export function PostView({ slug, onNavigateHome, onEdit }) {
         }
         .post-content pre code {
           background: none;
-          color: inherit;
           padding: 0;
         }
         .post-content blockquote {
-          border-left: 4px solid #228be6;
+          border-left: 4px solid #4ade80;
           padding-left: 1.5em;
           margin-left: 0;
           margin-right: 0;
           margin-bottom: 1.5em;
-          color: #495057;
+          opacity: 0.8;
           font-style: italic;
         }
         .post-content img {
@@ -322,17 +318,17 @@ export function PostView({ slug, onNavigateHome, onEdit }) {
           margin: 2em 0;
         }
         .post-content a {
-          color: #228be6;
+          color: #4ade80;
           text-decoration: none;
-          border-bottom: 1px solid #228be6;
+          border-bottom: 1px solid #4ade80;
         }
         .post-content a:hover {
-          color: #1971c2;
-          border-bottom-color: #1971c2;
+          color: #22c55e;
+          border-bottom-color: #22c55e;
         }
         .post-content hr {
           border: none;
-          border-top: 2px solid #e9ecef;
+          border-top: 2px solid rgba(255, 255, 255, 0.1);
           margin: 3em 0;
         }
         .post-content table {
@@ -343,10 +339,10 @@ export function PostView({ slug, onNavigateHome, onEdit }) {
         .post-content table th,
         .post-content table td {
           padding: 0.75em;
-          border: 1px solid #dee2e6;
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .post-content table th {
-          background: #f8f9fa;
+          background: rgba(255, 255, 255, 0.05);
           font-weight: 600;
         }
       `}</style>

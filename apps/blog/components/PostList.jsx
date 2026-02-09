@@ -13,6 +13,21 @@ import {
   ActionIcon,
   Menu,
 } from "@mantine/core";
+
+// Post type color mapping
+const POST_TYPE_COLORS = {
+  "news": "#22c55e",      // Green
+  "how-to": "#ec4899",    // Pink
+  "commentary": "#a855f7", // Purple
+  "other": "#38bdf8",     // Sky blue
+};
+
+const POST_TYPE_LABELS = {
+  "news": "News",
+  "how-to": "How-to",
+  "commentary": "Commentary",
+  "other": "Other",
+};
 import {
   IconSearch,
   IconPlus,
@@ -194,6 +209,33 @@ export function PostList({ onNavigate, onCreatePost, onEditPost }) {
   return (
     <Container size="md" py="xl">
       <Stack gap="xl">
+        {/* Hero headline */}
+        <Box mb="lg">
+          <Text
+            component="h1"
+            style={{
+              fontSize: "clamp(32px, 5vw, 48px)",
+              fontWeight: 700,
+              letterSpacing: "-0.03em",
+              lineHeight: 1.2,
+              margin: 0,
+              marginBottom: 16,
+            }}
+          >
+            From the <span style={{ color: "#22c55e" }}>Basement</span>.
+          </Text>
+          <Text
+            size="xl"
+            c="gray.5"
+            style={{
+              maxWidth: 560,
+              lineHeight: 1.6,
+            }}
+          >
+            News, tutorials, and insights from the Basebase team.
+          </Text>
+        </Box>
+
         {/* Header with search and create */}
         <Group justify="space-between" align="center">
           <TextInput
@@ -295,6 +337,7 @@ function PostCard({
         cursor: "pointer",
         transition: "box-shadow 0.2s",
         borderLeft: featured ? "4px solid #228be6" : undefined,
+        backgroundColor: post.status === "draft" ? "#1a1a1a" : undefined,
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
@@ -306,44 +349,75 @@ function PostCard({
     >
       <Stack gap="sm">
         <Group justify="space-between" align="flex-start">
-          <Box style={{ flex: 1 }}>
-            <Group gap="xs" mb="xs">
-              {post.status === "draft" && (
-                <Badge color="gray" variant="light" size="sm">
-                  Draft
-                </Badge>
-              )}
-              {featured && (
-                <Badge color="blue" variant="light" size="sm">
-                  Featured
-                </Badge>
-              )}
-            </Group>
+          <Group gap="lg" align="flex-start" style={{ flex: 1 }}>
+            {/* Solid colored circle */}
+            <Box
+              style={{
+                background: POST_TYPE_COLORS[post.type] || POST_TYPE_COLORS.other,
+                borderRadius: "50%",
+                width: 36,
+                height: 36,
+                flexShrink: 0,
+                marginTop: 4,
+              }}
+            />
 
-            <Title order={2} size="h3" mb="xs">
-              {post.title}
-            </Title>
+            <Stack gap={8} style={{ flex: 1 }}>
+              <Group gap="xs">
+                {post.status === "draft" && (
+                  <Badge
+                    size="md"
+                    style={{
+                      backgroundColor: "#4a4a4a",
+                      color: "#ffffff",
+                    }}
+                  >
+                    DRAFT
+                  </Badge>
+                )}
+                {featured && (
+                  <Badge color="blue" variant="light" size="sm">
+                    Featured
+                  </Badge>
+                )}
+              </Group>
 
-            {post.excerpt && (
-              <Text c="dimmed" lineClamp={2} mb="xs">
-                {post.excerpt}
-              </Text>
-            )}
+              <Title order={2} size="h3" mb="xs" c="white">
+                {post.title}
+              </Title>
 
-            <Group gap="md">
-              <Text size="sm" c="dimmed">
-                {authorName}
-              </Text>
-              <Text size="sm" c="dimmed">
-                {formatDate(post.publishedAt || post.createdAt)}
-              </Text>
-              {post.readingTime > 0 && (
-                <Text size="sm" c="dimmed">
-                  {post.readingTime} min read
+              {post.excerpt && (
+                <Text c="gray.4" lineClamp={2} mb="xs">
+                  {post.excerpt}
                 </Text>
               )}
-            </Group>
-          </Box>
+
+              <Group gap="md">
+                {/* Type badge on bottom line */}
+                <Badge
+                  size="sm"
+                  variant="light"
+                  style={{
+                    backgroundColor: `${POST_TYPE_COLORS[post.type] || POST_TYPE_COLORS.other}40`,
+                    color: POST_TYPE_COLORS[post.type] || POST_TYPE_COLORS.other,
+                  }}
+                >
+                  {POST_TYPE_LABELS[post.type] || POST_TYPE_LABELS.other}
+                </Badge>
+                <Text size="sm" c="gray.5">
+                  {authorName}
+                </Text>
+                <Text size="sm" c="gray.5">
+                  {formatDate(post.publishedAt || post.createdAt)}
+                </Text>
+                {post.readingTime > 0 && (
+                  <Text size="sm" c="gray.5">
+                    {post.readingTime} min read
+                  </Text>
+                )}
+              </Group>
+            </Stack>
+          </Group>
 
           {isAuthor && (
             <Menu position="bottom-end" withinPortal>

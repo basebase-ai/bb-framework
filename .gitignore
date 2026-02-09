@@ -11,4 +11,4 @@ firebase-debug.log
 firestore-debug.log
 vibe-together-*.json
 .basebase-checkout.json
-
+tmp/
