@@ -40,6 +40,8 @@ Once they give you credentials, proceed with the steps below.
 | **Dev server** | `npm run dev` (visit `http://<appId>.localhost:3000`) |
 | **Deploy** | `npm run app:commit -- <appId> "message" --email=<email> --password=<pw> --yes --json` |
 | **Checkout** | `npm run app:checkout -- <appId> --email=<email> --password=<pw> --json` |
+| **Search/list apps** | `npm run app:search -- [query] --email=<email> --password=<pw> --json` |
+| **Clean local app** | `npm run app:clean -- <appId> --yes --json` |
 | **Deploy function** | `npm run function:commit -- <file.js> --email=<email> --password=<pw> --json` |
 | **List functions** | `npm run function:list -- --email=<email> --password=<pw> --json` |
 

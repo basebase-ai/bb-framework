@@ -814,6 +814,8 @@ The tradeoff is that npm packages must be pre-bundled into the framework. This k
   - Options: `--name="Display Name"`, `--description="..."`
 - `npm run app:checkout <appId>` - Download app code from Firestore to `/apps/{appId}/` (**requires auth**)
 - `npm run app:commit <appId> "message"` - Upload `/apps/{appId}/` to Firestore (**requires auth**)
+- `npm run app:search [query]` - Search accessible apps by name/description, or list all if no query (**requires auth**)
+- `npm run app:clean <appId>` - Remove app from local workspace (warns if uncommitted changes)
 
 **Function Management:**
 
