@@ -57,7 +57,7 @@ function getBoxColor(box) {
 export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedBox, setSelectedBox] = useState(/** @type {number | null} */ (null));
+  const [selectedCategory, setSelectedCategory] = useState(/** @type {string | null} */ (null));
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState(/** @type {{ id: string, front: string, back: string } | null} */ (null));
@@ -162,33 +162,77 @@ export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
     if (searchQuery && !card.front?.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-    // Filter by selected box
-    if (selectedBox !== null && (card.box || 1) !== selectedBox) {
-      return false;
+    // Filter by selected category
+    if (selectedCategory !== null) {
+      const isNew = !card.lastReviewedAt;
+      const box = card.box || 1;
+      
+      if (selectedCategory === "new" && !isNew) return false;
+      if (selectedCategory === "struggling" && (isNew || box !== 1)) return false;
+      if (selectedCategory === "learning" && box !== 2) return false;
+      if (selectedCategory === "reviewing" && box !== 3) return false;
+      if (selectedCategory === "familiar" && box !== 4) return false;
+      if (selectedCategory === "mastered" && box !== 5) return false;
     }
     return true;
   });
 
-  const stats = {
-    total: cards.length,
-    box1: cards.filter((c) => c.box === 1).length,
-    box2: cards.filter((c) => c.box === 2).length,
-    box3: cards.filter((c) => c.box === 3).length,
-    box4: cards.filter((c) => c.box === 4).length,
-    box5: cards.filter((c) => c.box === 5).length,
-    dueForReview: cards.filter((c) => {
-      if (!c.nextReviewAt) return true;
-      const reviewDate = c.nextReviewAt.toDate ? c.nextReviewAt.toDate() : new Date(c.nextReviewAt);
-      return reviewDate <= new Date();
-    }).length,
-    // Cards available for sentence practice (Box 2+ or reviewed with more correct than incorrect)
-    mastered: cards.filter((c) => {
-      const box = c.box || 1;
-      if (box >= 2) return true;
-      if (c.lastReviewedAt && (c.correctCount || 0) > (c.incorrectCount || 0)) return true;
-      return false;
-    }).length,
-  };
+  const stats = useMemo(() => {
+    let newCards = 0;        // Never reviewed
+    let struggling = 0;      // Box 1, but has been reviewed (demoted)
+    let learning = 0;        // Box 2
+    let reviewing = 0;       // Box 3
+    let familiar = 0;        // Box 4
+    let mastered = 0;        // Box 5
+    let dueForReview = 0;
+    let practiceEligible = 0;
+
+    cards.forEach((card) => {
+      const isNew = !card.lastReviewedAt;
+      const box = card.box || 1;
+
+      if (isNew) {
+        newCards++;
+      } else if (box === 1) {
+        struggling++;
+      } else if (box === 2) {
+        learning++;
+      } else if (box === 3) {
+        reviewing++;
+      } else if (box === 4) {
+        familiar++;
+      } else if (box === 5) {
+        mastered++;
+      }
+
+      // Due for review check
+      if (!card.nextReviewAt) {
+        dueForReview++;
+      } else {
+        const reviewDate = card.nextReviewAt.toDate ? card.nextReviewAt.toDate() : new Date(card.nextReviewAt);
+        if (reviewDate <= new Date()) dueForReview++;
+      }
+
+      // Practice eligible (Box 2+ or reviewed with more correct than incorrect)
+      if (box >= 2) {
+        practiceEligible++;
+      } else if (card.lastReviewedAt && (card.correctCount || 0) > (card.incorrectCount || 0)) {
+        practiceEligible++;
+      }
+    });
+
+    return {
+      total: cards.length,
+      new: newCards,
+      struggling,
+      learning,
+      reviewing,
+      familiar,
+      mastered,
+      dueForReview,
+      practiceEligible,
+    };
+  }, [cards]);
 
   const handleCreateCard = async () => {
     if (!cardFront.trim() || !cardBack.trim() || !user) return;
@@ -312,8 +356,8 @@ export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
               color="violet"
               leftSection={<IconMessages size={16} />}
               onClick={() => onSentencePractice(deckId)}
-              disabled={stats.mastered < 3}
-              title={stats.mastered < 3 ? "Need at least 3 words in Box 2+ to practice" : ""}
+              disabled={stats.practiceEligible < 3}
+              title={stats.practiceEligible < 3 ? "Need at least 3 words in Box 2+ to practice" : ""}
             >
               Study with Sentences
             </Button>
@@ -331,33 +375,39 @@ export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
 
       <Paper p="md" withBorder shadow="xs">
         <Group justify="space-between" mb="sm">
-          <Text size="sm" fw={500}>Leitner Box Distribution</Text>
-          {selectedBox !== null && (
-            <Button size="xs" variant="subtle" color="gray" onClick={() => setSelectedBox(null)}>
+          <Text size="sm" fw={500}>Card Distribution</Text>
+          {selectedCategory !== null && (
+            <Button size="xs" variant="subtle" color="gray" onClick={() => setSelectedCategory(null)}>
               Clear filter
             </Button>
           )}
         </Group>
-        <Group gap="md">
-          {[1, 2, 3, 4, 5].map((box) => {
-            const count = stats[`box${box}`];
-            const interval = LEITNER_INTERVALS[box];
-            const isSelected = selectedBox === box;
+        <Group gap="md" wrap="wrap">
+          {/** @type {const} */ ([
+            { key: "new", label: "New", color: "red", count: stats.new, tooltip: "Never reviewed" },
+            { key: "struggling", label: "Struggling", color: "orange", count: stats.struggling, tooltip: "Demoted to Box 1 after marking hard" },
+            { key: "learning", label: "Learning", color: "yellow", count: stats.learning, tooltip: `Box 2: Review every ${LEITNER_INTERVALS[2]} days` },
+            { key: "reviewing", label: "Reviewing", color: "lime", count: stats.reviewing, tooltip: `Box 3: Review every ${LEITNER_INTERVALS[3]} days` },
+            { key: "familiar", label: "Familiar", color: "teal", count: stats.familiar, tooltip: `Box 4: Review every ${LEITNER_INTERVALS[4]} days` },
+            { key: "mastered", label: "Mastered", color: "green", count: stats.mastered, tooltip: `Box 5: Review every ${LEITNER_INTERVALS[5]} days` },
+          ]).map(({ key, label, color, count, tooltip }) => {
+            const isSelected = selectedCategory === key;
             return (
-              <Tooltip key={box} label={`Box ${box}: Review every ${interval} day${interval !== 1 ? "s" : ""}. Click to filter.`}>
+              <Tooltip key={key} label={`${tooltip}. Click to filter.`}>
                 <Badge
                   size="lg"
                   variant={isSelected ? "filled" : "light"}
-                  color={getBoxColor(box)}
+                  color={color}
                   leftSection={<IconBox size={14} />}
                   style={{
-                    cursor: "pointer",
+                    cursor: count > 0 ? "pointer" : "default",
+                    opacity: count === 0 ? 0.5 : 1,
                     transform: isSelected ? "scale(1.1)" : "scale(1)",
                     transition: "all 0.15s ease",
                   }}
-                  onClick={() => setSelectedBox(isSelected ? null : box)}
+                  onClick={() => count > 0 && setSelectedCategory(isSelected ? null : key)}
                 >
-                  {count}
+                  {label} ({count})
                 </Badge>
               </Tooltip>
             );
@@ -379,11 +429,11 @@ export function CardList({ deckId, onBack, onStudy, onSentencePractice }) {
             <Text size="lg" c="dimmed" ta="center">
               {searchQuery
                 ? "No cards match your search"
-                : selectedBox !== null
-                  ? `No cards in Box ${selectedBox}`
+                : selectedCategory !== null
+                  ? `No ${selectedCategory} cards`
                   : "No cards yet. Add your first card!"}
             </Text>
-            {!searchQuery && selectedBox === null && (
+            {!searchQuery && selectedCategory === null && (
               <Button variant="light" color="pink" leftSection={<IconPlus size={16} />} onClick={() => setCreateModalOpen(true)}>
                 Add Card
               </Button>

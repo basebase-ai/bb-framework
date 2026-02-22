@@ -104,11 +104,11 @@ function HomePage() {
         mb="lg"
       >
         <Tabs.List>
-          <Tabs.Tab value="conversation" leftSection={<IconMessageCircle size={16} />}>
-            Conversation
-          </Tabs.Tab>
           <Tabs.Tab value="vocabulary" leftSection={<IconCards size={16} />}>
             Vocabulary
+          </Tabs.Tab>
+          <Tabs.Tab value="conversation" leftSection={<IconMessageCircle size={16} />}>
+            Conversation
           </Tabs.Tab>
           <Tabs.Tab value="reading" leftSection={<IconBook2 size={16} />}>
             Reading
@@ -698,7 +698,7 @@ function AppLayout() {
   const [prefsLoading, setPrefsLoading] = useState(true);
   
   /**
-   * Check voice availability and show notification
+   * Check voice availability and show notification only if missing
    * @param {string} languageKey
    */
   const checkVoiceAndNotify = React.useCallback((languageKey) => {
@@ -709,16 +709,8 @@ function AppLayout() {
       
       const voiceInfo = getVoiceInfo(languageKey);
       
-      if (voiceInfo.hasVoice) {
-        notifications.show({
-          id: "voice-success",
-          title: `${langInfo.name} voice selected`,
-          message: `Using "${voiceInfo.voiceName}" (${voiceInfo.voiceLang}) for audio pronunciation.`,
-          color: "green",
-          icon: <IconVolume size={18} />,
-          autoClose: 5000,
-        });
-      } else {
+      // Only show notification if voice is missing
+      if (!voiceInfo.hasVoice) {
         notifications.show({
           id: "voice-warning",
           title: `No ${langInfo.name} voice available`,

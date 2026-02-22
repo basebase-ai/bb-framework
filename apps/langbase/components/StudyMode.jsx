@@ -26,6 +26,7 @@ import {
   TypographyStylesProvider,
   NumberInput,
   SimpleGrid,
+  Switch,
   ThemeIcon,
   useMantineColorScheme,
 } from "@mantine/core";
@@ -146,8 +147,9 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   
   // Study options state (shown before studying)
   const [studyStarted, setStudyStarted] = useState(false);
-  const [selectedBoxes, setSelectedBoxes] = useState(/** @type {number[]} */ ([]));
+  const [selectedCategories, setSelectedCategories] = useState(/** @type {string[]} */ ([]));
   const [newCardsPerDay, setNewCardsPerDay] = useState(/** @type {number | ''} */ (40));
+  const [flippedMode, setFlippedMode] = useState(false);
   
   // Study session state
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -319,13 +321,15 @@ export function StudyMode({ deckId, onBack, onComplete }) {
   const cardCounts = useMemo(() => {
     const now = new Date();
     
-    let newCards = 0;
-    let reviewsDue = 0;     // Cards that have been seen and are due
-    let strugglingCards = 0;  // In Box 1, have been reviewed (marked hard)
-    let learningCards = 0;    // In Box 2-4, progressing
+    let newCards = 0;           // Never reviewed (truly new)
+    let reviewsDue = 0;         // Cards that have been seen and are due
+    let strugglingCards = 0;    // In Box 1, have been reviewed (demoted)
+    let learningCards = 0;      // In Box 2-4, progressing
     
-    // Per-box counts
-    const boxCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    // Per-box counts for the UI buttons
+    // Box 1 = truly new only; Struggling = demoted to box 1
+    /** @type {{ new: number, struggling: number, 2: number, 3: number, 4: number, 5: number }} */
+    const boxCounts = { new: 0, struggling: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     
     allCards.forEach((card) => {
       const isNew = !card.lastReviewedAt;
@@ -335,17 +339,17 @@ export function StudyMode({ deckId, onBack, onComplete }) {
         : null;
       const isDue = !reviewDate || reviewDate <= now;
       
-      // Count per box
-      if (box >= 1 && box <= 5) boxCounts[box]++;
-      
       if (isNew) {
         newCards++;
+        boxCounts.new++;
       } else {
         // Card has been reviewed - categorize by box
         if (box === 1) {
           strugglingCards++;
-        } else if (box >= 2 && box <= 4) {
-          learningCards++;
+          boxCounts.struggling++;
+        } else if (box >= 2 && box <= 5) {
+          boxCounts[box]++;
+          if (box <= 4) learningCards++;
         }
         
         // Count if due for review
@@ -365,33 +369,36 @@ export function StudyMode({ deckId, onBack, onComplete }) {
       reviewsDue,      // Reviews due now
       strugglingCards, 
       learningCards,
-      boxCounts,       // Per-box distribution
+      boxCounts,       // Per-category distribution
       dailyTotal: newToday + reviewsDue  // Today's manageable session
     };
   }, [allCards, newCardsPerDay]);
 
   /**
-   * Toggle box selection
-   * @param {number} box
+   * Toggle category selection
+   * @param {string} category
    */
-  const toggleBox = useCallback((box) => {
-    setSelectedBoxes((prev) => {
-      if (prev.includes(box)) {
-        return prev.filter((b) => b !== box);
+  const toggleCategory = useCallback((category) => {
+    setSelectedCategories((prev) => {
+      if (prev.includes(category)) {
+        return prev.filter((c) => c !== category);
       }
-      return [...prev, box].sort();
+      return [...prev, category];
     });
   }, []);
 
   // Calculate available cards based on selection
   const availableCards = useMemo(() => {
-    if (selectedBoxes.length === 0) {
+    if (selectedCategories.length === 0) {
       // All due cards mode
       return cardCounts.dailyTotal;
     }
-    // Sum of cards in selected boxes
-    return selectedBoxes.reduce((sum, box) => sum + cardCounts.boxCounts[box], 0);
-  }, [selectedBoxes, cardCounts]);
+    // Sum of cards in selected categories
+    return selectedCategories.reduce((sum, cat) => {
+      const key = /** @type {keyof typeof cardCounts.boxCounts} */ (cat);
+      return sum + (cardCounts.boxCounts[key] || 0);
+    }, 0);
+  }, [selectedCategories, cardCounts]);
 
   // Filter and limit cards based on study options
   const dueCards = useMemo(() => {
@@ -404,8 +411,8 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     /** @type {typeof allCards} */
     const reviewCardsPool = [];
     
-    // If no boxes selected, use "all due cards" mode
-    const useAllMode = selectedBoxes.length === 0;
+    // If no categories selected, use "all due cards" mode
+    const useAllMode = selectedCategories.length === 0;
     
     allCards.forEach((card) => {
       if (reviewedCardIds.has(card.id)) return;
@@ -425,11 +432,14 @@ export function StudyMode({ deckId, onBack, onComplete }) {
           reviewCardsPool.push(card);
         }
       } else {
-        // Filter by selected boxes
-        if (selectedBoxes.includes(box)) {
-          if (isNew) {
-            newCardsPool.push(card);
-          } else {
+        // Filter by selected categories
+        if (isNew && selectedCategories.includes("new")) {
+          newCardsPool.push(card);
+        } else if (!isNew) {
+          // Reviewed cards: check if their category is selected
+          if (box === 1 && selectedCategories.includes("struggling")) {
+            reviewCardsPool.push(card);
+          } else if (box >= 2 && box <= 5 && selectedCategories.includes(String(box))) {
             reviewCardsPool.push(card);
           }
         }
@@ -437,6 +447,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     });
     
     // Sort by importOrder (asc) to preserve original file order
+    /** @param {typeof allCards} cards */
     const sortCards = (cards) => cards.sort((a, b) => {
       if (a.importOrder !== undefined && b.importOrder !== undefined) {
         return a.importOrder - b.importOrder;
@@ -454,7 +465,7 @@ export function StudyMode({ deckId, onBack, onComplete }) {
     // Limit new cards, include all reviews
     const limitedNew = newCardsPool.slice(0, newLimit);
     return [...reviewCardsPool, ...limitedNew]; // Reviews first, then new
-  }, [allCards, reviewedCardIds, selectedBoxes, newCardsPerDay]);
+  }, [allCards, reviewedCardIds, selectedCategories, newCardsPerDay]);
 
   const currentCard = dueCards[currentIndex];
   // Use captured session size for stable progress tracking (doesn't change as cards are reviewed)
@@ -516,21 +527,25 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
     }
   }, [studyStarted, sessionTotalCards, dueCards.length]);
 
-  // Auto-speak the FRONT (Norwegian word) when flipping to back
+  // Auto-speak the target-language word when flipping to back
   useEffect(() => {
     if (showBack && currentCard) {
-      // If there's front audio, play it; otherwise use TTS for the front
-      const frontAudio = currentCard.frontAudio;
-      if (frontAudio && frontAudio.length > 0) {
-        playAudio(frontAudio[0]);
-      } else {
-        // Use text-to-speech for the FRONT content (the word being learned)
-        // Strip out parenthetical content (part of speech, etc.)
+      if (flippedMode) {
+        // Flipped mode: back reveals the front (the word) — speak it
         const wordOnly = currentCard.front.replace(/\s*\([^)]*\)/g, "").trim();
         speak(wordOnly);
+      } else {
+        // Normal mode: speak the front (word) when revealing the back
+        const frontAudio = currentCard.frontAudio;
+        if (frontAudio && frontAudio.length > 0) {
+          playAudio(frontAudio[0]);
+        } else {
+          const wordOnly = currentCard.front.replace(/\s*\([^)]*\)/g, "").trim();
+          speak(wordOnly);
+        }
       }
     }
-  }, [showBack, currentCard?.id, playAudio, speak]);
+  }, [showBack, currentCard?.id, flippedMode, playAudio, speak]);
 
   // Listen for text selection and speak highlighted text
   useEffect(() => {
@@ -584,18 +599,8 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
     setIsAnimating(true);
 
     const currentBox = currentCard.box || 1;
-    let newBox;
-    let isCorrect;
-
-    if (difficulty === "easy") {
-      newBox = Math.min(currentBox + 1, 5);
-      isCorrect = true;
-    } else {
-      newBox = 1;
-      isCorrect = false;
-    }
-
-    const nextReviewAt = getNextReviewDate(newBox);
+    /** @type {boolean} */
+    const isCorrect = difficulty === "easy";
 
     try {
       // Add to history before moving to next card
@@ -606,7 +611,10 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
       // Reset example state for next card
       setShowExample(false);
       setExampleSentence(null);
-      
+
+      const newBox = isCorrect ? Math.min(currentBox + 1, 5) : 1;
+      const nextReviewAt = getNextReviewDate(newBox);
+
       await updateCard(currentCard.id, {
         box: newBox,
         nextReviewAt,
@@ -630,7 +638,7 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
     } finally {
       setTimeout(() => setIsAnimating(false), 100);
     }
-  }, [currentCard, currentIndex, dueCards.length, isAnimating, updateCard, sessionTotalCards, sessionStats.reviewed, viewingHistoryIndex]);
+  }, [currentCard, currentIndex, dueCards.length, isAnimating, updateCard, sessionTotalCards, sessionStats.reviewed, viewingHistoryIndex, flippedMode]);
 
   /**
    * View previous card in history
@@ -765,12 +773,12 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
           <Paper
             p="lg"
             radius="md"
-            onClick={() => setSelectedBoxes([])}
+            onClick={() => setSelectedCategories([])}
             mb="lg"
             withBorder
             style={{
-              borderColor: selectedBoxes.length === 0 ? "var(--mantine-color-pink-6)" : undefined,
-              borderWidth: selectedBoxes.length === 0 ? 2 : 1,
+              borderColor: selectedCategories.length === 0 ? "var(--mantine-color-pink-6)" : undefined,
+              borderWidth: selectedCategories.length === 0 ? 2 : 1,
               cursor: "pointer",
               transition: "all 0.2s ease",
             }}
@@ -802,19 +810,40 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
             mb="lg"
           />
 
-          {/* Box selection */}
+          {/* Category selection */}
           <Text c="dimmed" size="xs" mb="sm">Or select specific levels to study:</Text>
           <Group gap="xs" mb="lg" justify="center" wrap="wrap">
-            {[1, 2, 3, 4, 5].map((box) => {
+            {/* New (never seen) */}
+            <Button
+              size="sm"
+              variant={selectedCategories.includes("new") ? "filled" : "outline"}
+              color="red"
+              onClick={() => toggleCategory("new")}
+              disabled={cardCounts.boxCounts.new === 0}
+            >
+              New ({cardCounts.boxCounts.new})
+            </Button>
+            {/* Struggling (demoted to box 1) */}
+            <Button
+              size="sm"
+              variant={selectedCategories.includes("struggling") ? "filled" : "outline"}
+              color="orange"
+              onClick={() => toggleCategory("struggling")}
+              disabled={cardCounts.boxCounts.struggling === 0}
+            >
+              Struggling ({cardCounts.boxCounts.struggling})
+            </Button>
+            {/* Boxes 2-5 */}
+            {[2, 3, 4, 5].map((box) => {
               const count = cardCounts.boxCounts[box];
-              const isSelected = selectedBoxes.includes(box);
+              const isSelected = selectedCategories.includes(String(box));
               return (
                 <Button
                   key={box}
                   size="sm"
                   variant={isSelected ? "filled" : "outline"}
                   color={getBoxColor(box)}
-                  onClick={() => toggleBox(box)}
+                  onClick={() => toggleCategory(String(box))}
                   disabled={count === 0}
                 >
                   {getBoxLabel(box)} ({count})
@@ -823,11 +852,28 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
             })}
           </Group>
           
-          {selectedBoxes.length > 0 && (
+          {selectedCategories.length > 0 && (
             <Text size="xs" c="dimmed" ta="center" mb="lg">
               {availableCards} cards from selected levels
             </Text>
           )}
+
+          {/* Flip cards toggle */}
+          <Paper p="md" radius="md" withBorder mb="lg">
+            <Group justify="space-between">
+              <Box>
+                <Text size="sm" fw={500}>Flip cards</Text>
+                <Text size="xs" c="dimmed">
+                  Show the back first — guess the word.
+                </Text>
+              </Box>
+              <Switch
+                checked={flippedMode}
+                onChange={(e) => setFlippedMode(e.currentTarget.checked)}
+                color="pink"
+              />
+            </Group>
+          </Paper>
 
           <Group justify="center" gap="md">
             <Button variant="light" color="gray" onClick={onBack}>
@@ -955,6 +1001,7 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
                   : "Previous"}
               </Button>
             )}
+            {flippedMode && <Badge variant="light" color="violet">Flipped</Badge>}
             <Badge variant="light" color="green">✓ {sessionStats.correct}</Badge>
             <Badge variant="light" color="red">✗ {sessionStats.incorrect}</Badge>
             <Text size="sm" c="dimmed">{sessionStats.reviewed} / {totalDue}</Text>
@@ -1072,13 +1119,24 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
               /* Normal study view */
               <>
                 <Badge variant="light" color={showBack ? "pink" : "gray"} size="sm" mb="md">
-                  {showBack ? "Back" : "Front"} • Box {displayCard?.box || 1}
+                  {flippedMode
+                    ? (showBack ? "Word" : "Definition")
+                    : (showBack ? "Back" : "Front")} • Box {displayCard?.box || 1}
+                  {flippedMode && " • Flipped"}
                 </Badge>
 
                 {(() => {
-                  const content = showBack ? displayCard?.back || "" : displayCard?.front || "";
-                  const { definition, rest } = showBack ? extractDefinition(content) : { definition: null, rest: content };
+                  // In flipped mode, swap: show back first (hidden side), front on reveal
+                  const frontContent = flippedMode ? displayCard?.back || "" : displayCard?.front || "";
+                  const backContent = flippedMode ? displayCard?.front || "" : displayCard?.back || "";
+                  const content = showBack ? backContent : frontContent;
+                  const { definition, rest } = (showBack ? !flippedMode : flippedMode)
+                    ? extractDefinition(content)
+                    : { definition: null, rest: content };
                   
+                  const showingFront = flippedMode ? showBack : !showBack;
+                  const audioUrls = showingFront ? displayCard?.frontAudio : displayCard?.backAudio;
+
                   return (
                     <>
                       {/* Show extracted definition prominently at the top */}
@@ -1109,52 +1167,46 @@ Return JSON only: {"target": "sentence in ${langInfo.name}", "english": "English
                           }}
                         />
                       </TypographyStylesProvider>
+
+                      {/* Text-to-speech button */}
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        color="gray"
+                        leftSection={<IconPlayerPlay size={14} />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          speak(content);
+                        }}
+                        loading={isSpeaking}
+                        mt="sm"
+                      >
+                        {isSpeaking ? "Speaking..." : "Speak"}
+                      </Button>
+
+                      {/* Audio play buttons */}
+                      {audioUrls && audioUrls.length > 0 && (
+                        <Group gap="xs" mt="md" justify="center">
+                          {audioUrls.map((/** @type {string} */ url, /** @type {number} */ idx) => (
+                            <Button
+                              key={idx}
+                              size="xs"
+                              variant="light"
+                              color="pink"
+                              leftSection={<IconVolume size={14} />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playAudio(url);
+                              }}
+                              loading={audioPlaying}
+                            >
+                              {audioUrls.length > 1 ? `Audio ${idx + 1}` : "Play Audio"}
+                            </Button>
+                          ))}
+                        </Group>
+                      )}
                     </>
                   );
-                })()}
-
-                {/* Text-to-speech button */}
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  color="gray"
-                  leftSection={<IconPlayerPlay size={14} />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    speak(showBack ? displayCard?.back : displayCard?.front);
-                  }}
-                  loading={isSpeaking}
-                  mt="sm"
-                >
-                  {isSpeaking ? "Speaking..." : "Speak"}
-                </Button>
-
-                {/* Audio play buttons */}
-                {(() => {
-                  const audioUrls = showBack ? displayCard?.backAudio : displayCard?.frontAudio;
-                  if (audioUrls && audioUrls.length > 0) {
-                    return (
-                      <Group gap="xs" mt="md" justify="center">
-                        {audioUrls.map((url, idx) => (
-                          <Button
-                            key={idx}
-                            size="xs"
-                            variant="light"
-                            color="pink"
-                            leftSection={<IconVolume size={14} />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              playAudio(url);
-                            }}
-                            loading={audioPlaying}
-                          >
-                            {audioUrls.length > 1 ? `Audio ${idx + 1}` : "Play Audio"}
-                          </Button>
-                        ))}
-                      </Group>
-                    );
-                  }
-                  return null;
                 })()}
               </>
             )}

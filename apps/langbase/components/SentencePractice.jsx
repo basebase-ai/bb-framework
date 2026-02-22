@@ -98,7 +98,7 @@ export function SentencePractice({ deckId, onBack }) {
   const [mode, setMode] = useState(/** @type {'sentences' | 'story'} */ ("sentences"));
   const [numSentences, setNumSentences] = useState(/** @type {number | ''} */ (20));
   const [wordRange, setWordRange] = useState(/** @type {[number, number]} */ ([6, 10]));
-  const [selectedBoxes, setSelectedBoxes] = useState(/** @type {number[]} */ ([]));
+  const [selectedCategories, setSelectedCategories] = useState(/** @type {string[]} */ ([]));
   const [started, setStarted] = useState(false);
   const [storyTitle, setStoryTitle] = useState("");
   
@@ -133,13 +133,21 @@ export function SentencePractice({ deckId, onBack }) {
 
   const { data: allCards, update: updateCard } = useCollection(collections.cards, cardQueryOptions);
 
-  // Get vocabulary from selected boxes
+  // Get vocabulary from selected categories
   const availableVocab = useMemo(() => {
     if (!allCards) return [];
     return allCards
       .filter((card) => {
+        const isNew = !card.lastReviewedAt;
         const box = card.box || 1;
-        return selectedBoxes.includes(box);
+        
+        if (selectedCategories.includes("new") && isNew) return true;
+        if (selectedCategories.includes("struggling") && !isNew && box === 1) return true;
+        if (selectedCategories.includes("2") && box === 2) return true;
+        if (selectedCategories.includes("3") && box === 3) return true;
+        if (selectedCategories.includes("4") && box === 4) return true;
+        if (selectedCategories.includes("5") && box === 5) return true;
+        return false;
       })
       .map((card) => {
         // Extract just the word from front (remove parenthetical part of speech)
@@ -152,15 +160,24 @@ export function SentencePractice({ deckId, onBack }) {
         };
       })
       .filter((v) => v.word.length > 0);
-  }, [allCards, selectedBoxes]);
+  }, [allCards, selectedCategories]);
 
-  // Count cards per box
-  const boxCounts = useMemo(() => {
-    if (!allCards) return { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  // Count cards per category
+  const categoryCounts = useMemo(() => {
+    if (!allCards) return { new: 0, struggling: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    /** @type {{ new: number, struggling: number, 2: number, 3: number, 4: number, 5: number }} */
+    const counts = { new: 0, struggling: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     allCards.forEach((card) => {
+      const isNew = !card.lastReviewedAt;
       const box = card.box || 1;
-      if (box >= 1 && box <= 5) counts[box]++;
+      
+      if (isNew) {
+        counts.new++;
+      } else if (box === 1) {
+        counts.struggling++;
+      } else if (box >= 2 && box <= 5) {
+        counts[box]++;
+      }
     });
     return counts;
   }, [allCards]);
@@ -217,15 +234,15 @@ export function SentencePractice({ deckId, onBack }) {
   }, [langInfo]);
 
   /**
-   * Toggle box selection
-   * @param {number} box
+   * Toggle category selection
+   * @param {string} category
    */
-  const toggleBox = (box) => {
-    setSelectedBoxes((prev) => {
-      if (prev.includes(box)) {
-        return prev.filter((b) => b !== box);
+  const toggleCategory = (category) => {
+    setSelectedCategories((prev) => {
+      if (prev.includes(category)) {
+        return prev.filter((c) => c !== category);
       }
-      return [...prev, box].sort();
+      return [...prev, category];
     });
   };
 
@@ -544,29 +561,36 @@ Generate the sentences now:`;
             </Alert>
           )}
 
-          {/* Box Selection */}
+          {/* Category Selection */}
           <Text fw={500} size="sm" mb="xs">Select which cards to include:</Text>
           <Group gap="xs" mb="lg" wrap="wrap">
-            {[1, 2, 3, 4, 5].map((box) => {
-              const count = boxCounts[box];
-              const isSelected = selectedBoxes.includes(box);
+            {/** @type {const} */ ([
+              { key: "new", label: "New", color: "red" },
+              { key: "struggling", label: "Struggling", color: "orange" },
+              { key: "2", label: "Learning", color: "yellow" },
+              { key: "3", label: "Reviewing", color: "lime" },
+              { key: "4", label: "Familiar", color: "teal" },
+              { key: "5", label: "Mastered", color: "green" },
+            ]).map(({ key, label, color }) => {
+              const count = categoryCounts[/** @type {keyof typeof categoryCounts} */ (key)];
+              const isSelected = selectedCategories.includes(key);
               return (
                 <Button
-                  key={box}
+                  key={key}
                   size="sm"
                   variant={isSelected ? "filled" : "outline"}
-                  color={getBoxColor(box)}
-                  onClick={() => toggleBox(box)}
+                  color={color}
+                  onClick={() => toggleCategory(key)}
                   disabled={count === 0}
                 >
-                  {getBoxLabel(box)} ({count})
+                  {label} ({count})
                 </Button>
               );
             })}
           </Group>
           
           <Text size="xs" c="dimmed" mb="lg">
-            {availableVocab.length} words available from selected boxes
+            {availableVocab.length} words available from selected categories
           </Text>
 
           <Text fw={500} size="sm" mb="xs">Practice type</Text>
@@ -644,20 +668,20 @@ Generate the sentences now:`;
               leftSection={mode === "story" ? <IconBook size={18} /> : <IconMessages size={18} />}
               onClick={generateContent}
               loading={generating}
-              disabled={selectedBoxes.length === 0 || availableVocab.length < 3}
+              disabled={selectedCategories.length === 0 || availableVocab.length < 3}
             >
               {generating ? "Generating..." : mode === "story" ? "Generate Story" : "Generate Sentences"}
             </Button>
           </Group>
 
-          {selectedBoxes.length === 0 && (
+          {selectedCategories.length === 0 && (
             <Text c="dimmed" size="sm" ta="center" mt="md">
-              Select at least one Leitner box to start practicing.
+              Select at least one category to start practicing.
             </Text>
           )}
-          {selectedBoxes.length > 0 && availableVocab.length < 3 && (
+          {selectedCategories.length > 0 && availableVocab.length < 3 && (
             <Text c="dimmed" size="sm" ta="center" mt="md">
-              Selected boxes need at least 3 words total to start practicing.
+              Selected categories need at least 3 words total to start practicing.
             </Text>
           )}
         </Paper>
