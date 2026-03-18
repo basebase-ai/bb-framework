@@ -167,6 +167,19 @@ service cloud.firestore {
     }
     
 
+    // WRITE-ONLY namespaced collections: {appId}_{name}_writeonly
+    // Anonymous create, reads restricted to app owner and collaborators (code contributors).
+    // Useful for forms, signups, feedback, etc.
+    match /{collection}/{docId} {
+      allow read: if collection.matches('.*_.*_writeonly$')
+                  && request.auth != null
+                  && isVerifiedUser()
+                  && (get(/databases/$(database)/documents/apps/$(getAppIdFromCollection(collection))).data.owner == request.auth.uid
+                      || request.auth.uid in get(/databases/$(database)/documents/apps/$(getAppIdFromCollection(collection))).data.get('collaborators', []));
+      allow create: if collection.matches('.*_.*_writeonly$');
+      allow update, delete: if false;
+    }
+
     // PUBLIC namespaced collections: {appId}_{name}_public
     // These are readable by anyone (no auth required), writable by verified users
     // Example: www_integrations_public, myapp_blog_public
@@ -179,22 +192,30 @@ service cloud.firestore {
 
     // MAGIC: Namespaced app collections (scales to infinite apps!)
     // Pattern: {appId}_{collectionName}/{docId}
+    // Excludes _writeonly and _public collections (handled by their own rules above)
     match /{collection}/{docId} {
-      // Only allow if collection follows namespace pattern
-      allow read: if collection.matches('.*_.*')  // Has underscore
+      allow read: if collection.matches('.*_.*')
+                  && !collection.matches('.*_writeonly$')
+                  && !collection.matches('.*_public$')
                   && canAccessApp(getAppIdFromCollection(collection));
-      
-      allow write: if collection.matches('.*_.*')  // Has underscore
+
+      allow write: if collection.matches('.*_.*')
+                   && !collection.matches('.*_writeonly$')
+                   && !collection.matches('.*_public$')
                    && canWriteToApp(getAppIdFromCollection(collection));
     }
-    
+
     // Subcollections of namespaced collections (e.g., writebase_documents/{docId}/content/{subDocId})
     // Using recursive wildcard to match any depth
     match /{collection}/{docId}/{path=**} {
       allow read: if collection.matches('.*_.*')
+                  && !collection.matches('.*_writeonly$')
+                  && !collection.matches('.*_public$')
                   && canAccessApp(getAppIdFromCollection(collection));
-      
+
       allow write: if collection.matches('.*_.*')
+                   && !collection.matches('.*_writeonly$')
+                   && !collection.matches('.*_public$')
                    && canWriteToApp(getAppIdFromCollection(collection));
     }
         

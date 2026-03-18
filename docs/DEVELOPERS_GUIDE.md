@@ -132,6 +132,28 @@ rules: {
 }
 ```
 
+### Collection Name Suffixes
+
+Firestore rules support special collection suffixes that change security behavior automatically:
+
+**`_public` — World-readable collections**
+Any collection named `{appId}_{name}_public` is readable by anyone (no auth), writable by verified users. Useful for blogs, public content, marketing pages.
+
+```javascript
+collections: {
+  posts: `${APP_ID}_posts_public`,  // Anyone can read, verified users can write
+}
+```
+
+**`_writeonly` — Write-only collections**
+Any collection named `{appId}_{name}_writeonly` allows anonymous creates. Only the app owner and collaborators (code contributors listed in the app's `collaborators` array) can read the data. Useful for signups, feedback forms, contact forms, surveys — anywhere you collect data from unauthenticated visitors but want to review it from an admin view.
+
+```javascript
+collections: {
+  signups: `${APP_ID}_signups_writeonly`,  // Anyone can submit, nobody can read
+}
+```
+
 Generate Firestore rules:
 
 ```bash
