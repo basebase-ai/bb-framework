@@ -40,6 +40,9 @@ import { collections } from "./schema.js";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
+// Drop ad tracking cookie inherited from parent domain
+document.cookie = '_gcl_au=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.basebase.com';
+
 function SignupForm() {
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
@@ -123,7 +126,7 @@ function SignupForm() {
 
             <Stack gap="xs" mt="sm">
               <Textarea
-                label="Notes (optional)"
+                label={<>Notes <Text span size="xs" c="dimmed">(optional)</Text></>}
                 placeholder="Questions, topics of interest, or how you'd like to contribute"
                 value={notes}
                 onChange={(e) => setNotes(e.currentTarget.value)}
@@ -194,7 +197,8 @@ function SignupForm() {
         <Stack gap="sm">
           <Text size="sm">
             We collect your email address solely to send you the completed{" "}
-            <em>AI Best Practices for Workers' Compensation</em> document.
+            <em>Best Practices for Responsible AI in Workers' Compensation
+            and Medicolegal Decision-Making</em> document.
           </Text>
           <Text size="sm" fw={600}>
             What we will do:
@@ -215,10 +219,15 @@ function SignupForm() {
             <li>Send unrelated communications.</li>
           </Text>
           <Text size="sm" c="dimmed" mt="xs">
-            Questions? Contact Chris Brigham at{" "}
-            <Anchor href="https://cbrigham.com" target="_blank" size="sm">
-              cbrigham.com
+            Questions? Contact{" "}
+            <Anchor href="mailto:ben@basebase.com" size="sm">
+              ben@basebase.com
             </Anchor>
+          </Text>
+          <Divider />
+          <Text size="xs" c="dimmed">
+            This site respects your privacy. It does not use cookies or
+            other tracking technologies.
           </Text>
         </Stack>
       </Modal>
@@ -227,6 +236,8 @@ function SignupForm() {
 }
 
 function App() {
+  const [aboutOpen, setAboutOpen] = useState(false);
+
   return (
     <MantineProvider defaultColorScheme="light">
       <Notifications position="top-right" />
@@ -244,11 +255,11 @@ function App() {
             {/* Header */}
             <Stack gap={4} align="center">
               <Text size="xs" tt="uppercase" fw={600} c="dimmed" ls={1} ta="center">
-                DWC 33rd Annual Educational Conference
+                Workers' Compensation and Medicolegal AI Working Group
               </Text>
               <Title order={1} ta="center" c="dark" lh={1.3}
-                style={{ fontSize: "clamp(1.1rem, 4.5vw, 1.75rem)", wordBreak: "break-word" }}>
-                AI Best Practices for Workers' Compensation
+                style={{ fontSize: "clamp(1rem, 4vw, 1.5rem)", wordBreak: "break-word" }}>
+                Best Practices for Responsible AI in Workers' Compensation and Medicolegal Decision-Making
               </Title>
             </Stack>
 
@@ -256,7 +267,7 @@ function App() {
             <Text ta="center" c="dimmed" size="sm">
               A practical guide being developed by practitioners, for
               practitioners. Leave your email and we'll send you the document
-              when it's published.
+              when it's published Spring 2026.
             </Text>
 
             <Divider />
@@ -268,39 +279,59 @@ function App() {
 
             {/* Attribution */}
             <Stack gap={6} align="center">
-              <Text size="xs" c="dimmed" ta="center" style={{ overflowWrap: "break-word" }}>
-                Led by{" "}
+              <Text size="xs" c="dimmed" ta="center">
+                Developed by the{" "}
                 <Anchor
-                  href="https://cbrigham.com"
-                  target="_blank"
                   size="xs"
-                  c="dark"
-                  fw={500}
+                  onClick={() => setAboutOpen(true)}
+                  style={{ cursor: "pointer" }}
                 >
-                  Chris Brigham, MD
+                  WCM-AI Group
                 </Anchor>
               </Text>
-              <Text size="xs" c="dimmed" ta="center" style={{ overflowWrap: "break-word" }}>
-                Senior Contributing Editor, AMA{" "}
-                <em>Guides to the Evaluation of Permanent Impairment</em>
-              </Text>
-              <Text size="xs" c="dimmed" ta="center" style={{ overflowWrap: "break-word" }}>
-                With contributions from [add names]
-              </Text>
-              <Text size="xs" c="dimmed" ta="center" mt={4}>
-                Originally offered at the{" "}
-                <Anchor
-                  href="https://www.dir.ca.gov/DWC/DWC-Conference.htm"
-                  target="_blank"
-                  size="xs"
-                >
-                  DWC Annual Conference 2026
-                </Anchor>
+              <Text size="xs" c="dimmed" ta="center">
+                First offered at the California DWC Annual Conference, Los Angeles 2026
               </Text>
             </Stack>
           </Stack>
         </Container>
       </Box>
+
+      <Modal
+        opened={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        title="About the WCM-AI Group"
+        size="md"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            The Workers' Compensation and Medicolegal AI Working Group is an
+            all-volunteer body whose goal is to help establish practical,
+            credible guidelines for the responsible use of AI in workers'
+            compensation, with the ultimate goal of improving the system for
+            all participants.
+          </Text>
+          <Divider />
+          <Text size="sm" fw={600}>Members</Text>
+          <Stack gap={4}>
+            <Text size="sm">Christopher R. Brigham, MD</Text>
+            <Text size="sm">Judge David Langham</Text>
+            <Text size="sm">Mark Melhorn, MD</Text>
+            <Text size="sm">Barry Gelinas, MD, DC</Text>
+            <Text size="sm">Alex Almazan, Esq.</Text>
+            <Text size="sm">Waqas Ahmad Buttar</Text>
+            <Text size="sm">Robert Wilson</Text>
+            <Text size="sm">Mark Pew</Text>
+            <Text size="sm">Connor Atchison</Text>
+            <Text size="sm">Ben Wen</Text>
+          </Stack>
+          <Divider />
+          <Text size="xs" c="dimmed">
+            AI was used to create this website.
+          </Text>
+        </Stack>
+      </Modal>
     </MantineProvider>
   );
 }
