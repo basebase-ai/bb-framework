@@ -325,6 +325,7 @@ function App() {
             <Text size="sm">Mark Pew</Text>
             <Text size="sm">Connor Atchison</Text>
             <Text size="sm">Ben Wen</Text>
+            <Text size="sm">William Zachry</Text>
           </Stack>
           <Divider />
           <Text size="xs" c="dimmed">
